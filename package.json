@@ -13,7 +13,8 @@
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsup ./src"
+    "build": "tsup ./src",
+    "prepare": "husky install"
   },
   "author": "Chainlit",
   "license": "Apache-2.0",
@@ -26,7 +27,14 @@
     "@types/uuid": "^9.0.7",
     "dotenv": "^16.3.1",
     "tsup": "^8.0.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "@trivago/prettier-plugin-sort-imports": "^4.2.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.48.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.3.0",
+    "prettier": "^2.8.8"
   },
   "dependencies": {
     "axios": "^1.6.2",
