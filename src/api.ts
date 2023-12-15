@@ -1,9 +1,10 @@
-import { createReadStream } from "fs";
-import axios, { AxiosError } from "axios";
-import { v4 as uuidv4 } from "uuid";
-import { lookup } from "mime-types";
-import FormData from "form-data";
-import { Step, MakeAttachmentSpec, Maybe, Attachment, User } from "./types";
+import axios, { AxiosError } from 'axios';
+import FormData from 'form-data';
+import { createReadStream } from 'fs';
+import { lookup } from 'mime-types';
+import { v4 as uuidv4 } from 'uuid';
+
+import { Attachment, MakeAttachmentSpec, Maybe, Step, User } from './types';
 
 const stepFields = `
     id
@@ -59,16 +60,16 @@ const threadFields = `
         ${stepFields}
     }`;
 
-const shallowThreadFields = `
-    id
-    metadata
-    tags
-    createdAt
-    participant {
-        id
-        identifier
-        metadata
-    }`;
+// const shallowThreadFields = `
+//     id
+//     metadata
+//     tags
+//     createdAt
+//     participant {
+//         id
+//         identifier
+//         metadata
+//     }`;
 
 function serialize(step: Step, id: number) {
   const result: any = {};
@@ -90,7 +91,7 @@ function variablesBuilder(steps: Step[]) {
 }
 
 function ingestStepsFieldsBuilder(steps: Step[]) {
-  let generated = "";
+  let generated = '';
   for (let id = 0; id < steps.length; id++) {
     generated += `$id_${id}: String!
         $threadId_${id}: String!
@@ -111,7 +112,7 @@ function ingestStepsFieldsBuilder(steps: Step[]) {
 }
 
 function ingestStepsArgsBuilder(steps: Step[]) {
-  let generated = "";
+  let generated = '';
   for (let id = 0; id < steps.length; id++) {
     generated += `
       step${id}: ingestStep(
@@ -156,17 +157,17 @@ export class API {
     this.graphqlEndpoint = `${url}/api/graphql`;
 
     if (!this.apiKey) {
-      throw new Error("CHAINLIT_API_KEY not set");
+      throw new Error('CHAINLIT_API_KEY not set');
     }
     if (!this.url) {
-      throw new Error("CHAINLIT_API_URL not set");
+      throw new Error('CHAINLIT_API_URL not set');
     }
   }
 
   private get headers() {
     return {
-      "Content-Type": "application/json",
-      "x-api-key": this.apiKey,
+      'Content-Type': 'application/json',
+      'x-api-key': this.apiKey
     };
   }
 
@@ -174,12 +175,12 @@ export class API {
     try {
       const response = await axios({
         url: this.graphqlEndpoint,
-        method: "post",
+        method: 'post',
         headers: this.headers,
         data: {
           query: query,
-          variables: variables,
-        },
+          variables: variables
+        }
       });
 
       if (response.data.errors) {
@@ -206,31 +207,31 @@ export class API {
   async makeAttachment(threadId: string, spec: MakeAttachmentSpec) {
     if (!spec.content && !spec.url && !spec.path) {
       throw new Error(
-        "Either content, path or attachment url must be provided"
+        'Either content, path or attachment url must be provided'
       );
     }
 
     if (spec.content && spec.path) {
-      throw new Error("Only one of content and path must be provided");
+      throw new Error('Only one of content and path must be provided');
     }
 
     if ((spec.content && spec.url) || (spec.path && spec.url)) {
       throw new Error(
-        "Only one of content, path and attachment url must be provided"
+        'Only one of content, path and attachment url must be provided'
       );
     }
 
     if (spec.path) {
       if (!spec.name) {
-        spec.name = spec.path.split("/").pop() || "";
+        spec.name = spec.path.split('/').pop() || '';
       }
       if (!spec.mime) {
-        spec.mime = lookup(spec.path) || "application/octet-stream";
+        spec.mime = lookup(spec.path) || 'application/octet-stream';
       }
     }
 
     if (!spec.name) {
-      throw new Error("Attachment name must be provided");
+      throw new Error('Attachment name must be provided');
     }
 
     if (spec.content || spec.path) {
@@ -242,7 +243,7 @@ export class API {
       );
 
       if (!uploaded.objectKey || !uploaded.url) {
-        throw new Error("Failed to upload file");
+        throw new Error('Failed to upload file');
       }
 
       spec.objectKey = uploaded.objectKey;
@@ -254,7 +255,7 @@ export class API {
       metadata: spec.metadata,
       mime: spec.mime,
       name: spec.name,
-      objectKey: spec.objectKey,
+      objectKey: spec.objectKey
     });
   }
 
@@ -265,17 +266,17 @@ export class API {
     mime: Maybe<string>
   ) {
     if (!content && !path) {
-      throw new Error("Either content or path must be provided");
+      throw new Error('Either content or path must be provided');
     }
 
-    mime = mime || "application/octet-stream";
+    mime = mime || 'application/octet-stream';
 
     const id = uuidv4();
     const body = { fileName: id, contentType: mime, threadId: threadId };
-    const endpoint = this.url + "/api/upload/file";
+    const endpoint = this.url + '/api/upload/file';
 
     const signingResponse = await axios.post(endpoint, body, {
-      headers: this.headers,
+      headers: this.headers
     });
 
     if (signingResponse.status !== 200) {
@@ -284,18 +285,19 @@ export class API {
     }
 
     const jsonRes = signingResponse.data;
-    const method = jsonRes.hasOwnProperty("put") ? "put" : "post";
+    // eslint-disable-next-line no-prototype-builtins
+    const method = jsonRes.hasOwnProperty('put') ? 'put' : 'post';
     const requestDict = jsonRes[method] || {};
     const url = requestDict.url || null;
 
     if (!url) {
-      throw new Error("Invalid server response");
+      throw new Error('Invalid server response');
     }
 
     let headers = requestDict.headers || null;
     const fields = requestDict.fields || {};
     const objectKey = fields.key || null;
-    const uploadType = requestDict.uploadType || "multipart";
+    const uploadType = requestDict.uploadType || 'multipart';
     const signedUrl = jsonRes.signedUrl || null;
     const formData = new FormData();
     for (const [name, value] of Object.entries(fields)) {
@@ -303,16 +305,16 @@ export class API {
     }
 
     if (path) {
-      formData.append("file", createReadStream(path), {
+      formData.append('file', createReadStream(path), {
         filename: id,
-        contentType: mime,
+        contentType: mime
       });
       headers = { ...headers, ...formData.getHeaders() };
     } else if (content) {
-      formData.append("file", content, id);
+      formData.append('file', content, id);
       headers = {
         ...headers,
-        ...formData.getHeaders(),
+        ...formData.getHeaders()
       };
     }
 
@@ -322,7 +324,7 @@ export class API {
         url,
         headers,
         data:
-          uploadType === "raw" ? content || createReadStream(path!) : formData,
+          uploadType === 'raw' ? content || createReadStream(path!) : formData
       });
 
       return { objectKey, url: signedUrl };
@@ -364,7 +366,7 @@ export class API {
       metadata,
       participantId,
       environment,
-      tags,
+      tags
     };
 
     const response = await this.makeApiCall(query, variables);
@@ -388,7 +390,7 @@ export class API {
 
     const res = await this.makeApiCall(query, variables);
 
-    return new User({ ...res.createParticipant });
+    return new User({ ...res.data.createParticipant });
   }
 
   public async updateUser(

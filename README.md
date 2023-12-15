@@ -31,7 +31,7 @@ This will keep track of:
 - Token consumption
 
 ```ts
-import { Chainlit } from "@chainlit/client";
+import { Chainlit, User } from "@chainlit/client";
 import OpenAI from "openai";
 
 const openai = new OpenAI();
