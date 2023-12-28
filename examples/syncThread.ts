@@ -6,7 +6,7 @@ import { Chainlit, User } from '../src';
 async function main() {
   const chainlit = new Chainlit();
   const openai = new OpenAI();
-  const syncer = chainlit.openaiAssistantSyncer(openai);
+  const syncer = chainlit.openai(openai).assistant.syncer;
 
   const threadId = 'thread_P5BRCiOgwjGHJx1SMWN2vvpC';
 

@@ -1,4 +1,7 @@
-import { Generation } from "./generation";
+import { v4 as uuidv4 } from 'uuid';
+
+import { API } from './api';
+import { Generation } from './generation';
 
 export type Maybe<T> = T | null | undefined;
 
@@ -13,7 +16,7 @@ export class Utils {
           dict[key] = (this as any)[key].map((item: any) => {
             if (
               item instanceof Object &&
-              typeof item.serialize === "function"
+              typeof item.serialize === 'function'
             ) {
               return item.serialize();
             } else {
@@ -22,7 +25,7 @@ export class Utils {
           });
         } else if (
           (this as any)[key] instanceof Object &&
-          typeof (this as any)[key].serialize === "function"
+          typeof (this as any)[key].serialize === 'function'
         ) {
           dict[key] = (this as any)[key].serialize();
         } else {
@@ -35,20 +38,20 @@ export class Utils {
 }
 
 export type FeedbackStrategy =
-  | "BINARY"
-  | "STARS"
-  | "BIG_STARS"
-  | "LIKERT"
-  | "CONTINUOUS"
-  | "LETTERS"
-  | "PERCENTAGE";
+  | 'BINARY'
+  | 'STARS'
+  | 'BIG_STARS'
+  | 'LIKERT'
+  | 'CONTINUOUS'
+  | 'LETTERS'
+  | 'PERCENTAGE';
 
 export class Feedback {
   id: Maybe<string>;
   threadId: Maybe<string>;
   stepId: Maybe<string>;
   value: Maybe<number>;
-  strategy: FeedbackStrategy = "BINARY";
+  strategy: FeedbackStrategy = 'BINARY';
   comment: Maybe<string>;
 }
 
@@ -77,18 +80,18 @@ export class MakeAttachmentSpec extends Attachment {
 }
 
 export type StepType =
-  | "assistant_message"
-  | "embedding"
-  | "llm"
-  | "rerank"
-  | "retrieval"
-  | "run"
-  | "system_message"
-  | "tool"
-  | "undefined"
-  | "user_message";
+  | 'assistant_message'
+  | 'embedding'
+  | 'llm'
+  | 'rerank'
+  | 'retrieval'
+  | 'run'
+  | 'system_message'
+  | 'tool'
+  | 'undefined'
+  | 'user_message';
 
-export class Step extends Utils {
+class StepFields extends Utils {
   name!: string;
   type!: StepType;
   threadId!: string;
@@ -104,10 +107,43 @@ export class Step extends Utils {
   generation?: Maybe<Generation>;
   feedback?: Maybe<Feedback>;
   attachments?: Maybe<Attachment[]>;
+}
 
-  constructor(data: OmitUtils<Step>) {
+export type StepConstructor = OmitUtils<StepFields>;
+
+export class Step extends StepFields {
+  api: API;
+  constructor(api: API, data: StepConstructor) {
     super();
+    this.api = api;
     Object.assign(this, data);
+    if (!this.id) {
+      this.id = uuidv4();
+    }
+    if (!this.createdAt) {
+      this.createdAt = new Date().toISOString();
+    }
+    if (!this.startTime) {
+      this.startTime = new Date().toISOString();
+    }
+  }
+
+  childStep(data: StepConstructor) {
+    return new Step(this.api, { ...data, parentId: this.id });
+  }
+
+  end(output?: Maybe<string>) {
+    if (output) {
+      this.output = output;
+    }
+    if (!this.endTime) {
+      this.endTime = new Date().toISOString();
+    }
+    return this;
+  }
+
+  async send() {
+    return this.api.sendSteps([this]);
   }
 }
 

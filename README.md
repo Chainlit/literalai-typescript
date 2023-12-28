@@ -15,9 +15,9 @@ To get an API key, go to the [Chainlit Platform](https://staging.chainlit.io), c
 ## Usage
 
 ```ts
-import { Chainlit } from "@chainlit/client";
+import { Chainlit } from '@chainlit/client';
 
-const chainlit = new Chainlit(process.env["CHAINLIT_API_KEY"]);
+const chainlit = new Chainlit(process.env['CHAINLIT_API_KEY']);
 ```
 
 ## Monitor OpenAI Assistant Threads
@@ -31,20 +31,21 @@ This will keep track of:
 - Token consumption
 
 ```ts
-import { Chainlit, User } from "@chainlit/client";
-import OpenAI from "openai";
+import OpenAI from 'openai';
+
+import { Chainlit, User } from '@chainlit/client';
 
 const openai = new OpenAI();
 
-const chainlit = new Chainlit(process.env["CHAINLIT_API_KEY"]);
-const syncer = chainlit.openaiAssistantSyncer(openai);
+const chainlit = new Chainlit(process.env['CHAINLIT_API_KEY']);
+const syncer = chainlit.openai(openai).assistant.syncer;
 
 async function main() {
   // You can sync a thread at any moment. We recommend to sync it once you get a `completed` run status.
-  const threadId = "THREAD_ID_TO_SYNC";
+  const threadId = 'THREAD_ID_TO_SYNC';
 
   // Optional: Add/update a user to the thread. Use any unique identifier you like.
-  const user = new User({ identifier: "willy", metadata: { name: "Willy" } });
+  const user = new User({ identifier: 'willy', metadata: { name: 'Willy' } });
   await syncer.syncThread(threadId, user);
 }
 
