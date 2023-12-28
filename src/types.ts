@@ -69,13 +69,50 @@ export class Attachment extends Utils {
   }
 }
 
-export class MakeAttachmentSpec extends Attachment {
+export class CreateAttachmentSpec extends Attachment {
   content?: Maybe<any>;
   path?: Maybe<string>;
 
-  constructor(data: OmitUtils<MakeAttachmentSpec>) {
+  constructor(data: OmitUtils<CreateAttachmentSpec>) {
     super(data);
     Object.assign(this, data);
+  }
+}
+
+class ThreadFields extends Utils {
+  id!: string;
+  participantId?: Maybe<string>;
+  environment?: Maybe<string>;
+  metadata?: Maybe<Record<string, any>>;
+  tags?: Maybe<string[]>;
+}
+
+export type ThreadConstructor = OmitUtils<ThreadFields>;
+
+export class Thread extends ThreadFields {
+  api: API;
+  constructor(api: API, data: ThreadConstructor) {
+    super();
+    this.api = api;
+    Object.assign(this, data);
+  }
+
+  step(data: Omit<StepConstructor, 'threadId'>) {
+    return new Step(this.api, {
+      ...data,
+      threadId: this.id
+    });
+  }
+
+  async upsert() {
+    await this.api.upsertThread(
+      this.id,
+      this.metadata,
+      this.participantId,
+      this.environment,
+      this.tags
+    );
+    return this;
   }
 }
 
@@ -95,8 +132,8 @@ class StepFields extends Utils {
   name!: string;
   type!: StepType;
   threadId!: string;
-  createdAt: Maybe<string>;
-  startTime: Maybe<string>;
+  createdAt?: Maybe<string>;
+  startTime?: Maybe<string>;
   id?: Maybe<string>;
   input?: Maybe<string>;
   output?: Maybe<string>;
@@ -126,24 +163,34 @@ export class Step extends StepFields {
     if (!this.startTime) {
       this.startTime = new Date().toISOString();
     }
+    if (this.isMessage()) {
+      this.endTime = this.startTime;
+    }
   }
 
-  childStep(data: StepConstructor) {
-    return new Step(this.api, { ...data, parentId: this.id });
+  isMessage() {
+    return (
+      this.type === 'user_message' ||
+      this.type === 'assistant_message' ||
+      this.type === 'system_message'
+    );
   }
 
-  end(output?: Maybe<string>) {
-    if (output) {
-      this.output = output;
-    }
-    if (!this.endTime) {
-      this.endTime = new Date().toISOString();
-    }
-    return this;
+  childStep(data: Omit<StepConstructor, 'threadId'>) {
+    return new Step(this.api, {
+      ...data,
+      threadId: this.threadId,
+      parentId: this.id
+    });
   }
 
   async send() {
-    return this.api.sendSteps([this]);
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    if (!this.endTime) {
+      this.endTime = new Date().toISOString();
+    }
+    await this.api.sendSteps([this]);
+    return this;
   }
 }
 

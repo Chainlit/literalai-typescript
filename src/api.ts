@@ -4,7 +4,7 @@ import { createReadStream } from 'fs';
 import { lookup } from 'mime-types';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Attachment, MakeAttachmentSpec, Maybe, Step, User } from './types';
+import { Attachment, CreateAttachmentSpec, Maybe, Step, User } from './types';
 
 const stepFields = `
     id
@@ -204,7 +204,7 @@ export class API {
     return this.makeApiCall(query, variables);
   }
 
-  async makeAttachment(threadId: string, spec: MakeAttachmentSpec) {
+  async createAttachment(threadId: string, spec: CreateAttachmentSpec) {
     if (!spec.content && !spec.url && !spec.path) {
       throw new Error(
         'Either content, path or attachment url must be provided'
@@ -238,6 +238,7 @@ export class API {
       const uploaded = await this.uploadFile(
         spec.content,
         spec.path,
+        spec.id,
         threadId,
         spec.mime
       );
@@ -262,6 +263,7 @@ export class API {
   async uploadFile(
     content: Maybe<any>,
     path: Maybe<string>,
+    id: Maybe<string>,
     threadId: string,
     mime: Maybe<string>
   ) {
@@ -271,7 +273,7 @@ export class API {
 
     mime = mime || 'application/octet-stream';
 
-    const id = uuidv4();
+    id = id || uuidv4();
     const body = { fileName: id, contentType: mime, threadId: threadId };
     const endpoint = this.url + '/api/upload/file';
 
@@ -419,6 +421,24 @@ export class API {
     const res = await this.makeApiCall(query, variables);
 
     return new User({ ...res.data.updateParticipant });
+  }
+
+  public async getOrCreateUser(
+    identifier: string,
+    metadata?: Maybe<Record<string, any>>
+  ) {
+    const existingUser = await this.getUser(identifier);
+    if (existingUser) {
+      const updatedUser = await this.updateUser(
+        existingUser.id!,
+        existingUser.identifier,
+        existingUser.metadata
+      );
+      return updatedUser.id!;
+    } else {
+      const createdUser = await this.createUser(identifier, metadata);
+      return createdUser.id!;
+    }
   }
 
   public async getUser(identifier: string): Promise<Maybe<User>> {

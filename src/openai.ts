@@ -11,7 +11,7 @@ import { v5 as uuidv5 } from 'uuid';
 
 import { Chainlit } from '.';
 import { ChatGeneration } from './generation';
-import { Attachment, MakeAttachmentSpec, User } from './types';
+import { Attachment, CreateAttachmentSpec, User } from './types';
 
 class OpenAIAssistantSyncer {
   private NAMESPACE_UUID = '1b671a64-40d5-491e-99b0-da01ff1f3341';
@@ -43,9 +43,9 @@ class OpenAIAssistantSyncer {
         const file = await this.openai.files.content(
           content.image_file.file_id
         );
-        const attachment = await this.client.api.makeAttachment(
+        const attachment = await this.client.api.createAttachment(
           chainlitThreadId,
-          new MakeAttachmentSpec({
+          new CreateAttachmentSpec({
             id: this.generateUUIDv5FromID(content.image_file.file_id),
             name: content.image_file.file_id,
             content: file.body,
@@ -193,21 +193,10 @@ class OpenAIAssistantSyncer {
   async syncThread(threadId: string, user?: User) {
     let userId: string | undefined = undefined;
     if (user) {
-      const existingUser = await this.client.api.getUser(user.identifier);
-      if (existingUser) {
-        const updatedUser = await this.client.api.updateUser(
-          existingUser.id!,
-          existingUser.identifier,
-          existingUser.metadata
-        );
-        userId = updatedUser.id!;
-      } else {
-        const createdUser = await this.client.api.createUser(
-          user.identifier,
-          user.metadata
-        );
-        userId = createdUser.id!;
-      }
+      userId = await this.client.api.getOrCreateUser(
+        user.identifier,
+        user.metadata
+      );
     }
 
     const chainlitThreadId = this.generateUUIDv5FromID(threadId);
