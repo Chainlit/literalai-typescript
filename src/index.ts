@@ -3,6 +3,7 @@ import openai from './openai';
 import { Step, StepConstructor, Thread, ThreadConstructor } from './types';
 
 export * from './types';
+export * from './generation';
 
 export class Chainlit {
   api: API;

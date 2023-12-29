@@ -11,7 +11,7 @@ import { v5 as uuidv5 } from 'uuid';
 
 import { Chainlit } from '.';
 import { ChatGeneration } from './generation';
-import { Attachment, CreateAttachmentSpec, User } from './types';
+import { Attachment, User } from './types';
 
 class OpenAIAssistantSyncer {
   private NAMESPACE_UUID = '1b671a64-40d5-491e-99b0-da01ff1f3341';
@@ -43,15 +43,24 @@ class OpenAIAssistantSyncer {
         const file = await this.openai.files.content(
           content.image_file.file_id
         );
-        const attachment = await this.client.api.createAttachment(
-          chainlitThreadId,
-          new CreateAttachmentSpec({
-            id: this.generateUUIDv5FromID(content.image_file.file_id),
-            name: content.image_file.file_id,
-            content: file.body,
-            mime: 'image/png'
-          })
+        const attachmentId = this.generateUUIDv5FromID(
+          content.image_file.file_id
         );
+        const mime = 'image/png';
+
+        const { objectKey } = await this.client.api.uploadFile({
+          threadId: chainlitThreadId,
+          id: attachmentId,
+          content: file.body,
+          mime
+        });
+
+        const attachment = new Attachment({
+          name: content.image_file.file_id,
+          id: attachmentId,
+          objectKey,
+          mime
+        });
 
         attachments.push(attachment);
       } else if (content.type === 'text') {
@@ -106,6 +115,7 @@ class OpenAIAssistantSyncer {
     runStep: RunStep
   ) {
     const createdAt = new Date(runStep.created_at * 1000).toISOString();
+
     const endTime = runStep.completed_at
       ? new Date(runStep.completed_at * 1000).toISOString()
       : null;
@@ -115,6 +125,12 @@ class OpenAIAssistantSyncer {
     let input = '';
     let output = '';
     let name = '';
+
+    const metadata: Record<string, any> = {};
+
+    if (runStep.last_error) {
+      metadata['error'] = runStep.last_error;
+    }
 
     if ('code_interpreter' in toolCall) {
       name = 'Code Interpreter';
@@ -152,7 +168,7 @@ class OpenAIAssistantSyncer {
       name,
       input,
       output,
-      metadata: {},
+      metadata,
       generation
     });
 

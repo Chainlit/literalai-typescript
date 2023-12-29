@@ -46,13 +46,18 @@ export type FeedbackStrategy =
   | 'LETTERS'
   | 'PERCENTAGE';
 
-export class Feedback {
+export class Feedback extends Utils {
   id: Maybe<string>;
   threadId: Maybe<string>;
   stepId: Maybe<string>;
   value: Maybe<number>;
   strategy: FeedbackStrategy = 'BINARY';
   comment: Maybe<string>;
+
+  constructor(data: OmitUtils<Feedback>) {
+    super();
+    Object.assign(this, data);
+  }
 }
 
 export class Attachment extends Utils {
@@ -66,16 +71,9 @@ export class Attachment extends Utils {
   constructor(data: OmitUtils<Attachment>) {
     super();
     Object.assign(this, data);
-  }
-}
-
-export class CreateAttachmentSpec extends Attachment {
-  content?: Maybe<any>;
-  path?: Maybe<string>;
-
-  constructor(data: OmitUtils<CreateAttachmentSpec>) {
-    super(data);
-    Object.assign(this, data);
+    if (!this.id) {
+      this.id = uuidv4();
+    }
   }
 }
 

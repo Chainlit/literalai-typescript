@@ -1,15 +1,16 @@
 import 'dotenv/config';
+import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Chainlit } from '../src';
-import { ChatGeneration } from '../src/generation';
+import { Attachment, Chainlit, ChatGeneration } from '../src';
 
 async function main() {
   const chainlit = new Chainlit();
+
   const userIdentifier = 'foobar';
   const participantId = await chainlit.api.getOrCreateUser(userIdentifier);
 
-  // Create the tread
+  // Create the thread
   const thread = await chainlit
     .thread({ id: uuidv4(), participantId })
     .upsert();
@@ -19,7 +20,7 @@ async function main() {
     .step({ name: userIdentifier, type: 'user_message', output: 'Hello' })
     .send();
 
-  // Create a child step
+  // Create a child llm step
   const childStep = step.childStep({
     name: 'gpt-4',
     type: 'llm',
@@ -39,13 +40,38 @@ async function main() {
   childStep.output = fakeCompletion;
   await childStep.send();
 
-  await thread
+  // Upload an attachment
+  const fileStream = createReadStream('./tests/integration/chainlit-logo.png');
+  const mime = 'image/png';
+
+  const { objectKey } = await chainlit.api.uploadFile({
+    threadId: thread.id,
+    content: fileStream,
+    mime
+  });
+
+  const attachment = new Attachment({
+    name: 'test',
+    objectKey,
+    mime
+  });
+
+  const finalStep = await thread
     .step({
       name: 'Assistant',
       type: 'assistant_message',
-      output: fakeCompletion
+      output: fakeCompletion,
+      attachments: [attachment]
     })
     .send();
+
+  const feedback = await chainlit.api.createFeedback({
+    stepId: finalStep.id!,
+    value: 1,
+    comment: 'Great!'
+  });
+
+  await chainlit.api.updateFeedback(feedback.id!, { comment: 'Updated!' });
 }
 
 main()

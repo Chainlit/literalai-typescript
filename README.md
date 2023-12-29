@@ -20,6 +20,98 @@ import { Chainlit } from '@chainlit/client';
 const chainlit = new Chainlit(process.env['CHAINLIT_API_KEY']);
 ```
 
+### Create/Update Threads
+
+```ts
+import { v4 as uuidv4 } from 'uuid';
+
+const userIdentifier = 'foobar';
+const participantId = await chainlit.api.getOrCreateUser(userIdentifier);
+
+// Create the thread
+const thread = await chainlit.thread({ id: uuidv4(), participantId }).upsert();
+```
+
+### Create/Update Steps
+
+```ts
+// Create the first step
+const step = await thread
+  .step({ name: userIdentifier, type: 'user_message', output: 'Hello' })
+  .send();
+
+// Create a child llm step
+const childStep = step.childStep({
+  name: 'gpt-4',
+  type: 'llm',
+  input: 'Hello'
+});
+
+// Faking call to GPT-4
+await new Promise((resolve) => setTimeout(resolve, 1000));
+const fakeCompletion = 'Hello, how are you?';
+
+childStep.generation = new ChatGeneration({
+  messages: [{ role: 'user', formatted: 'Hello' }],
+  provider: 'openai',
+  settings: { model: 'gpt-4' },
+  completion: fakeCompletion
+});
+
+childStep.output = fakeCompletion;
+await childStep.send();
+```
+
+### Attach a File to a Step
+
+```ts
+const fileStream = createReadStream('PATH_TO_FILE');
+const mime = 'image/png';
+
+const { objectKey } = await chainlit.api.uploadFile({
+  threadId: thread.id,
+  content: fileStream,
+  mime
+});
+
+const attachment = new Attachment({
+  name: 'test',
+  objectKey,
+  mime
+});
+
+const finalStep = await thread
+  .step({
+    name: 'Assistant',
+    type: 'assistant_message',
+    output: fakeCompletion,
+    attachments: [attachment]
+  })
+  .send();
+```
+
+### Add Feedback
+
+```ts
+const feedback = await chainlit.api.createFeedback({
+  stepId: finalStep.id!,
+  value: 1,
+  comment: 'Great!'
+});
+```
+
+## List/Export Threads
+
+```ts
+const first = 20;
+const after = undefined;
+const filter = { duration: { operator: 'gt' as const, value: 100000 } };
+
+const threadList = await chainlit.api.listThreads(first, after, filter);
+
+const threadsWithStep = await chainlit.api.exportThreads(after, filter);
+```
+
 ## Monitor OpenAI Assistant Threads
 
 Once you created an OpenAI Assistant and created a thread, you can sync that thread in the Chainlit Platform with one line of code.
