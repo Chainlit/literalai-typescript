@@ -100,7 +100,7 @@ const feedback = await chainlit.api.createFeedback({
 });
 ```
 
-## List/Export Threads
+### List/Export Threads
 
 ```ts
 const first = 20;
