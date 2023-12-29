@@ -1,10 +1,10 @@
 import axios, { AxiosError } from 'axios';
 import FormData from 'form-data';
 import { createReadStream } from 'fs';
-import { lookup } from 'mime-types';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Attachment, MakeAttachmentSpec, Maybe, Step, User } from './types';
+import { ThreadFilter } from './filter';
+import { Feedback, FeedbackStrategy, Maybe, Step, User } from './types';
 
 const stepFields = `
     id
@@ -60,16 +60,16 @@ const threadFields = `
         ${stepFields}
     }`;
 
-// const shallowThreadFields = `
-//     id
-//     metadata
-//     tags
-//     createdAt
-//     participant {
-//         id
-//         identifier
-//         metadata
-//     }`;
+const shallowThreadFields = `
+    id
+    metadata
+    tags
+    createdAt
+    participant {
+        id
+        identifier
+        metadata
+    }`;
 
 function serialize(step: Step, id: number) {
   const result: any = {};
@@ -196,7 +196,7 @@ export class API {
       }
     }
   }
-
+  // Step
   async sendSteps(steps: Step[]) {
     const query = ingestStepsQueryBuilder(steps);
     const variables = variablesBuilder(steps);
@@ -204,74 +204,61 @@ export class API {
     return this.makeApiCall(query, variables);
   }
 
-  async makeAttachment(threadId: string, spec: MakeAttachmentSpec) {
-    if (!spec.content && !spec.url && !spec.path) {
-      throw new Error(
-        'Either content, path or attachment url must be provided'
-      );
-    }
-
-    if (spec.content && spec.path) {
-      throw new Error('Only one of content and path must be provided');
-    }
-
-    if ((spec.content && spec.url) || (spec.path && spec.url)) {
-      throw new Error(
-        'Only one of content, path and attachment url must be provided'
-      );
-    }
-
-    if (spec.path) {
-      if (!spec.name) {
-        spec.name = spec.path.split('/').pop() || '';
+  async getStep(id: string): Promise<Maybe<Step>> {
+    const query = `
+      query GetStep($id: String!) {
+        step(id: $id) {
+          ${stepFields}
+        }
       }
-      if (!spec.mime) {
-        spec.mime = lookup(spec.path) || 'application/octet-stream';
-      }
-    }
+    `;
 
-    if (!spec.name) {
-      throw new Error('Attachment name must be provided');
-    }
+    const variables = { id };
 
-    if (spec.content || spec.path) {
-      const uploaded = await this.uploadFile(
-        spec.content,
-        spec.path,
-        threadId,
-        spec.mime
-      );
+    const result = await this.makeApiCall(query, variables);
 
-      if (!uploaded.objectKey || !uploaded.url) {
-        throw new Error('Failed to upload file');
-      }
+    const step = result.data.step;
 
-      spec.objectKey = uploaded.objectKey;
-      spec.url = uploaded.url;
-    }
-
-    return new Attachment({
-      id: spec.id,
-      metadata: spec.metadata,
-      mime: spec.mime,
-      name: spec.name,
-      objectKey: spec.objectKey
-    });
+    return step;
   }
 
-  async uploadFile(
-    content: Maybe<any>,
-    path: Maybe<string>,
-    threadId: string,
-    mime: Maybe<string>
-  ) {
+  async deleteStep(id: string): Promise<string> {
+    const query = `
+    mutation DeleteStep($id: String!) {
+        deleteStep(id: $id) {
+            id
+        }
+    }
+    `;
+
+    const variables = { id };
+
+    const result = await this.makeApiCall(query, variables);
+
+    return result.data.deleteStep.id;
+  }
+
+  // Upload
+  async uploadFile({
+    content,
+    path,
+    id,
+    threadId,
+    mime
+  }: {
+    content?: Maybe<any>;
+    path?: Maybe<string>;
+    id?: Maybe<string>;
+    threadId: string;
+    mime?: Maybe<string>;
+  }) {
     if (!content && !path) {
       throw new Error('Either content or path must be provided');
     }
 
     mime = mime || 'application/octet-stream';
 
-    const id = uuidv4();
+    id = id || uuidv4();
     const body = { fileName: id, contentType: mime, threadId: threadId };
     const endpoint = this.url + '/api/upload/file';
 
@@ -279,7 +266,7 @@ export class API {
       headers: this.headers
     });
 
-    if (signingResponse.status !== 200) {
+    if (signingResponse.status >= 400) {
       console.error(`Failed to sign upload url: ${signingResponse.statusText}`);
       return { objectKey: null, url: null };
     }
@@ -334,6 +321,7 @@ export class API {
     }
   }
 
+  // Thread
   async upsertThread(
     threadId: string,
     metadata?: Maybe<Record<string, any>>,
@@ -370,9 +358,149 @@ export class API {
     };
 
     const response = await this.makeApiCall(query, variables);
-    return response.updateThread;
+    return response.data.upsertThread;
   }
 
+  async listThreads(
+    first?: Maybe<number>,
+    after?: Maybe<string>,
+    filters?: Maybe<ThreadFilter>
+  ) {
+    const query = `
+    query GetThreads(
+        $after: ID,
+        $before: ID,
+        $cursorAnchor: DateTime,
+        $filters: ThreadFiltersInput,
+        $first: Int,
+        $last: Int,
+        $projectId: String,
+        $skip: Int
+        ) {
+        threads(
+            after: $after,
+            before: $before,
+            cursorAnchor: $cursorAnchor,
+            filters: $filters,
+            first: $first,
+            last: $last,
+            projectId: $projectId,
+            skip: $skip
+            ) {
+            pageInfo {
+                startCursor
+                endCursor
+                hasNextPage
+                hasPreviousPage
+            }
+            totalCount
+            edges {
+                cursor
+                node {
+                    ${shallowThreadFields}
+                }
+            }
+        }
+    }`;
+
+    const variables: Record<string, any> = {};
+
+    if (first) {
+      variables['first'] = first;
+    }
+    if (after) {
+      variables['after'] = after;
+    }
+    if (filters) {
+      variables['filters'] = filters;
+    }
+
+    const result = await this.makeApiCall(query, variables);
+
+    const response = result.data.threads;
+
+    response.data = response.edges.map((x: any) => x.node);
+    delete response.edges;
+
+    return response;
+  }
+
+  async exportThreads(after?: Maybe<string>, filters?: Maybe<ThreadFilter>) {
+    const query = `
+    query ExportThreads(
+        $after: ID,
+        $filters: ExportThreadFiltersInput,
+        ) {
+        exportThreads(
+            after: $after,
+            filters: $filters,
+            ) {
+            pageInfo {
+                startCursor
+                endCursor
+                hasNextPage
+                hasPreviousPage
+            }
+            totalCount
+            edges {
+                cursor
+                node {
+                    ${threadFields}
+                }
+            }
+        }
+    }`;
+
+    const variables: Record<string, any> = {};
+
+    if (after) {
+      variables['after'] = after;
+    }
+    if (filters) {
+      variables['filters'] = filters;
+    }
+
+    const result = await this.makeApiCall(query, variables);
+
+    const response = result.data.exportThreads;
+
+    response.data = response.edges.map((x: any) => x.node);
+    delete response.edges;
+
+    return response;
+  }
+
+  async getThread(id: string) {
+    const query = `
+    query GetThread($id: String!) {
+        thread(id: $id) {
+            ${threadFields}
+        }
+    }
+    `;
+
+    const variables = { id };
+
+    const response = await this.makeApiCall(query, variables);
+    return response.data.thread;
+  }
+
+  async deleteThread(id: string) {
+    const query = `
+    mutation DeleteThread($threadId: String!) {
+        deleteThread(id: $threadId) {
+            id
+        }
+    }
+    `;
+
+    const variables = { threadId: id };
+
+    const response = await this.makeApiCall(query, variables);
+    return response.data.deleteThread.id;
+  }
+
+  // User
   public async createUser(
     identifier: string,
     metadata?: Maybe<Record<string, any>>
@@ -421,6 +549,24 @@ export class API {
     return new User({ ...res.data.updateParticipant });
   }
 
+  public async getOrCreateUser(
+    identifier: string,
+    metadata?: Maybe<Record<string, any>>
+  ) {
+    const existingUser = await this.getUser(identifier);
+    if (existingUser) {
+      const updatedUser = await this.updateUser(
+        existingUser.id!,
+        existingUser.identifier,
+        existingUser.metadata
+      );
+      return updatedUser.id!;
+    } else {
+      const createdUser = await this.createUser(identifier, metadata);
+      return createdUser.id!;
+    }
+  }
+
   public async getUser(identifier: string): Promise<Maybe<User>> {
     const query = `
     query GetUser($id: String, $identifier: String) {
@@ -438,5 +584,103 @@ export class API {
     if (res.data.participant) {
       return new User({ ...res.data.participant });
     }
+  }
+
+  async deleteUser(id: string): Promise<string> {
+    const query = `
+    mutation DeleteUser($id: String!) {
+        deleteParticipant(id: $id) {
+            id
+        }
+    }
+    `;
+
+    const variables = { id };
+
+    const result = await this.makeApiCall(query, variables);
+
+    return result.data.deleteParticipant.id;
+  }
+
+  // Feedback
+  async createFeedback({
+    stepId,
+    value,
+    comment,
+    strategy = 'BINARY'
+  }: {
+    stepId: string;
+    value: number;
+    comment?: Maybe<string>;
+    strategy?: FeedbackStrategy;
+  }) {
+    const query = `
+      mutation CreateFeedback(
+          $comment: String,
+          $stepId: String!,
+          $strategy: FeedbackStrategy,
+          $value: Int!,
+      ) {
+          createFeedback(
+              comment: $comment,
+              stepId: $stepId,
+              strategy: $strategy,
+              value: $value,
+          ) {
+              id
+              threadId
+              stepId
+              value
+              comment
+              strategy
+          }
+      }
+    `;
+
+    const variables = {
+      comment,
+      stepId,
+      strategy,
+      value
+    };
+
+    const result = await this.makeApiCall(query, variables);
+    return new Feedback(result.data.createFeedback);
+  }
+
+  async updateFeedback(
+    id: string,
+    updateParams: {
+      comment?: Maybe<string>;
+      value?: Maybe<number>;
+      strategy?: Maybe<string>;
+    }
+  ) {
+    const query = `
+      mutation UpdateFeedback(
+          $id: String!,
+          $comment: String,
+          $value: Int,
+          $strategy: FeedbackStrategy,
+      ) {
+          updateFeedback(
+              id: $id,
+              comment: $comment,
+              value: $value,
+              strategy: $strategy,
+          ) {
+              id
+              threadId
+              stepId
+              value
+              comment
+              strategy
+          }
+      }
+    `;
+
+    const variables = { id, ...updateParams };
+    const result = await this.makeApiCall(query, variables);
+    return new Feedback(result.data.updateFeedback);
   }
 }
