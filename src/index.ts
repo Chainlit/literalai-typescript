@@ -1,6 +1,13 @@
 import { API } from './api';
 import openai from './openai';
-import { Step, StepConstructor, Thread, ThreadConstructor } from './types';
+import {
+  ParticipantSession,
+  ParticipantSessionConstructor,
+  Step,
+  StepConstructor,
+  Thread,
+  ThreadConstructor
+} from './types';
 
 export * from './types';
 export * from './generation';
@@ -24,5 +31,9 @@ export class Chainlit {
 
   step(data: StepConstructor) {
     return new Step(this.api, data);
+  }
+
+  userSession(data: ParticipantSessionConstructor) {
+    return new ParticipantSession(this.api, data);
   }
 }
