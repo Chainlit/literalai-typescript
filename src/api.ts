@@ -816,6 +816,6 @@ export class API {
 
     const result = await this.makeApiCall(query, variables);
 
-    return result['data']['deleteParticipantSession']['id'];
+    return result.data?.deleteParticipantSession?.id;
   }
 }
