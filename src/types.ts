@@ -202,3 +202,32 @@ export class User extends Utils {
     Object.assign(this, data);
   }
 }
+
+export type ParticipantSessionConstructor = OmitUtils<ParticipantSession>;
+
+export class ParticipantSession extends Utils {
+  api: API;
+
+  id?: Maybe<string>;
+  startedAt?: Maybe<string>;
+  endedAt?: Maybe<string>;
+  metadata?: Maybe<Record<string, any>>;
+  projectId?: Maybe<string>;
+  isInteractive?: Maybe<boolean>;
+  anonParticipantIdentifier?: Maybe<string>;
+  participantIdentifier?: Maybe<string>;
+
+  serviceVersion?: Maybe<string>;
+
+  constructor(api: API, data: ParticipantSessionConstructor) {
+    super();
+    this.api = api;
+    Object.assign(this, data);
+    if (!this.id) {
+      this.id = uuidv4();
+    }
+    if (!this.startedAt) {
+      this.startedAt = new Date().toISOString();
+    }
+  }
+}
