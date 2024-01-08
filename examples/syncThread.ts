@@ -1,12 +1,12 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
 
-import { Chainlit, User } from '../src';
+import { LiteralClient, User } from '../src';
 
 async function main() {
-  const chainlit = new Chainlit();
+  const client = new LiteralClient();
   const openai = new OpenAI();
-  const syncer = chainlit.openai(openai).assistant.syncer;
+  const syncer = client.openai(openai).assistant.syncer;
 
   const threadId = 'thread_P5BRCiOgwjGHJx1SMWN2vvpC';
 

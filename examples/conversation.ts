@@ -2,18 +2,16 @@ import 'dotenv/config';
 import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Attachment, Chainlit, ChatGeneration } from '../src';
+import { Attachment, ChatGeneration, LiteralClient } from '../src';
 
 async function main() {
-  const chainlit = new Chainlit();
+  const client = new LiteralClient();
 
   const userIdentifier = 'foobar';
-  const participantId = await chainlit.api.getOrCreateUser(userIdentifier);
+  const participantId = await client.api.getOrCreateUser(userIdentifier);
 
   // Create the thread
-  const thread = await chainlit
-    .thread({ id: uuidv4(), participantId })
-    .upsert();
+  const thread = await client.thread({ id: uuidv4(), participantId }).upsert();
 
   // Create the first step
   const step = await thread
@@ -44,7 +42,7 @@ async function main() {
   const fileStream = createReadStream('./tests/integration/chainlit-logo.png');
   const mime = 'image/png';
 
-  const { objectKey } = await chainlit.api.uploadFile({
+  const { objectKey } = await client.api.uploadFile({
     threadId: thread.id,
     content: fileStream,
     mime
@@ -65,13 +63,13 @@ async function main() {
     })
     .send();
 
-  const feedback = await chainlit.api.createFeedback({
+  const feedback = await client.api.createFeedback({
     stepId: finalStep.id!,
     value: 1,
     comment: 'Great!'
   });
 
-  await chainlit.api.updateFeedback(feedback.id!, { comment: 'Updated!' });
+  await client.api.updateFeedback(feedback.id!, { comment: 'Updated!' });
 }
 
 main()

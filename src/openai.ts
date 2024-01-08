@@ -9,7 +9,7 @@ import {
 } from 'openai/resources/beta/threads/runs/steps';
 import { v5 as uuidv5 } from 'uuid';
 
-import { Chainlit } from '.';
+import { LiteralClient } from '.';
 import { ChatGeneration } from './generation';
 import { Attachment, User } from './types';
 
@@ -17,9 +17,9 @@ class OpenAIAssistantSyncer {
   private NAMESPACE_UUID = '1b671a64-40d5-491e-99b0-da01ff1f3341';
 
   private openai: OpenAI;
-  private client: Chainlit;
+  private client: LiteralClient;
 
-  constructor(openai: OpenAI, client: Chainlit) {
+  constructor(openai: OpenAI, client: LiteralClient) {
     this.openai = openai;
     this.client = client;
   }
@@ -34,7 +34,7 @@ class OpenAIAssistantSyncer {
   }
 
   async processMessageContent(threadId: string, message: ThreadMessage) {
-    const chainlitThreadId = this.generateUUIDv5FromID(threadId);
+    const litThreadId = this.generateUUIDv5FromID(threadId);
 
     let output = '';
     const attachments: Attachment[] = [];
@@ -49,7 +49,7 @@ class OpenAIAssistantSyncer {
         const mime = 'image/png';
 
         const { objectKey } = await this.client.api.uploadFile({
-          threadId: chainlitThreadId,
+          threadId: litThreadId,
           id: attachmentId,
           content: file.body,
           mime
@@ -109,7 +109,7 @@ class OpenAIAssistantSyncer {
   }
 
   async processTool(
-    chainlitThreadId: string,
+    litThreadId: string,
     assistant: Assistant,
     runId: string,
     runStep: RunStep
@@ -159,7 +159,7 @@ class OpenAIAssistantSyncer {
 
     const step = this.client.step({
       parentId: this.generateUUIDv5FromID(runId),
-      threadId: chainlitThreadId,
+      threadId: litThreadId,
       id: this.generateUUIDv5FromID(runStep.id),
       createdAt: createdAt,
       startTime: createdAt,
@@ -176,7 +176,7 @@ class OpenAIAssistantSyncer {
   }
 
   async processRun(threadId: string, assistant: Assistant, run: Run) {
-    const chainlitThreadId = this.generateUUIDv5FromID(threadId);
+    const litThreadId = this.generateUUIDv5FromID(threadId);
 
     const steps = await this.openai.beta.threads.runs.steps.list(
       threadId,
@@ -189,7 +189,7 @@ class OpenAIAssistantSyncer {
       : null;
 
     const step = this.client.step({
-      threadId: chainlitThreadId,
+      threadId: litThreadId,
       id: this.generateUUIDv5FromID(run.id),
       createdAt: createdAt,
       startTime: createdAt,
@@ -202,7 +202,7 @@ class OpenAIAssistantSyncer {
 
     const toolPromises = steps.data
       .filter((s) => s.type === 'tool_calls')
-      .map((s) => this.processTool(chainlitThreadId, assistant, run.id, s));
+      .map((s) => this.processTool(litThreadId, assistant, run.id, s));
     await Promise.all(toolPromises);
   }
 
@@ -215,7 +215,7 @@ class OpenAIAssistantSyncer {
       );
     }
 
-    const chainlitThreadId = this.generateUUIDv5FromID(threadId);
+    const litThreadId = this.generateUUIDv5FromID(threadId);
 
     const messages = await this.openai.beta.threads.messages.list(threadId);
     const runs = await this.openai.beta.threads.runs.list(threadId);
@@ -232,7 +232,7 @@ class OpenAIAssistantSyncer {
     const assistant = await this.openai.beta.assistants.retrieve(assistantId);
 
     await this.client.api.upsertThread(
-      chainlitThreadId,
+      litThreadId,
       { assistantId, threadId, assistantName: assistant.name },
       userId
     );
@@ -248,7 +248,7 @@ class OpenAIAssistantSyncer {
   }
 }
 
-export default (client: Chainlit) => (openai: OpenAI) => ({
+export default (client: LiteralClient) => (openai: OpenAI) => ({
   assistant: {
     syncer: new OpenAIAssistantSyncer(openai, client)
   }

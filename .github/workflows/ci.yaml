@@ -37,6 +37,6 @@ jobs:
         run: npm i
       - name: Test with jest
         env:
-          CHAINLIT_API_URL: ${{ secrets.CHAINLIT_API_URL }}
-          CHAINLIT_API_KEY: ${{ secrets.CHAINLIT_API_KEY }}
+          LITERAL_API_URL: ${{ secrets.LITERAL_API_URL }}
+          LITERAL_API_KEY: ${{ secrets.LITERAL_API_KEY }}
         run: npm test

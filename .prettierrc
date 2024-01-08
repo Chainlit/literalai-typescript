@@ -7,7 +7,7 @@
   "importOrder": [
     "pages/(.*)$",
     "@mui/(.*)$",
-    "@chainlit/(.*)$",
+    "@literalai/(.*)$",
     "components/(.*)$",
     "assets/(.*)$",
     "hooks/(.*)$",

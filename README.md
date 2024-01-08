@@ -1,23 +1,23 @@
-# Chainlit Node API Library
+# Literal AI Node API Library
 
-This library provides convenient access to the Chainlit GraphQL API and other utilities.
+This library provides convenient access to the Literal GraphQL API and other utilities.
 
 ## Installation
 
 ```shell
-npm i @chainlit/client
+npm i @literalai/client
 ```
 
 ## Get an API key
 
-To get an API key, go to the [Chainlit Platform](https://staging.chainlit.io), create an account and copy your API key from the settings page.
+To get an API key, go to the [Literal AI](https://cloud.getliteral.ai), create an account and copy your API key from the settings page.
 
 ## Usage
 
 ```ts
-import { Chainlit } from '@chainlit/client';
+import { LiteralClient } from '@literalai/client';
 
-const chainlit = new Chainlit(process.env['CHAINLIT_API_KEY']);
+const client = new LiteralClient(process.env['LITERAL_API_KEY']);
 ```
 
 ### Create/Update Threads
@@ -26,10 +26,10 @@ const chainlit = new Chainlit(process.env['CHAINLIT_API_KEY']);
 import { v4 as uuidv4 } from 'uuid';
 
 const userIdentifier = 'foobar';
-const participantId = await chainlit.api.getOrCreateUser(userIdentifier);
+const participantId = await client.api.getOrCreateUser(userIdentifier);
 
 // Create the thread
-const thread = await chainlit.thread({ id: uuidv4(), participantId }).upsert();
+const thread = await client.thread({ id: uuidv4(), participantId }).upsert();
 ```
 
 ### Create/Update Steps
@@ -68,7 +68,7 @@ await childStep.send();
 const fileStream = createReadStream('PATH_TO_FILE');
 const mime = 'image/png';
 
-const { objectKey } = await chainlit.api.uploadFile({
+const { objectKey } = await client.api.uploadFile({
   threadId: thread.id,
   content: fileStream,
   mime
@@ -93,7 +93,7 @@ const finalStep = await thread
 ### Add Feedback
 
 ```ts
-const feedback = await chainlit.api.createFeedback({
+const feedback = await client.api.createFeedback({
   stepId: finalStep.id!,
   value: 1,
   comment: 'Great!'
@@ -107,14 +107,14 @@ const first = 20;
 const after = undefined;
 const filter = { duration: { operator: 'gt' as const, value: 100000 } };
 
-const threadList = await chainlit.api.listThreads(first, after, filter);
+const threadList = await client.api.listThreads(first, after, filter);
 
-const threadsWithStep = await chainlit.api.exportThreads(after, filter);
+const threadsWithStep = await client.api.exportThreads(after, filter);
 ```
 
 ## Monitor OpenAI Assistant Threads
 
-Once you created an OpenAI Assistant and created a thread, you can sync that thread in the Chainlit Platform with one line of code.
+Once you created an OpenAI Assistant and created a thread, you can sync that thread on Literal with one line of code.
 
 This will keep track of:
 
@@ -125,12 +125,12 @@ This will keep track of:
 ```ts
 import OpenAI from 'openai';
 
-import { Chainlit, User } from '@chainlit/client';
+import { LiteralClient, User } from '@literalai/client';
 
 const openai = new OpenAI();
 
-const chainlit = new Chainlit(process.env['CHAINLIT_API_KEY']);
-const syncer = chainlit.openai(openai).assistant.syncer;
+const client = new LiteralClient(process.env['LITERAL_API_KEY']);
+const syncer = client.openai(openai).assistant.syncer;
 
 async function main() {
   // You can sync a thread at any moment. We recommend to sync it once you get a `completed` run status.

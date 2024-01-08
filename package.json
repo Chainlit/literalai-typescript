@@ -1,6 +1,6 @@
 {
-  "name": "@chainlit/client",
-  "version": "0.0.4",
+  "name": "@literalai/client",
+  "version": "0.0.1",
   "description": "",
   "exports": {
     ".": {
@@ -17,7 +17,7 @@
     "test": "jest --runInBand --watchAll=false",
     "prepare": "husky install"
   },
-  "author": "Chainlit",
+  "author": "Literal AI",
   "license": "Apache-2.0",
   "files": [
     "dist",

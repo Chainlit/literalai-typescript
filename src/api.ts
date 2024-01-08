@@ -157,10 +157,10 @@ export class API {
     this.graphqlEndpoint = `${url}/api/graphql`;
 
     if (!this.apiKey) {
-      throw new Error('CHAINLIT_API_KEY not set');
+      throw new Error('LITERAL_API_KEY not set');
     }
     if (!this.url) {
-      throw new Error('CHAINLIT_API_URL not set');
+      throw new Error('LITERAL_API_URL not set');
     }
   }
 

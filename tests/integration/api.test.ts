@@ -1,20 +1,20 @@
 import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Attachment, Chainlit } from '../../src';
+import { Attachment, LiteralClient } from '../../src';
 
 describe('End to end tests for the SDK', function () {
-  let client: Chainlit;
+  let client: LiteralClient;
 
   beforeAll(function () {
-    const url = process.env.CHAINLIT_API_URL;
-    const apiKey = process.env.CHAINLIT_API_KEY;
+    const url = process.env.LITERAL_API_URL;
+    const apiKey = process.env.LITERAL_API_KEY;
 
     if (!url || !apiKey) {
       throw new Error('Missing environment variables');
     }
 
-    client = new Chainlit(apiKey, url);
+    client = new LiteralClient(apiKey, url);
   });
 
   it('should test user', async function () {
