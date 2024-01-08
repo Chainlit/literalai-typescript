@@ -153,4 +153,36 @@ describe('End to end tests for the SDK', function () {
 
     await client.api.deleteThread(thread.id);
   });
+
+  it('should test ParticipantSession', async function () {
+    const session = await client.api.createUserSession(
+      undefined,
+      undefined,
+      true,
+      undefined,
+      'foo',
+      undefined,
+      undefined
+    );
+
+    expect(session.id).not.toBeNull();
+    expect(session.anonParticipantIdentifier).toBe('foo');
+
+    const updatedSession = await client.api.updateUserSession(
+      session.id!,
+      undefined,
+      undefined,
+      { foo: 'bar' }
+    );
+    expect(session.id).toBe(updatedSession.id);
+    expect(updatedSession.metadata).toStrictEqual({ foo: 'bar' });
+
+    const fetchedSession = await client.api.getUserSession(session.id!);
+    expect(fetchedSession?.id).toBe(session.id);
+
+    await client.api.deleteUserSession(session.id!);
+
+    const deletedSession = await client.api.getUserSession(session.id!);
+    expect(deletedSession).toBeNull();
+  });
 });

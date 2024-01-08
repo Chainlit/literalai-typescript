@@ -683,4 +683,139 @@ export class API {
     const result = await this.makeApiCall(query, variables);
     return new Feedback(result.data.updateFeedback);
   }
+
+  async createUserSession(
+    id: string | null = null,
+    startedAt: string | null = null,
+    isInteractive: boolean | null = null,
+    endedAt: string | null = null,
+    anonParticipantIdentifier: string | null = null,
+    participantIdentifier: string | null = null,
+    metadata: Record<string, unknown> | null = null
+  ) {
+    const query = `       
+    mutation CreateParticipantSession(
+        $id: String, 
+        $isInteractive: Boolean, 
+        $startedAt: DateTime!, 
+        $endedAt: DateTime, 
+        $anonParticipantIdentifier: String, 
+        $participantIdentifier: String, 
+        $metadata: Json, 
+    ) {
+        createParticipantSession(
+            id: $id, 
+            isInteractive: $isInteractive, 
+            startedAt: $startedAt, 
+            endedAt: $endedAt, 
+            anonParticipantIdentifier: $anonParticipantIdentifier, 
+            participantIdentifier: $participantIdentifier, 
+            metadata: $metadata, 
+        ) {
+            id
+            isInteractive
+            startedAt
+            endedAt
+            anonParticipantIdentifier
+            participantIdentifier
+            metadata
+        }
+    }`;
+
+    const variables = {
+      id: id,
+      isInteractive: isInteractive,
+      startedAt: startedAt || new Date().toISOString(),
+      endedAt: endedAt || null,
+      anonParticipantIdentifier: anonParticipantIdentifier,
+      participantIdentifier: participantIdentifier,
+      metadata: metadata
+    };
+
+    const participantSession = await this.makeApiCall(query, variables);
+
+    return participantSession.data.createParticipantSession;
+  }
+
+  async updateUserSession(
+    id: string,
+    is_interactive?: boolean,
+    ended_at?: string,
+    metadata?: any
+  ): Promise<any> {
+    const query = `
+    mutation UpdateParticipantSession(
+        $id: String!,
+        $isInteractive: Boolean,
+        $endedAt: DateTime,
+        $metadata: Json,
+    ) {
+        updateParticipantSession(
+            id: $id,
+            isInteractive: $isInteractive,
+            endedAt: $endedAt,
+            metadata: $metadata,
+        ) {
+            id
+            isInteractive
+            endedAt
+            metadata
+        }
+    }
+    `;
+    const variables = {
+      id: id,
+      isInteractive: is_interactive,
+      endedAt: ended_at,
+      metadata: metadata
+    };
+
+    // remove undefined values to prevent the API from removing existing values
+    const nonNullVariables = Object.fromEntries(
+      Object.entries(variables).filter(([_, v]) => v != null)
+    );
+
+    const session = await this.makeApiCall(query, nonNullVariables);
+
+    return session['data']['updateParticipantSession'];
+  }
+
+  async getUserSession(id: string): Promise<any | undefined> {
+    const query = `
+    query GetParticipantSession($id: String!) {
+        participantSession(id: $id) {
+            id
+            isInteractive
+            startedAt
+            endedAt
+            anonParticipantIdentifier
+            participantIdentifier
+            metadata
+        }
+    }`;
+
+    const variables = { id: id };
+
+    const result = await this.makeApiCall(query, variables);
+
+    const user_session = result['data']['participantSession'];
+
+    return user_session;
+  }
+
+  async deleteUserSession(id: string): Promise<string> {
+    const query = `
+    mutation DeleteParticipantSession($id: String!) {
+        deleteParticipantSession(id: $id) {
+            id
+        }
+    }
+    `;
+
+    const variables = { id: id };
+
+    const result = await this.makeApiCall(query, variables);
+
+    return result.data?.deleteParticipantSession?.id;
+  }
 }
