@@ -150,11 +150,13 @@ export class API {
   private apiKey: string;
   private url: string;
   private graphqlEndpoint: string;
+  private restEndpoint: string;
 
   constructor(apiKey: string, url: string) {
     this.apiKey = apiKey;
     this.url = url;
     this.graphqlEndpoint = `${url}/api/graphql`;
+    this.restEndpoint = `${url}/api`;
 
     if (!this.apiKey) {
       throw new Error('LITERAL_API_KEY not set');
@@ -171,7 +173,7 @@ export class API {
     };
   }
 
-  private async makeApiCall(query: string, variables: any) {
+  private async makeGqlCall(query: string, variables: any) {
     try {
       const response = await axios({
         url: this.graphqlEndpoint,
@@ -196,12 +198,31 @@ export class API {
       }
     }
   }
+
+  private async makeApiCall(subpath: string, body: any) {
+    try {
+      const response = await axios({
+        url: this.restEndpoint + subpath,
+        method: 'post',
+        headers: this.headers,
+        data: body
+      });
+
+      return response.data;
+    } catch (e) {
+      if (e instanceof AxiosError) {
+        throw new Error(JSON.stringify(e.response?.data.errors));
+      } else {
+        throw e;
+      }
+    }
+  }
   // Step
   async sendSteps(steps: Step[]) {
     const query = ingestStepsQueryBuilder(steps);
     const variables = variablesBuilder(steps);
 
-    return this.makeApiCall(query, variables);
+    return this.makeGqlCall(query, variables);
   }
 
   async getStep(id: string): Promise<Maybe<Step>> {
@@ -215,7 +236,7 @@ export class API {
 
     const variables = { id };
 
-    const result = await this.makeApiCall(query, variables);
+    const result = await this.makeGqlCall(query, variables);
 
     const step = result.data.step;
 
@@ -233,7 +254,7 @@ export class API {
 
     const variables = { id };
 
-    const result = await this.makeApiCall(query, variables);
+    const result = await this.makeGqlCall(query, variables);
 
     return result.data.deleteStep.id;
   }
@@ -357,7 +378,7 @@ export class API {
       tags
     };
 
-    const response = await this.makeApiCall(query, variables);
+    const response = await this.makeGqlCall(query, variables);
     return response.data.upsertThread;
   }
 
@@ -415,7 +436,7 @@ export class API {
       variables['filters'] = filters;
     }
 
-    const result = await this.makeApiCall(query, variables);
+    const result = await this.makeGqlCall(query, variables);
 
     const response = result.data.threads;
 
@@ -425,55 +446,34 @@ export class API {
     return response;
   }
 
-  async exportThreads(after?: Maybe<string>, filters?: Maybe<ThreadFilter>) {
-    const query = `
-    query ExportThreads(
-        $after: ID,
-        $filters: ExportThreadFiltersInput,
-        ) {
-        exportThreads(
-            after: $after,
-            filters: $filters,
-            ) {
-            pageInfo {
-                startCursor
-                endCursor
-                hasNextPage
-                hasPreviousPage
-            }
-            totalCount
-            edges {
-                cursor
-                node {
-                    ${threadFields}
-                }
-            }
-        }
-    }`;
+  async exportThreads(
+    page?: Maybe<number>,
+    filters?: Maybe<ThreadFilter>,
+    cursorAnchor?: Maybe<string>
+  ) {
+    const body: Record<string, any> = {};
 
-    const variables: Record<string, any> = {};
-
-    if (after) {
-      variables['after'] = after;
+    if (cursorAnchor) {
+      body['cursorAnchor'] = cursorAnchor;
     }
+
+    if (page) {
+      body['page'] = page;
+    }
+
     if (filters) {
-      variables['filters'] = filters;
+      body['filters'] = filters;
     }
 
-    const result = await this.makeApiCall(query, variables);
+    const result = await this.makeApiCall('/export/threads', body);
 
-    const response = result.data.exportThreads;
-
-    response.data = response.edges.map((x: any) => x.node);
-    delete response.edges;
-
-    return response;
+    return result;
   }
 
   async getThread(id: string) {
     const query = `
     query GetThread($id: String!) {
-        thread(id: $id) {
+        threadDetail(id: $id) {
             ${threadFields}
         }
     }
@@ -481,7 +481,7 @@ export class API {
 
     const variables = { id };
 
-    const response = await this.makeApiCall(query, variables);
+    const response = await this.makeGqlCall(query, variables);
     return response.data.thread;
   }
 
@@ -496,7 +496,7 @@ export class API {
 
     const variables = { threadId: id };
 
-    const response = await this.makeApiCall(query, variables);
+    const response = await this.makeGqlCall(query, variables);
     return response.data.deleteThread.id;
   }
 
@@ -516,7 +516,7 @@ export class API {
 
     const variables = { identifier, metadata };
 
-    const res = await this.makeApiCall(query, variables);
+    const res = await this.makeGqlCall(query, variables);
 
     return new User({ ...res.data.createParticipant });
   }
@@ -544,7 +544,7 @@ export class API {
     }`;
 
     const variables = { id, identifier, metadata };
-    const res = await this.makeApiCall(query, variables);
+    const res = await this.makeGqlCall(query, variables);
 
     return new User({ ...res.data.updateParticipant });
   }
@@ -580,7 +580,7 @@ export class API {
 
     const variables = { identifier };
 
-    const res = await this.makeApiCall(query, variables);
+    const res = await this.makeGqlCall(query, variables);
     if (res.data.participant) {
       return new User({ ...res.data.participant });
     }
@@ -597,7 +597,7 @@ export class API {
 
     const variables = { id };
 
-    const result = await this.makeApiCall(query, variables);
+    const result = await this.makeGqlCall(query, variables);
 
     return result.data.deleteParticipant.id;
   }
@@ -644,7 +644,7 @@ export class API {
       value
     };
 
-    const result = await this.makeApiCall(query, variables);
+    const result = await this.makeGqlCall(query, variables);
     return new Feedback(result.data.createFeedback);
   }
 
@@ -680,7 +680,7 @@ export class API {
     `;
 
     const variables = { id, ...updateParams };
-    const result = await this.makeApiCall(query, variables);
+    const result = await this.makeGqlCall(query, variables);
     return new Feedback(result.data.updateFeedback);
   }
 
@@ -732,7 +732,7 @@ export class API {
       metadata: metadata
     };
 
-    const participantSession = await this.makeApiCall(query, variables);
+    const participantSession = await this.makeGqlCall(query, variables);
 
     return participantSession.data.createParticipantSession;
   }
@@ -775,7 +775,7 @@ export class API {
       Object.entries(variables).filter(([_, v]) => v != null)
     );
 
-    const session = await this.makeApiCall(query, nonNullVariables);
+    const session = await this.makeGqlCall(query, nonNullVariables);
 
     return session['data']['updateParticipantSession'];
   }
@@ -796,7 +796,7 @@ export class API {
 
     const variables = { id: id };
 
-    const result = await this.makeApiCall(query, variables);
+    const result = await this.makeGqlCall(query, variables);
 
     const user_session = result['data']['participantSession'];
 
@@ -814,7 +814,7 @@ export class API {
 
     const variables = { id: id };
 
-    const result = await this.makeApiCall(query, variables);
+    const result = await this.makeGqlCall(query, variables);
 
     return result.data?.deleteParticipantSession?.id;
   }

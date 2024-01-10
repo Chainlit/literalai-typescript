@@ -105,11 +105,14 @@ const feedback = await client.api.createFeedback({
 ```ts
 const first = 20;
 const after = undefined;
-const filter = { duration: { operator: 'gt' as const, value: 100000 } };
+const filter = {
+  createdAt: { operator: 'gt' as const, value: Date.now().toString() }
+};
 
-const threadList = await client.api.listThreads(first, after, filter);
+const shallowThreads = await client.api.listThreads(first, after, filter);
 
-const threadsWithStep = await client.api.exportThreads(after, filter);
+const page = 1;
+const threads = await client.api.exportThreads(page, filter);
 ```
 
 ## Monitor OpenAI Assistant Threads

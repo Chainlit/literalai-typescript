@@ -71,6 +71,33 @@ describe('End to end tests for the SDK', function () {
     expect(deletedThread).toBeNull();
   });
 
+  it('should test export thread', async function () {
+    const thread = await client.api.upsertThread(
+      uuidv4(),
+      { foo: 'bar' },
+      undefined,
+      undefined,
+      ['hello']
+    );
+
+    expect(thread.id).not.toBeNull();
+    expect(thread.metadata).toStrictEqual({ foo: 'bar' });
+
+    const threadsAfterNow = await client.api.exportThreads(1, {
+      createdAt: { operator: 'gt', value: Date.now().toString() }
+    });
+    expect(threadsAfterNow.data.length).toBe(0);
+
+    const threads = await client.api.exportThreads();
+    expect(threads.data.length).toBeGreaterThan(0);
+    expect(threads.data[0]['id']).toBe(thread.id);
+
+    await client.api.deleteThread(thread.id);
+
+    const deletedThread = await client.api.getThread(thread.id);
+    expect(deletedThread).toBeNull();
+  });
+
   it('should test step', async function () {
     const thread = await client.thread({ id: uuidv4() });
     const step = await thread
