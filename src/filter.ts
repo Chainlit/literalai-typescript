@@ -14,12 +14,12 @@ interface StringListFilter {
   value: string[];
 }
 
-interface NumberListFilter {
+export interface NumberListFilter {
   operator: NumberListOperators;
   value: number[];
 }
 
-interface NumberFilter {
+export interface NumberFilter {
   operator: NumberOperators;
   value: number;
 }
@@ -30,14 +30,14 @@ interface DateTimeFilter {
 }
 
 export interface ThreadFilter {
-  attachmentsName?: StringListFilter;
+  // attachmentsName?: StringListFilter;
   createdAt?: DateTimeFilter;
   afterCreatedAt?: DateTimeFilter;
   beforeCreatedAt?: DateTimeFilter;
-  duration?: NumberFilter;
+  // duration?: NumberFilter;
   environment?: StringFilter;
-  feedbacksValue?: NumberListFilter;
+  // feedbacksValue?: NumberListFilter;
   participantsIdentifier?: StringListFilter;
-  search?: StringFilter;
-  tokenCount?: NumberFilter;
+  // search?: StringFilter;
+  // tokenCount?: NumberFilter;
 }
