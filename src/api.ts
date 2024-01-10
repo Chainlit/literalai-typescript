@@ -482,7 +482,7 @@ export class API {
     const variables = { id };
 
     const response = await this.makeGqlCall(query, variables);
-    return response.data.thread;
+    return response.data.threadDetail;
   }
 
   async deleteThread(id: string) {

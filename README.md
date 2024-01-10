@@ -106,7 +106,7 @@ const feedback = await client.api.createFeedback({
 const first = 20;
 const after = undefined;
 const filter = {
-  createdAt: { operator: 'gt' as const, value: Date.now().toString() }
+  createdAt: { operator: 'gt' as const, value: new Date().toISOString() }
 };
 
 const shallowThreads = await client.api.listThreads(first, after, filter);

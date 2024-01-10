@@ -16,9 +16,13 @@ export class LiteralClient {
   api: API;
   openai: ReturnType<typeof openai>;
 
-  constructor(apiKey?: string, apiUrl: string = 'https://cloud.getliteral.ai') {
+  constructor(apiKey?: string, apiUrl?: string) {
     if (!apiKey) {
       apiKey = process.env.LITERAL_API_KEY;
+    }
+
+    if (!apiUrl) {
+      apiUrl = process.env.LITERAL_API_URL || 'https://cloud.getliteral.ai';
     }
 
     this.api = new API(apiKey!, apiUrl!);

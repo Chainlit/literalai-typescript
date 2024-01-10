@@ -84,7 +84,7 @@ describe('End to end tests for the SDK', function () {
     expect(thread.metadata).toStrictEqual({ foo: 'bar' });
 
     const threadsAfterNow = await client.api.exportThreads(1, {
-      createdAt: { operator: 'gt', value: Date.now().toString() }
+      createdAt: { operator: 'gt', value: new Date().toISOString() }
     });
     expect(threadsAfterNow.data.length).toBe(0);
 
