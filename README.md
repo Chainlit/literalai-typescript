@@ -49,16 +49,16 @@ const childStep = step.childStep({
 
 // Faking call to GPT-4
 await new Promise((resolve) => setTimeout(resolve, 1000));
-const fakeCompletion = 'Hello, how are you?';
-
-childStep.generation = new ChatGeneration({
-  messages: [{ role: 'user', formatted: 'Hello' }],
+const generation = new ChatGeneration({
+  messages: [{ role: 'user', content: 'Hello' }],
   provider: 'openai',
   settings: { model: 'gpt-4' },
-  completion: fakeCompletion
+  messageCompletion: { role: 'assistant', content: 'Hey!' }
 });
 
-childStep.output = fakeCompletion;
+childStep.generation = generation;
+
+childStep.output = generation.messageCompletion;
 await childStep.send();
 ```
 

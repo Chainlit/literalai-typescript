@@ -14,6 +14,7 @@ const stepFields = `
     endTime
     createdAt
     type
+    error
     input
     output
     metadata
@@ -24,16 +25,26 @@ const stepFields = `
     }
     tags
     generation {
-        type
-        provider
-        settings
-        inputs
-        completion
-        templateFormat
-        template
-        formatted
-        messages
-        tokenCount
+      tags
+      prompt
+      completion
+      createdAt
+      provider
+      model
+      variables
+      messages
+      messageCompletion
+      tools
+      settings
+      stepId
+      tokenCount              
+      inputTokenCount         
+      outputTokenCount        
+      ttFirstToken          
+      duration                
+      tokenThroughputInSeconds
+      error
+      type
     }
     name
     attachments {
@@ -98,6 +109,7 @@ function ingestStepsFieldsBuilder(steps: Step[]) {
         $type_${id}: StepType
         $startTime_${id}: DateTime
         $endTime_${id}: DateTime
+        $error_${id}: String
         $input_${id}: String
         $output_${id}:String
         $metadata_${id}: Json
@@ -121,6 +133,7 @@ function ingestStepsArgsBuilder(steps: Step[]) {
         startTime: $startTime_${id}
         endTime: $endTime_${id}
         type: $type_${id}
+        error: $error_${id}
         input: $input_${id}
         output: $output_${id}
         metadata: $metadata_${id}

@@ -1,7 +1,7 @@
 import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Attachment, LiteralClient } from '../../src';
+import { Attachment, ChatGeneration, LiteralClient } from '../../src';
 
 describe('End to end tests for the SDK', function () {
   let client: LiteralClient;
@@ -104,12 +104,24 @@ describe('End to end tests for the SDK', function () {
       .step({
         name: 'test',
         type: 'run',
-        metadata: { foo: 'bar' }
+        error: 'test',
+        metadata: { foo: 'bar' },
+        generation: new ChatGeneration({
+          provider: 'openai',
+          model: 'gpt-3.5-turbo',
+          messages: [
+            { role: 'system', content: 'Hello, how can I help you today?' }
+          ]
+        })
       })
       .send();
 
     const fetchedStep = await client.api.getStep(step.id!);
     expect(fetchedStep?.id).toBe(step.id);
+    expect(fetchedStep?.error).toBe('test');
+    expect(fetchedStep?.metadata).toStrictEqual({ foo: 'bar' });
+    expect(fetchedStep?.generation?.provider).toBe('openai');
+    expect(fetchedStep?.generation?.model).toBe('gpt-3.5-turbo');
 
     await client.api.deleteStep(step.id!);
 

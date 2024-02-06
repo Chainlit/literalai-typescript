@@ -133,8 +133,9 @@ class StepFields extends Utils {
   createdAt?: Maybe<string>;
   startTime?: Maybe<string>;
   id?: Maybe<string>;
-  input?: Maybe<string>;
-  output?: Maybe<string>;
+  error?: Maybe<string | Record<string, any>>;
+  input?: Maybe<string | Record<string, any>>;
+  output?: Maybe<string | Record<string, any>>;
   metadata?: Maybe<Record<string, any>>;
   tags?: Maybe<string[]>;
   parentId?: Maybe<string>;
@@ -164,6 +165,20 @@ export class Step extends StepFields {
     if (this.isMessage()) {
       this.endTime = this.startTime;
     }
+  }
+
+  serialize() {
+    const serialized = super.serialize();
+    if (typeof serialized.input === 'object' && serialized.input !== null) {
+      serialized.input = JSON.stringify(serialized.input);
+    }
+    if (typeof serialized.output === 'object' && serialized.output !== null) {
+      serialized.output = JSON.stringify(serialized.output);
+    }
+    if (typeof serialized.error === 'object' && serialized.error !== null) {
+      serialized.error = JSON.stringify(serialized.error);
+    }
+    return serialized;
   }
 
   isMessage() {
