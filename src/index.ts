@@ -1,4 +1,5 @@
 import { API } from './api';
+import instrumentation from './instrumentation';
 import openai from './openai';
 import {
   ParticipantSession,
@@ -15,6 +16,7 @@ export * from './generation';
 export class LiteralClient {
   api: API;
   openai: ReturnType<typeof openai>;
+  instrumentation: ReturnType<typeof instrumentation>;
 
   constructor(apiKey?: string, apiUrl?: string) {
     if (!apiKey) {
@@ -27,9 +29,10 @@ export class LiteralClient {
 
     this.api = new API(apiKey!, apiUrl!);
     this.openai = openai(this);
+    this.instrumentation = instrumentation(this);
   }
 
-  thread(data: ThreadConstructor) {
+  thread(data?: ThreadConstructor) {
     return new Thread(this.api, data);
   }
 

@@ -1,4 +1,3 @@
-import { getEncoding } from 'js-tiktoken';
 import OpenAI from 'openai';
 import { Assistant } from 'openai/resources/beta/assistants/assistants';
 import { ThreadMessage } from 'openai/resources/beta/threads/messages/messages';
@@ -26,11 +25,6 @@ class OpenAIAssistantSyncer {
 
   generateUUIDv5FromID(id: string): string {
     return uuidv5(id, this.NAMESPACE_UUID);
-  }
-
-  countToken(text?: string): number {
-    const encoder = getEncoding('cl100k_base');
-    return encoder.encode(text || '').length;
   }
 
   async processMessageContent(threadId: string, message: ThreadMessage) {
@@ -86,8 +80,7 @@ class OpenAIAssistantSyncer {
 
     const generation = new ChatGeneration({
       provider: 'openai',
-      settings: { model: assistant.model },
-      tokenCount: this.countToken(output)
+      model: assistant.model
     });
 
     const step = this.client.step({
@@ -128,10 +121,6 @@ class OpenAIAssistantSyncer {
 
     const metadata: Record<string, any> = {};
 
-    if (runStep.last_error) {
-      metadata['error'] = runStep.last_error;
-    }
-
     if ('code_interpreter' in toolCall) {
       name = 'Code Interpreter';
       input = toolCall.code_interpreter.input;
@@ -153,9 +142,14 @@ class OpenAIAssistantSyncer {
 
     const generation = new ChatGeneration({
       provider: 'openai',
-      settings: { model: assistant.model },
-      tokenCount: this.countToken(input + output)
+      model: assistant.model
     });
+
+    if (runStep.usage) {
+      generation.tokenCount = runStep.usage.total_tokens;
+      generation.inputTokenCount = runStep.usage.prompt_tokens;
+      generation.outputTokenCount = runStep.usage.completion_tokens;
+    }
 
     const step = this.client.step({
       parentId: this.generateUUIDv5FromID(runId),
@@ -168,6 +162,7 @@ class OpenAIAssistantSyncer {
       name,
       input,
       output,
+      error: runStep.last_error,
       metadata,
       generation
     });

@@ -15,8 +15,13 @@ To get an API key, go to the [Literal AI](https://cloud.getliteral.ai), create a
 ## Usage
 
 ```ts
+import OpenAI from 'openai';
+
 import { LiteralClient } from '@literalai/client';
 
+const openai = new OpenAI({
+  apiKey: process.env['OPENAI_API_KEY']
+});
 const client = new LiteralClient(process.env['LITERAL_API_KEY']);
 ```
 
@@ -47,18 +52,23 @@ const childStep = step.childStep({
   input: 'Hello'
 });
 
-// Faking call to GPT-4
-await new Promise((resolve) => setTimeout(resolve, 1000));
-const generation = new ChatGeneration({
-  messages: [{ role: 'user', content: 'Hello' }],
-  provider: 'openai',
-  settings: { model: 'gpt-4' },
-  messageCompletion: { role: 'assistant', content: 'Hey!' }
+const stream = await openai.chat.completions.create({
+  model: 'gpt-4',
+  stream: true,
+  messages: [{ role: 'user', content: 'Say this is a test' }]
 });
 
-childStep.generation = generation;
+// Create a child llm step
+const childStep = step.childStep({
+  name: 'gpt-4',
+  type: 'llm',
+  input: 'Hello'
+});
 
-childStep.output = generation.messageCompletion;
+// Instrument the openai response
+await client.instrumentation.openai(childStep, stream);
+
+// Send the child step
 await childStep.send();
 ```
 
@@ -146,3 +156,14 @@ async function main() {
 
 main();
 ```
+
+## Langchain Integration
+
+You can instantiate the Literal Langchain Callback as:
+
+```ts
+// Optional thread ID
+await client.instrumentation.langchain.literalCallback(thread.id);
+```
+
+You will have to install the langchain npm package yourself as it is a peer dependency.

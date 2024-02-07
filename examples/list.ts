@@ -8,7 +8,7 @@ async function main() {
   // const first = 20;
   // const after = undefined;
   const filter = {
-    createdAt: { operator: 'gt' as const, value: new Date().toISOString() }
+    createdAt: { operator: 'lt' as const, value: new Date().toISOString() }
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -17,6 +17,7 @@ async function main() {
   const page = 1;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const threads = await client.api.exportThreads(page, filter);
+  console.log(threads);
 }
 
 main()

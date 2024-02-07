@@ -85,13 +85,18 @@ class ThreadFields extends Utils {
   tags?: Maybe<string[]>;
 }
 
-export type ThreadConstructor = OmitUtils<ThreadFields>;
+type CleanThreadFields = OmitUtils<ThreadFields>;
+export type ThreadConstructor = Omit<CleanThreadFields, 'id'> &
+  Partial<Pick<CleanThreadFields, 'id'>>;
 
 export class Thread extends ThreadFields {
   api: API;
-  constructor(api: API, data: ThreadConstructor) {
+  constructor(api: API, data?: ThreadConstructor) {
     super();
     this.api = api;
+    if (!data) {
+      data = { id: uuidv4() };
+    }
     Object.assign(this, data);
   }
 

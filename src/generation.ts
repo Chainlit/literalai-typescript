@@ -23,6 +23,8 @@ export interface IGenerationMessage {
   content: string | [ITextContent | IImageUrlContent];
   role: GenerationMessageRole;
   name?: string;
+  function_call?: Record<string, any>;
+  tool_calls?: Record<string, any>[];
 }
 
 export type GenerationType = 'COMPLETION' | 'CHAT';

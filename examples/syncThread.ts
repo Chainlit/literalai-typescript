@@ -8,7 +8,7 @@ async function main() {
   const openai = new OpenAI();
   const syncer = client.openai(openai).assistant.syncer;
 
-  const threadId = 'thread_P5BRCiOgwjGHJx1SMWN2vvpC';
+  const threadId = 'thread_uatRBO9LMgVbbAHqJGCW1yAh';
 
   const user = new User({ identifier: 'foobar', metadata: { name: 'Willy' } });
 
