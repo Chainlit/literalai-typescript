@@ -91,7 +91,7 @@ async function main() {
   const client = new LiteralClient();
 
   // Create the thread
-  const thread = await client.thread().upsert();
+  const thread = await client.thread({ name: 'yoyo' }).upsert();
   const input = 'What is the weather in SF?';
   const response = await executor.invoke(
     { input, tools },

@@ -19,7 +19,11 @@ async function main() {
 
   // Create the first step
   const step = await thread
-    .step({ name: userIdentifier, type: 'user_message', output: 'Hello' })
+    .step({
+      name: userIdentifier,
+      type: 'user_message',
+      output: { content: 'Hello' }
+    })
     .send();
 
   const stream = await openai.chat.completions.create({
@@ -32,7 +36,7 @@ async function main() {
   const childStep = step.childStep({
     name: 'gpt-4',
     type: 'llm',
-    input: 'Hello'
+    input: { content: 'Hello' }
   });
 
   // Instrument the openai response
@@ -61,7 +65,7 @@ async function main() {
     .step({
       name: 'Assistant',
       type: 'assistant_message',
-      output: 'Final Answer!',
+      output: { content: 'Final Answer!' },
       attachments: [attachment]
     })
     .send();
