@@ -11,6 +11,9 @@ export class Utils {
   serialize(): any {
     const dict: any = {};
     Object.keys(this as any).forEach((key) => {
+      if (key === 'api') {
+        return;
+      }
       if ((this as any)[key] !== undefined) {
         if (Array.isArray((this as any)[key])) {
           dict[key] = (this as any)[key].map((item: any) => {
@@ -81,17 +84,25 @@ class ThreadFields extends Utils {
   id!: string;
   participantId?: Maybe<string>;
   environment?: Maybe<string>;
+  name?: Maybe<string>;
   metadata?: Maybe<Record<string, any>>;
   tags?: Maybe<string[]>;
 }
 
-export type ThreadConstructor = OmitUtils<ThreadFields>;
+type CleanThreadFields = OmitUtils<ThreadFields>;
+export type ThreadConstructor = Omit<CleanThreadFields, 'id'> &
+  Partial<Pick<CleanThreadFields, 'id'>>;
 
 export class Thread extends ThreadFields {
   api: API;
-  constructor(api: API, data: ThreadConstructor) {
+  constructor(api: API, data?: ThreadConstructor) {
     super();
     this.api = api;
+    if (!data) {
+      data = { id: uuidv4() };
+    } else if (!data.id) {
+      data.id = uuidv4();
+    }
     Object.assign(this, data);
   }
 
@@ -105,6 +116,7 @@ export class Thread extends ThreadFields {
   async upsert() {
     await this.api.upsertThread(
       this.id,
+      this.name,
       this.metadata,
       this.participantId,
       this.environment,
@@ -129,12 +141,13 @@ export type StepType =
 class StepFields extends Utils {
   name!: string;
   type!: StepType;
-  threadId!: string;
+  threadId?: string;
   createdAt?: Maybe<string>;
   startTime?: Maybe<string>;
   id?: Maybe<string>;
-  input?: Maybe<string>;
-  output?: Maybe<string>;
+  error?: Maybe<string | Record<string, any>>;
+  input?: Maybe<Record<string, any>>;
+  output?: Maybe<Record<string, any>>;
   metadata?: Maybe<Record<string, any>>;
   tags?: Maybe<string[]>;
   parentId?: Maybe<string>;
@@ -164,6 +177,15 @@ export class Step extends StepFields {
     if (this.isMessage()) {
       this.endTime = this.startTime;
     }
+  }
+
+  serialize() {
+    const serialized = super.serialize();
+
+    if (typeof serialized.error === 'object' && serialized.error !== null) {
+      serialized.error = JSON.stringify(serialized.error);
+    }
+    return serialized;
   }
 
   isMessage() {
@@ -200,34 +222,5 @@ export class User extends Utils {
   constructor(data: OmitUtils<User>) {
     super();
     Object.assign(this, data);
-  }
-}
-
-export type ParticipantSessionConstructor = OmitUtils<ParticipantSession>;
-
-export class ParticipantSession extends Utils {
-  api: API;
-
-  id?: Maybe<string>;
-  startedAt?: Maybe<string>;
-  endedAt?: Maybe<string>;
-  metadata?: Maybe<Record<string, any>>;
-  projectId?: Maybe<string>;
-  isInteractive?: Maybe<boolean>;
-  anonParticipantIdentifier?: Maybe<string>;
-  participantIdentifier?: Maybe<string>;
-
-  serviceVersion?: Maybe<string>;
-
-  constructor(api: API, data: ParticipantSessionConstructor) {
-    super();
-    this.api = api;
-    Object.assign(this, data);
-    if (!this.id) {
-      this.id = uuidv4();
-    }
-    if (!this.startedAt) {
-      this.startedAt = new Date().toISOString();
-    }
   }
 }

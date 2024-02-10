@@ -1,8 +1,12 @@
 import 'dotenv/config';
 import { createReadStream } from 'fs';
-import { v4 as uuidv4 } from 'uuid';
+import OpenAI from 'openai';
 
-import { Attachment, ChatGeneration, LiteralClient } from '../src';
+import { Attachment, LiteralClient } from '../src';
+
+const openai = new OpenAI({
+  apiKey: process.env['OPENAI_API_KEY'] // This is the default and can be omitted
+});
 
 async function main() {
   const client = new LiteralClient();
@@ -11,31 +15,34 @@ async function main() {
   const participantId = await client.api.getOrCreateUser(userIdentifier);
 
   // Create the thread
-  const thread = await client.thread({ id: uuidv4(), participantId }).upsert();
+  const thread = await client.thread({ participantId }).upsert();
 
   // Create the first step
   const step = await thread
-    .step({ name: userIdentifier, type: 'user_message', output: 'Hello' })
+    .step({
+      name: userIdentifier,
+      type: 'user_message',
+      output: { content: 'Hello' }
+    })
     .send();
+
+  const stream = await openai.chat.completions.create({
+    model: 'gpt-4',
+    stream: true,
+    messages: [{ role: 'user', content: 'Say this is a test' }]
+  });
 
   // Create a child llm step
   const childStep = step.childStep({
     name: 'gpt-4',
     type: 'llm',
-    input: 'Hello'
+    input: { content: 'Hello' }
   });
 
-  // Faking call to GPT-4
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  const fakeCompletion = 'Hello, how are you?';
+  // Instrument the openai response
+  await client.instrumentation.openai(childStep, stream);
 
-  childStep.generation = new ChatGeneration({
-    messages: [{ role: 'user', formatted: 'Hello' }],
-    provider: 'openai',
-    settings: { model: 'gpt-4' },
-    completion: fakeCompletion
-  });
-  childStep.output = fakeCompletion;
+  // Send the child step
   await childStep.send();
 
   // Upload an attachment
@@ -58,7 +65,7 @@ async function main() {
     .step({
       name: 'Assistant',
       type: 'assistant_message',
-      output: fakeCompletion,
+      output: { content: 'Final Answer!' },
       attachments: [attachment]
     })
     .send();

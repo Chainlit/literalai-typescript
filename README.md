@@ -15,8 +15,13 @@ To get an API key, go to the [Literal AI](https://cloud.getliteral.ai), create a
 ## Usage
 
 ```ts
+import OpenAI from 'openai';
+
 import { LiteralClient } from '@literalai/client';
 
+const openai = new OpenAI({
+  apiKey: process.env['OPENAI_API_KEY']
+});
 const client = new LiteralClient(process.env['LITERAL_API_KEY']);
 ```
 
@@ -47,18 +52,23 @@ const childStep = step.childStep({
   input: 'Hello'
 });
 
-// Faking call to GPT-4
-await new Promise((resolve) => setTimeout(resolve, 1000));
-const fakeCompletion = 'Hello, how are you?';
-
-childStep.generation = new ChatGeneration({
-  messages: [{ role: 'user', formatted: 'Hello' }],
-  provider: 'openai',
-  settings: { model: 'gpt-4' },
-  completion: fakeCompletion
+const stream = await openai.chat.completions.create({
+  model: 'gpt-4',
+  stream: true,
+  messages: [{ role: 'user', content: 'Say this is a test' }]
 });
 
-childStep.output = fakeCompletion;
+// Create a child llm step
+const childStep = step.childStep({
+  name: 'gpt-4',
+  type: 'llm',
+  input: 'Hello'
+});
+
+// Instrument the openai response
+await client.instrumentation.openai(childStep, stream);
+
+// Send the child step
 await childStep.send();
 ```
 
@@ -115,7 +125,35 @@ const page = 1;
 const threads = await client.api.exportThreads(page, filter);
 ```
 
-## Monitor OpenAI Assistant Threads
+## Integrations
+
+### OpenAI
+
+You can monitor your OpenAI LLM calls by leverage the completion response:
+
+```ts
+// Works for both chat/completion and stream/non stream
+const stream = await openai.chat.completions.create({
+  model: 'gpt-4',
+  stream: true,
+  messages: [{ role: 'user', content: 'Say this is a test' }]
+});
+
+// Create a child llm step
+const childStep = step.childStep({
+  name: 'gpt-4',
+  type: 'llm',
+  input: { content: 'Hello' }
+});
+
+// Instrument the openai response
+await client.instrumentation.openai(childStep, stream);
+
+// Send the child step
+await childStep.send();
+```
+
+### OpenAI Assistant
 
 Once you created an OpenAI Assistant and created a thread, you can sync that thread on Literal with one line of code.
 
@@ -146,3 +184,16 @@ async function main() {
 
 main();
 ```
+
+### Langchain
+
+You can instantiate the Literal Langchain Callback as:
+
+```ts
+// Literal thread ID is optional
+const cb = await client.instrumentation.langchain.literalCallback(thread.id);
+
+// Use callback as any other Langchain callback
+```
+
+You will have to install the langchain npm package yourself as it is a peer dependency.

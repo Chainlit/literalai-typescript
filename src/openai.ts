@@ -1,4 +1,3 @@
-import { getEncoding } from 'js-tiktoken';
 import OpenAI from 'openai';
 import { Assistant } from 'openai/resources/beta/assistants/assistants';
 import { ThreadMessage } from 'openai/resources/beta/threads/messages/messages';
@@ -28,15 +27,10 @@ class OpenAIAssistantSyncer {
     return uuidv5(id, this.NAMESPACE_UUID);
   }
 
-  countToken(text?: string): number {
-    const encoder = getEncoding('cl100k_base');
-    return encoder.encode(text || '').length;
-  }
-
   async processMessageContent(threadId: string, message: ThreadMessage) {
     const litThreadId = this.generateUUIDv5FromID(threadId);
 
-    let output = '';
+    const output = { content: '' };
     const attachments: Attachment[] = [];
     for (const content of message.content) {
       if (content.type === 'image_file') {
@@ -64,7 +58,7 @@ class OpenAIAssistantSyncer {
 
         attachments.push(attachment);
       } else if (content.type === 'text') {
-        output += content.text.value;
+        output.content += content.text.value;
       }
     }
     return {
@@ -84,12 +78,6 @@ class OpenAIAssistantSyncer {
       message
     );
 
-    const generation = new ChatGeneration({
-      provider: 'openai',
-      settings: { model: assistant.model },
-      tokenCount: this.countToken(output)
-    });
-
     const step = this.client.step({
       id: this.generateUUIDv5FromID(message.id),
       createdAt: createdAt,
@@ -98,10 +86,9 @@ class OpenAIAssistantSyncer {
       type: message.role === 'user' ? 'user_message' : 'assistant_message',
       name: message.role === 'user' ? 'User' : assistant.name || 'assistant',
       threadId: this.generateUUIDv5FromID(threadId),
-      input: '',
       output,
       metadata: {},
-      generation,
+      generation: null,
       attachments
     });
 
@@ -122,40 +109,30 @@ class OpenAIAssistantSyncer {
     const toolCall = (runStep.step_details as ToolCallsStepDetails)
       .tool_calls[0];
     const type = toolCall.type === 'retrieval' ? 'retrieval' : 'tool';
-    let input = '';
-    let output = '';
+    let input = {};
+    let output = {};
     let name = '';
 
     const metadata: Record<string, any> = {};
 
-    if (runStep.last_error) {
-      metadata['error'] = runStep.last_error;
-    }
-
     if ('code_interpreter' in toolCall) {
       name = 'Code Interpreter';
-      input = toolCall.code_interpreter.input;
+      input = { content: toolCall.code_interpreter.input };
       for (const toolCallOutput of toolCall.code_interpreter.outputs) {
         if (toolCallOutput.type === 'image') {
-          output = toolCallOutput.image.file_id;
+          output = { content: toolCallOutput.image.file_id };
         } else if (toolCallOutput.type === 'logs') {
-          output = toolCallOutput.logs;
+          output = { content: toolCallOutput.logs };
         }
       }
     } else if ('retrieval' in toolCall) {
       name = 'Retrieval';
-      input = JSON.stringify(toolCall.retrieval);
+      input = toolCall.retrieval || {};
     } else if ('arguments' in toolCall) {
       name = toolCall.function.name;
-      input = JSON.stringify(JSON.parse(toolCall.function.arguments));
-      output = toolCall.function.output || '';
+      input = JSON.parse(toolCall.function.arguments);
+      output = { content: toolCall.function.output };
     }
-
-    const generation = new ChatGeneration({
-      provider: 'openai',
-      settings: { model: assistant.model },
-      tokenCount: this.countToken(input + output)
-    });
 
     const step = this.client.step({
       parentId: this.generateUUIDv5FromID(runId),
@@ -168,8 +145,9 @@ class OpenAIAssistantSyncer {
       name,
       input,
       output,
+      error: runStep.last_error,
       metadata,
-      generation
+      generation: null
     });
 
     await step.send();
@@ -177,7 +155,6 @@ class OpenAIAssistantSyncer {
 
   async processRun(threadId: string, assistant: Assistant, run: Run) {
     const litThreadId = this.generateUUIDv5FromID(threadId);
-
     const steps = await this.openai.beta.threads.runs.steps.list(
       threadId,
       run.id
@@ -188,12 +165,23 @@ class OpenAIAssistantSyncer {
       ? new Date(run.completed_at * 1000).toISOString()
       : null;
 
+    const generation = new ChatGeneration({
+      provider: 'openai-assistant',
+      model: assistant.model,
+      inputTokenCount: run.usage?.prompt_tokens,
+      outputTokenCount: run.usage?.completion_tokens,
+      tokenCount: run.usage?.total_tokens,
+      tools: run.tools as any
+    });
+
     const step = this.client.step({
       threadId: litThreadId,
       id: this.generateUUIDv5FromID(run.id),
       createdAt: createdAt,
       startTime: createdAt,
       endTime: endTime,
+      input: { content: run.instructions },
+      generation,
       type: 'run',
       name: assistant.name || 'assistant'
     });
@@ -218,6 +206,7 @@ class OpenAIAssistantSyncer {
     const litThreadId = this.generateUUIDv5FromID(threadId);
 
     const messages = await this.openai.beta.threads.messages.list(threadId);
+
     const runs = await this.openai.beta.threads.runs.list(threadId);
 
     const assistantId = messages.data.length
@@ -226,6 +215,11 @@ class OpenAIAssistantSyncer {
       ? runs.data[0].assistant_id
       : '';
 
+    const name =
+      // @ts-expect-error not expecting images here
+      messages.data.filter((m) => m.role === 'user')?.[0]?.content[0].text
+        ?.value;
+
     if (!assistantId) {
       throw new Error('No assistant found');
     }
@@ -233,6 +227,7 @@ class OpenAIAssistantSyncer {
 
     await this.client.api.upsertThread(
       litThreadId,
+      name,
       { assistantId, threadId, assistantName: assistant.name },
       userId
     );

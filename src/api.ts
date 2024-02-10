@@ -6,6 +6,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { ThreadFilter } from './filter';
 import { Feedback, FeedbackStrategy, Maybe, Step, User } from './types';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const packageJson = require('../package.json');
+const version = packageJson.version;
+
 const stepFields = `
     id
     threadId
@@ -14,6 +18,7 @@ const stepFields = `
     endTime
     createdAt
     type
+    error
     input
     output
     metadata
@@ -24,16 +29,26 @@ const stepFields = `
     }
     tags
     generation {
-        type
-        provider
-        settings
-        inputs
-        completion
-        templateFormat
-        template
-        formatted
-        messages
-        tokenCount
+      tags
+      prompt
+      completion
+      createdAt
+      provider
+      model
+      variables
+      messages
+      messageCompletion
+      tools
+      settings
+      stepId
+      tokenCount              
+      inputTokenCount         
+      outputTokenCount        
+      ttFirstToken          
+      duration                
+      tokenThroughputInSeconds
+      error
+      type
     }
     name
     attachments {
@@ -48,6 +63,7 @@ const stepFields = `
 
 const threadFields = `
     id
+    name
     metadata
     tags
     createdAt
@@ -62,6 +78,7 @@ const threadFields = `
 
 const shallowThreadFields = `
     id
+    name
     metadata
     tags
     createdAt
@@ -94,12 +111,13 @@ function ingestStepsFieldsBuilder(steps: Step[]) {
   let generated = '';
   for (let id = 0; id < steps.length; id++) {
     generated += `$id_${id}: String!
-        $threadId_${id}: String!
+        $threadId_${id}: String
         $type_${id}: StepType
         $startTime_${id}: DateTime
         $endTime_${id}: DateTime
-        $input_${id}: String
-        $output_${id}:String
+        $error_${id}: String
+        $input_${id}: Json
+        $output_${id}: Json
         $metadata_${id}: Json
         $parentId_${id}: String
         $name_${id}: String
@@ -121,6 +139,7 @@ function ingestStepsArgsBuilder(steps: Step[]) {
         startTime: $startTime_${id}
         endTime: $endTime_${id}
         type: $type_${id}
+        error: $error_${id}
         input: $input_${id}
         output: $output_${id}
         metadata: $metadata_${id}
@@ -169,7 +188,9 @@ export class API {
   private get headers() {
     return {
       'Content-Type': 'application/json',
-      'x-api-key': this.apiKey
+      'x-api-key': this.apiKey,
+      'x-client-name': 'js-literal-client',
+      'x-client-version': version
     };
   }
 
@@ -345,6 +366,7 @@ export class API {
   // Thread
   async upsertThread(
     threadId: string,
+    name?: Maybe<string>,
     metadata?: Maybe<Record<string, any>>,
     participantId?: Maybe<string>,
     environment?: Maybe<string>,
@@ -353,6 +375,7 @@ export class API {
     const query = `
     mutation UpsertThread(
       $threadId: String!,
+      $name: String,
       $metadata: Json,
       $participantId: String,
       $environment: String,
@@ -360,6 +383,7 @@ export class API {
   ) {
       upsertThread(
           id: $threadId
+          name: $name
           metadata: $metadata
           participantId: $participantId
           environment: $environment
@@ -372,6 +396,7 @@ export class API {
 
     const variables = {
       threadId,
+      name,
       metadata,
       participantId,
       environment,
@@ -682,140 +707,5 @@ export class API {
     const variables = { id, ...updateParams };
     const result = await this.makeGqlCall(query, variables);
     return new Feedback(result.data.updateFeedback);
-  }
-
-  async createUserSession(
-    id: string | null = null,
-    startedAt: string | null = null,
-    isInteractive: boolean | null = null,
-    endedAt: string | null = null,
-    anonParticipantIdentifier: string | null = null,
-    participantIdentifier: string | null = null,
-    metadata: Record<string, unknown> | null = null
-  ) {
-    const query = `       
-    mutation CreateParticipantSession(
-        $id: String, 
-        $isInteractive: Boolean, 
-        $startedAt: DateTime!, 
-        $endedAt: DateTime, 
-        $anonParticipantIdentifier: String, 
-        $participantIdentifier: String, 
-        $metadata: Json, 
-    ) {
-        createParticipantSession(
-            id: $id, 
-            isInteractive: $isInteractive, 
-            startedAt: $startedAt, 
-            endedAt: $endedAt, 
-            anonParticipantIdentifier: $anonParticipantIdentifier, 
-            participantIdentifier: $participantIdentifier, 
-            metadata: $metadata, 
-        ) {
-            id
-            isInteractive
-            startedAt
-            endedAt
-            anonParticipantIdentifier
-            participantIdentifier
-            metadata
-        }
-    }`;
-
-    const variables = {
-      id: id,
-      isInteractive: isInteractive,
-      startedAt: startedAt || new Date().toISOString(),
-      endedAt: endedAt || null,
-      anonParticipantIdentifier: anonParticipantIdentifier,
-      participantIdentifier: participantIdentifier,
-      metadata: metadata
-    };
-
-    const participantSession = await this.makeGqlCall(query, variables);
-
-    return participantSession.data.createParticipantSession;
-  }
-
-  async updateUserSession(
-    id: string,
-    is_interactive?: boolean,
-    ended_at?: string,
-    metadata?: any
-  ): Promise<any> {
-    const query = `
-    mutation UpdateParticipantSession(
-        $id: String!,
-        $isInteractive: Boolean,
-        $endedAt: DateTime,
-        $metadata: Json,
-    ) {
-        updateParticipantSession(
-            id: $id,
-            isInteractive: $isInteractive,
-            endedAt: $endedAt,
-            metadata: $metadata,
-        ) {
-            id
-            isInteractive
-            endedAt
-            metadata
-        }
-    }
-    `;
-    const variables = {
-      id: id,
-      isInteractive: is_interactive,
-      endedAt: ended_at,
-      metadata: metadata
-    };
-
-    // remove undefined values to prevent the API from removing existing values
-    const nonNullVariables = Object.fromEntries(
-      Object.entries(variables).filter(([_, v]) => v != null)
-    );
-
-    const session = await this.makeGqlCall(query, nonNullVariables);
-
-    return session['data']['updateParticipantSession'];
-  }
-
-  async getUserSession(id: string): Promise<any | undefined> {
-    const query = `
-    query GetParticipantSession($id: String!) {
-        participantSession(id: $id) {
-            id
-            isInteractive
-            startedAt
-            endedAt
-            anonParticipantIdentifier
-            participantIdentifier
-            metadata
-        }
-    }`;
-
-    const variables = { id: id };
-
-    const result = await this.makeGqlCall(query, variables);
-
-    const user_session = result['data']['participantSession'];
-
-    return user_session;
-  }
-
-  async deleteUserSession(id: string): Promise<string> {
-    const query = `
-    mutation DeleteParticipantSession($id: String!) {
-        deleteParticipantSession(id: $id) {
-            id
-        }
-    }
-    `;
-
-    const variables = { id: id };
-
-    const result = await this.makeGqlCall(query, variables);
-
-    return result.data?.deleteParticipantSession?.id;
   }
 }
