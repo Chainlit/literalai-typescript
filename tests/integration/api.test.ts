@@ -41,6 +41,7 @@ describe('End to end tests for the SDK', function () {
   it('should test thread', async function () {
     const thread = await client.api.upsertThread(
       uuidv4(),
+      'name',
       { foo: 'bar' },
       undefined,
       undefined,
@@ -55,6 +56,7 @@ describe('End to end tests for the SDK', function () {
 
     const updatedThread = await client.api.upsertThread(
       thread.id,
+      'test',
       { foo: 'baz' },
       undefined,
       undefined,
@@ -74,6 +76,7 @@ describe('End to end tests for the SDK', function () {
   it('should test export thread', async function () {
     const thread = await client.api.upsertThread(
       uuidv4(),
+      'test',
       { foo: 'bar' },
       undefined,
       undefined,
@@ -96,6 +99,35 @@ describe('End to end tests for the SDK', function () {
 
     const deletedThread = await client.api.getThread(thread.id);
     expect(deletedThread).toBeNull();
+  });
+
+  it('should test run', async function () {
+    const step = await client
+      .run({
+        name: 'test',
+        error: 'test',
+        metadata: { foo: 'bar' },
+        generation: new ChatGeneration({
+          provider: 'openai',
+          model: 'gpt-3.5-turbo',
+          messages: [
+            { role: 'system', content: 'Hello, how can I help you today?' }
+          ]
+        })
+      })
+      .send();
+
+    const fetchedStep = await client.api.getStep(step.id!);
+    expect(fetchedStep?.id).toBe(step.id);
+    expect(fetchedStep?.error).toBe('test');
+    expect(fetchedStep?.metadata).toStrictEqual({ foo: 'bar' });
+    expect(fetchedStep?.generation?.provider).toBe('openai');
+    expect(fetchedStep?.generation?.model).toBe('gpt-3.5-turbo');
+
+    await client.api.deleteStep(step.id!);
+
+    const deletedStep = await client.api.getStep(step.id!);
+    expect(deletedStep).toBeNull();
   });
 
   it('should test step', async function () {
@@ -191,37 +223,5 @@ describe('End to end tests for the SDK', function () {
     expect(fetchedStep?.attachments![0].url).toBeDefined();
 
     await client.api.deleteThread(thread.id);
-  });
-
-  it('should test ParticipantSession', async function () {
-    const session = await client.api.createUserSession(
-      undefined,
-      undefined,
-      true,
-      undefined,
-      'foo',
-      undefined,
-      undefined
-    );
-
-    expect(session.id).not.toBeNull();
-    expect(session.anonParticipantIdentifier).toBe('foo');
-
-    const updatedSession = await client.api.updateUserSession(
-      session.id!,
-      undefined,
-      undefined,
-      { foo: 'bar' }
-    );
-    expect(session.id).toBe(updatedSession.id);
-    expect(updatedSession.metadata).toStrictEqual({ foo: 'bar' });
-
-    const fetchedSession = await client.api.getUserSession(session.id!);
-    expect(fetchedSession?.id).toBe(session.id);
-
-    await client.api.deleteUserSession(session.id!);
-
-    const deletedSession = await client.api.getUserSession(session.id!);
-    expect(deletedSession).toBeNull();
   });
 });

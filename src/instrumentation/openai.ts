@@ -206,7 +206,7 @@ async function processStreamResponse(
 
   let isChat = true;
 
-  let tokenCount = 0;
+  let outputTokenCount = 0;
   let ttFirstToken: number | undefined = undefined;
   for await (const chunk of stream) {
     let ok = false;
@@ -228,11 +228,13 @@ async function processStreamResponse(
     if (!ttFirstToken) {
       ttFirstToken = Date.now() - start;
     }
-    tokenCount += 1;
+    outputTokenCount += 1;
   }
   const duration = Date.now() - start;
   const tokenThroughputInSeconds =
-    duration && tokenCount ? tokenCount / (duration / 1000) : undefined;
+    duration && outputTokenCount
+      ? outputTokenCount / (duration / 1000)
+      : undefined;
 
   jsonLoadArgs(messageCompletion);
   return {
@@ -241,6 +243,7 @@ async function processStreamResponse(
     completion,
     ttFirstToken,
     duration,
+    outputTokenCount,
     tokenThroughputInSeconds
   };
 }
@@ -288,7 +291,7 @@ const instrumentOpenAI = async (
         prompt: inputs.prompt,
         ...metrics
       });
-      step.output = completion;
+      step.output = { content: completion };
     }
   } else {
     if (output.object === 'chat.completion') {
@@ -311,9 +314,11 @@ const instrumentOpenAI = async (
         outputTokenCount: output.usage?.completion_tokens,
         tokenCount: output.usage?.total_tokens
       });
-      step.output = output.choices[0].text;
+      step.output = { content: output.choices[0].text };
     }
   }
+
+  return step;
 };
 
 export default instrumentOpenAI;

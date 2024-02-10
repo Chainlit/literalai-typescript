@@ -4,7 +4,7 @@ import instrumentOpenAI from './openai';
 export default (client: LiteralClient) => ({
   openai: instrumentOpenAI,
   langchain: {
-    literalCallback: async (threadId: string) => {
+    literalCallback: async (threadId?: string) => {
       try {
         // Dynamically import the module that requires `langchain`
         const { LiteralCallbackHandler } = await import('./langchain');

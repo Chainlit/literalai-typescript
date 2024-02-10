@@ -26,7 +26,7 @@ interface ChatGenerationStart {
   tools: ITool[];
   inputMessages: IGenerationMessage[];
   start: number;
-  tokenCount: number;
+  outputTokenCount: number;
   ttFirstToken?: number;
 }
 
@@ -36,7 +36,7 @@ interface CompletionGenerationStart {
   settings: Record<string, any>;
   prompt: string;
   start: number;
-  tokenCount: number;
+  outputTokenCount: number;
   ttFirstToken?: number;
 }
 
@@ -72,9 +72,9 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   parentIdMap: Record<string, string> = {};
 
   client: LiteralClient;
-  threadId: string;
+  threadId?: string;
 
-  constructor(client: LiteralClient, threadId: string) {
+  constructor(client: LiteralClient, threadId?: string) {
     super();
     this.client = client;
     this.threadId = threadId;
@@ -117,7 +117,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       settings,
       prompt: prompts[0],
       start: Date.now(),
-      tokenCount: 0
+      outputTokenCount: 0
     };
     const step = await this.client
       .step({
@@ -129,7 +129,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         startTime: new Date().toISOString(),
         parentId: this.getParentId(parentRunId),
         metadata: metadata,
-        input: prompts[0]
+        input: { content: prompts }
       })
       .send();
     this.steps[runId] = step;
@@ -144,7 +144,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   ) {
     const start =
       this.completionGenerations[runId] || this.chatGenerations[runId];
-    start.tokenCount += 1;
+    start.outputTokenCount += 1;
     if (!start.ttFirstToken) {
       start.ttFirstToken = Date.now() - start.start;
     }
@@ -172,7 +172,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     if (completionGeneration) {
       const {
         start,
-        tokenCount,
+        outputTokenCount,
         ttFirstToken,
         prompt,
         model,
@@ -181,7 +181,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       } = this.completionGenerations[runId];
       const duration = Date.now() - start;
       const tokenThroughputInSeconds =
-        duration && tokenCount ? tokenCount / (duration / 1000) : 0;
+        duration && outputTokenCount ? outputTokenCount / (duration / 1000) : 0;
       this.steps[runId].generation = new CompletionGeneration({
         provider,
         model,
@@ -190,14 +190,15 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         prompt: prompt,
         duration,
         ttFirstToken,
+        outputTokenCount,
         tokenThroughputInSeconds: tokenThroughputInSeconds
       });
-      this.steps[runId].output = output.generations[0][0].text;
+      this.steps[runId].output = output.generations[0][0];
       this.steps[runId].endTime = new Date().toISOString();
     } else if (chatGeneration) {
       const {
         start,
-        tokenCount,
+        outputTokenCount,
         ttFirstToken,
         inputMessages,
         model,
@@ -207,7 +208,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       } = this.chatGenerations[runId];
       const duration = Date.now() - start;
       const tokenThroughputInSeconds =
-        duration && tokenCount ? tokenCount / (duration / 1000) : 0;
+        duration && outputTokenCount ? outputTokenCount / (duration / 1000) : 0;
       const messageCompletion = convertMessage(
         (output.generations[0][0] as any).message
       );
@@ -220,6 +221,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         messages: inputMessages,
         duration,
         ttFirstToken,
+        outputTokenCount,
         tokenThroughputInSeconds: tokenThroughputInSeconds
       });
       this.steps[runId].generation!.inputTokenCount =
@@ -232,7 +234,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       this.steps[runId].output = messageCompletion;
       this.steps[runId].endTime = new Date().toISOString();
     }
-
     await this.steps[runId].send();
   }
   async handleChatModelStart(
@@ -256,7 +257,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       tools,
       inputMessages: messages[0].map(convertMessage),
       start: Date.now(),
-      tokenCount: 0
+      outputTokenCount: 0
     };
     const step = await this.client
       .step({
@@ -268,7 +269,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         startTime: new Date().toISOString(),
         parentId: this.getParentId(parentRunId),
         metadata: metadata,
-        input: messages[0]
+        input: { content: messages[0] }
       })
       .send();
     this.steps[runId] = step;
@@ -364,7 +365,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         startTime: new Date().toISOString(),
         parentId: this.getParentId(parentRunId),
         metadata: metadata,
-        input: input
+        input: { content: input }
       })
       .send();
     this.steps[runId] = step;
@@ -404,7 +405,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       startTime: new Date().toISOString(),
       parentId: this.getParentId(parentRunId),
       metadata: metadata,
-      input: query
+      input: { content: query }
     });
   }
   async handleRetrieverEnd(

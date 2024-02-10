@@ -1,14 +1,7 @@
 import { API } from './api';
 import instrumentation from './instrumentation';
 import openai from './openai';
-import {
-  ParticipantSession,
-  ParticipantSessionConstructor,
-  Step,
-  StepConstructor,
-  Thread,
-  ThreadConstructor
-} from './types';
+import { Step, StepConstructor, Thread, ThreadConstructor } from './types';
 
 export * from './types';
 export * from './generation';
@@ -40,7 +33,8 @@ export class LiteralClient {
     return new Step(this.api, data);
   }
 
-  userSession(data: ParticipantSessionConstructor) {
-    return new ParticipantSession(this.api, data);
+  run(data: Omit<StepConstructor, 'type'>) {
+    const runData = { ...data, type: 'run' as const };
+    return new Step(this.api, runData);
   }
 }

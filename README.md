@@ -125,7 +125,35 @@ const page = 1;
 const threads = await client.api.exportThreads(page, filter);
 ```
 
-## Monitor OpenAI Assistant Threads
+## Integrations
+
+### OpenAI
+
+You can monitor your OpenAI LLM calls by leverage the completion response:
+
+```ts
+// Works for both chat/completion and stream/non stream
+const stream = await openai.chat.completions.create({
+  model: 'gpt-4',
+  stream: true,
+  messages: [{ role: 'user', content: 'Say this is a test' }]
+});
+
+// Create a child llm step
+const childStep = step.childStep({
+  name: 'gpt-4',
+  type: 'llm',
+  input: { content: 'Hello' }
+});
+
+// Instrument the openai response
+await client.instrumentation.openai(childStep, stream);
+
+// Send the child step
+await childStep.send();
+```
+
+### OpenAI Assistant
 
 Once you created an OpenAI Assistant and created a thread, you can sync that thread on Literal with one line of code.
 
@@ -157,13 +185,15 @@ async function main() {
 main();
 ```
 
-## Langchain Integration
+### Langchain
 
 You can instantiate the Literal Langchain Callback as:
 
 ```ts
-// Optional thread ID
-await client.instrumentation.langchain.literalCallback(thread.id);
+// Literal thread ID is optional
+const cb = await client.instrumentation.langchain.literalCallback(thread.id);
+
+// Use callback as any other Langchain callback
 ```
 
 You will have to install the langchain npm package yourself as it is a peer dependency.
