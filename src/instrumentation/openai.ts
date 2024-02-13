@@ -295,15 +295,18 @@ const instrumentOpenAI = async (
     }
   } else {
     if (output.object === 'chat.completion') {
+      const completionMessage = output.choices[0].message as IGenerationMessage;
+      jsonLoadArgs(completionMessage);
       step.generation = new ChatGeneration({
         ...baseGeneration,
-        messageCompletion: output.choices[0].message as IGenerationMessage,
+        messageCompletion: completionMessage,
         messages: inputs.messages,
         tools: inputs.tools,
         inputTokenCount: output.usage?.prompt_tokens,
         outputTokenCount: output.usage?.completion_tokens,
         tokenCount: output.usage?.total_tokens
       });
+
       step.output = output.choices[0].message;
     } else {
       step.generation = new CompletionGeneration({
