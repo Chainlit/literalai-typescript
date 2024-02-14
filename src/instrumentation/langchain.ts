@@ -110,6 +110,9 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   ) {
     const provider = llm.id[llm.id.length - 1];
     const settings: Record<string, any> = extraParams?.invocation_params || {};
+    //make sure there is no api key specification
+    delete settings.apiKey;
+    delete settings.api_key;
     const model = settings.model || settings.modelName;
     this.completionGenerations[runId] = {
       provider,
@@ -248,6 +251,11 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   ) {
     const provider = llm.id[llm.id.length - 1];
     const settings: Record<string, any> = extraParams?.invocation_params || {};
+
+    //make sure there is no api key specification
+    delete settings.apiKey;
+    delete settings.api_key;
+
     const model = settings.model || settings.modelName;
     const tools = settings.tools || [];
     this.chatGenerations[runId] = {
