@@ -4,10 +4,11 @@ import instrumentOpenAI from './openai';
 export default (client: LiteralClient) => ({
   openai: instrumentOpenAI,
   langchain: {
-    literalCallback: async (threadId?: string) => {
+    literalCallback: (threadId?: string) => {
       try {
-        // Dynamically import the module that requires `langchain`
-        const { LiteralCallbackHandler } = await import('./langchain');
+        // Import the module that requires `langchain`
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { LiteralCallbackHandler } = require('./langchain');
 
         return new LiteralCallbackHandler(client, threadId);
 
