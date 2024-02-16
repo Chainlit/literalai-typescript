@@ -191,7 +191,7 @@ You can instantiate the Literal Langchain Callback as:
 
 ```ts
 // Literal thread ID is optional
-const cb = await client.instrumentation.langchain.literalCallback(thread.id);
+const cb = client.instrumentation.langchain.literalCallback(thread.id);
 
 // Use callback as any other Langchain callback
 ```

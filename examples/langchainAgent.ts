@@ -96,9 +96,7 @@ async function main() {
   const response = await executor.invoke(
     { input, tools },
     {
-      callbacks: [
-        await client.instrumentation.langchain.literalCallback(thread.id)
-      ]
+      callbacks: [client.instrumentation.langchain.literalCallback(thread.id)]
     }
   );
   console.log(response);
