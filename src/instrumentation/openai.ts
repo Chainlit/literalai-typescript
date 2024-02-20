@@ -10,6 +10,7 @@ import {
   ChatGeneration,
   CompletionGeneration,
   IGenerationMessage,
+  LiteralClient,
   Step
 } from '..';
 
@@ -248,14 +249,17 @@ async function processStreamResponse(
   };
 }
 
+export type OpenAIOutput =
+  | Completion
+  | Stream<Completion>
+  | ChatCompletion
+  | Stream<ChatCompletion>
+  | Stream<ChatCompletionChunk>;
+
 const instrumentOpenAI = async (
-  step: Step,
-  output:
-    | Completion
-    | Stream<Completion>
-    | ChatCompletion
-    | Stream<ChatCompletion>
-    | Stream<ChatCompletionChunk>
+  client: LiteralClient,
+  output: OpenAIOutput,
+  step?: Step
 ) => {
   //@ts-expect-error - This is a hacky way to get the id from the stream
   const { stream, start, inputs } = openaiReqs[output.id];
@@ -276,28 +280,38 @@ const instrumentOpenAI = async (
       await processStreamResponse(stream, start);
 
     if (isChat) {
-      step.generation = new ChatGeneration({
+      const generation = new ChatGeneration({
         ...baseGeneration,
         messageCompletion,
         messages: inputs.messages,
         tools: inputs.tools,
         ...metrics
       });
-      step.output = messageCompletion;
+      if (step) {
+        step.generation = generation;
+        step.output = messageCompletion;
+      } else {
+        await client.api.createGeneration(generation);
+      }
     } else {
-      step.generation = new CompletionGeneration({
+      const generation = new CompletionGeneration({
         ...baseGeneration,
         completion,
         prompt: inputs.prompt,
         ...metrics
       });
-      step.output = { content: completion };
+      if (step) {
+        step.generation = generation;
+        step.output = { content: completion };
+      } else {
+        await client.api.createGeneration(generation);
+      }
     }
   } else {
     if (output.object === 'chat.completion') {
       const completionMessage = output.choices[0].message as IGenerationMessage;
       jsonLoadArgs(completionMessage);
-      step.generation = new ChatGeneration({
+      const generation = new ChatGeneration({
         ...baseGeneration,
         messageCompletion: completionMessage,
         messages: inputs.messages,
@@ -307,9 +321,14 @@ const instrumentOpenAI = async (
         tokenCount: output.usage?.total_tokens
       });
 
-      step.output = output.choices[0].message;
+      if (step) {
+        step.generation = generation;
+        step.output = completionMessage;
+      } else {
+        await client.api.createGeneration(generation);
+      }
     } else {
-      step.generation = new CompletionGeneration({
+      const generation = new CompletionGeneration({
         ...baseGeneration,
         completion: output.choices[0].text,
         prompt: inputs.prompt,
@@ -317,7 +336,12 @@ const instrumentOpenAI = async (
         outputTokenCount: output.usage?.completion_tokens,
         tokenCount: output.usage?.total_tokens
       });
-      step.output = { content: output.choices[0].text };
+      if (step) {
+        step.generation = generation;
+        step.output = { content: output.choices[0].text };
+      } else {
+        await client.api.createGeneration(generation);
+      }
     }
   }
 

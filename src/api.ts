@@ -4,6 +4,7 @@ import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ThreadFilter } from './filter';
+import { Generation } from './generation';
 import { Feedback, FeedbackStrategy, Maybe, Step, User } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -361,6 +362,24 @@ export class API {
       console.error(`Failed to upload file: ${e}`);
       return { objectKey: null, url: null };
     }
+  }
+
+  // Generation
+  async createGeneration(generation: Generation) {
+    const mutation = `
+    mutation CreateGeneration($generation: GenerationPayloadInput!) {
+      createGeneration(generation: $generation) {
+          id
+      }
+  }
+    `;
+
+    const variables = {
+      generation
+    };
+
+    const response = await this.makeGqlCall(mutation, variables);
+    return response.data.createGeneration;
   }
 
   // Thread

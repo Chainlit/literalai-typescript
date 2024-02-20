@@ -139,18 +139,8 @@ const stream = await openai.chat.completions.create({
   messages: [{ role: 'user', content: 'Say this is a test' }]
 });
 
-// Create a child llm step
-const childStep = step.childStep({
-  name: 'gpt-4',
-  type: 'llm',
-  input: { content: 'Hello' }
-});
-
-// Instrument the openai response
-await client.instrumentation.openai(childStep, stream);
-
-// Send the child step
-await childStep.send();
+// Optionally pass a step to attach the generation to it
+await client.instrumentation.openai(stream);
 ```
 
 ### OpenAI Assistant
