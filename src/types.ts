@@ -196,7 +196,7 @@ export class Step extends StepFields {
     );
   }
 
-  childStep(data: Omit<StepConstructor, 'threadId'>) {
+  step(data: Omit<StepConstructor, 'threadId'>) {
     return new Step(this.api, {
       ...data,
       threadId: this.threadId,

@@ -10,7 +10,9 @@ import {
   ChatGeneration,
   CompletionGeneration,
   IGenerationMessage,
-  Step
+  LiteralClient,
+  Step,
+  Thread
 } from '..';
 
 const openaiReqs: Record<
@@ -209,6 +211,7 @@ async function processStreamResponse(
   let outputTokenCount = 0;
   let ttFirstToken: number | undefined = undefined;
   for await (const chunk of stream) {
+    console.log('hi4');
     let ok = false;
     if (chunk.object === 'chat.completion.chunk') {
       isChat = true;
@@ -248,14 +251,17 @@ async function processStreamResponse(
   };
 }
 
+export type OpenAIOutput =
+  | Completion
+  | Stream<Completion>
+  | ChatCompletion
+  | Stream<ChatCompletion>
+  | Stream<ChatCompletionChunk>;
+
 const instrumentOpenAI = async (
-  step: Step,
-  output:
-    | Completion
-    | Stream<Completion>
-    | ChatCompletion
-    | Stream<ChatCompletion>
-    | Stream<ChatCompletionChunk>
+  client: LiteralClient,
+  output: OpenAIOutput,
+  parent?: Step | Thread
 ) => {
   //@ts-expect-error - This is a hacky way to get the id from the stream
   const { stream, start, inputs } = openaiReqs[output.id];
@@ -276,30 +282,56 @@ const instrumentOpenAI = async (
       await processStreamResponse(stream, start);
 
     if (isChat) {
-      step.generation = new ChatGeneration({
+      const generation = new ChatGeneration({
         ...baseGeneration,
         messageCompletion,
         messages: inputs.messages,
         tools: inputs.tools,
         ...metrics
       });
-      step.output = messageCompletion;
+      if (parent) {
+        const step = parent.step({
+          name: generation.model || 'openai',
+          type: 'llm',
+          input: { content: inputs.messages },
+          generation,
+          output: messageCompletion,
+          startTime: new Date(start).toISOString(),
+          endTime: new Date(start + metrics.duration).toISOString()
+        });
+        await step.send();
+      } else {
+        await client.api.createGeneration(generation);
+      }
     } else {
-      step.generation = new CompletionGeneration({
+      const generation = new CompletionGeneration({
         ...baseGeneration,
         completion,
         prompt: inputs.prompt,
         ...metrics
       });
-      step.output = { content: completion };
+      if (parent) {
+        const step = parent.step({
+          name: generation.model || 'openai',
+          type: 'llm',
+          input: { content: inputs.prompt },
+          generation,
+          output: { content: completion },
+          startTime: new Date(start).toISOString(),
+          endTime: new Date(start + metrics.duration).toISOString()
+        });
+        await step.send();
+      } else {
+        await client.api.createGeneration(generation);
+      }
     }
   } else {
     if (output.object === 'chat.completion') {
-      const completionMessage = output.choices[0].message as IGenerationMessage;
-      jsonLoadArgs(completionMessage);
-      step.generation = new ChatGeneration({
+      const messageCompletion = output.choices[0].message as IGenerationMessage;
+      jsonLoadArgs(messageCompletion);
+      const generation = new ChatGeneration({
         ...baseGeneration,
-        messageCompletion: completionMessage,
+        messageCompletion: messageCompletion,
         messages: inputs.messages,
         tools: inputs.tools,
         inputTokenCount: output.usage?.prompt_tokens,
@@ -307,21 +339,46 @@ const instrumentOpenAI = async (
         tokenCount: output.usage?.total_tokens
       });
 
-      step.output = output.choices[0].message;
+      if (parent) {
+        const step = parent.step({
+          name: generation.model || 'openai',
+          type: 'llm',
+          input: { content: inputs.messages },
+          generation,
+          output: messageCompletion,
+          startTime: new Date(start).toISOString(),
+          endTime: new Date().toISOString()
+        });
+        await step.send();
+      } else {
+        await client.api.createGeneration(generation);
+      }
     } else {
-      step.generation = new CompletionGeneration({
+      const completion = output.choices[0].text;
+      const generation = new CompletionGeneration({
         ...baseGeneration,
-        completion: output.choices[0].text,
+        completion,
         prompt: inputs.prompt,
         inputTokenCount: output.usage?.prompt_tokens,
         outputTokenCount: output.usage?.completion_tokens,
         tokenCount: output.usage?.total_tokens
       });
-      step.output = { content: output.choices[0].text };
+      if (parent) {
+        const step = parent.step({
+          name: generation.model || 'openai',
+          type: 'llm',
+          input: { content: inputs.prompt },
+          generation,
+          output: { content: completion },
+          startTime: new Date(start).toISOString(),
+          endTime: new Date().toISOString()
+        });
+        await step.send();
+      } else {
+        await client.api.createGeneration(generation);
+      }
     }
   }
-
-  return step;
 };
 
 export default instrumentOpenAI;

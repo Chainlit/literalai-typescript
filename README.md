@@ -46,7 +46,7 @@ const step = await thread
   .send();
 
 // Create a child llm step
-const childStep = step.childStep({
+const step = step.step({
   name: 'gpt-4',
   type: 'llm',
   input: 'Hello'
@@ -59,17 +59,17 @@ const stream = await openai.chat.completions.create({
 });
 
 // Create a child llm step
-const childStep = step.childStep({
+const step = step.step({
   name: 'gpt-4',
   type: 'llm',
   input: 'Hello'
 });
 
 // Instrument the openai response
-await client.instrumentation.openai(childStep, stream);
+await client.instrumentation.openai(step, stream);
 
 // Send the child step
-await childStep.send();
+await step.send();
 ```
 
 ### Attach a File to a Step
@@ -139,18 +139,13 @@ const stream = await openai.chat.completions.create({
   messages: [{ role: 'user', content: 'Say this is a test' }]
 });
 
-// Create a child llm step
-const childStep = step.childStep({
-  name: 'gpt-4',
-  type: 'llm',
-  input: { content: 'Hello' }
-});
+// Consume the stream
+for await (const chunk of stream) {
+  console.log('h1');
+}
 
-// Instrument the openai response
-await client.instrumentation.openai(childStep, stream);
-
-// Send the child step
-await childStep.send();
+// Optionally pass a parent step or thread to create an llm step automatically
+await client.instrumentation.openai(stream);
 ```
 
 ### OpenAI Assistant
