@@ -333,5 +333,36 @@ describe('End to end tests for the SDK', function () {
 
       expect(fetchedDataset.items?.length).toBeGreaterThan(0);
     });
+
+    it('should add a step to a dataset', async () => {
+      const thread = await client.thread({ id: uuidv4() }).upsert();
+      const step = await thread
+        .step({
+          name: 'Run',
+          type: 'run',
+          input: { content: 'hello' },
+          output: { content: 'hello!' }
+        })
+        .send();
+
+      await step
+        .step({
+          name: 'gpt-4',
+          type: 'llm',
+          input: { content: 'hello' },
+          output: { content: 'hello!' }
+        })
+        .send();
+
+      const datasetItem = await client.api.addStepToDataset(
+        dataset.id,
+        step.id!
+      );
+
+      expect(datasetItem.id).not.toBeNull();
+      expect(datasetItem.input).toStrictEqual({ content: 'hello' });
+      expect(datasetItem.output).toStrictEqual({ content: 'hello!' });
+      expect(datasetItem.intermediarySteps).toHaveLength(1);
+    });
   });
 });

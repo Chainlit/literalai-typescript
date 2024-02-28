@@ -869,4 +869,31 @@ export class API {
 
     return new DatasetItem(result.data.deleteDatasetItem);
   }
+
+  public async addStepToDataset(
+    datasetId: string,
+    stepId: string,
+    metadata?: Maybe<Record<string, unknown>>
+  ) {
+    const query = `
+     mutation AddStepToDataset($datasetId: String!, $stepId: String!, $metadata: Json) {
+      addStepToDataset(datasetId: $datasetId, stepId: $stepId, metadata: $metadata) {
+          id
+          createdAt
+          datasetId
+          metadata
+          input
+          output
+          intermediarySteps
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, {
+      datasetId,
+      stepId,
+      metadata
+    });
+
+    return new DatasetItem(result.data.addStepToDataset);
+  }
 }
