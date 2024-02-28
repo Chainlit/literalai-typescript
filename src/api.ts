@@ -5,7 +5,15 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ThreadFilter } from './filter';
 import { Generation } from './generation';
-import { Feedback, FeedbackStrategy, Maybe, Step, User } from './types';
+import {
+  Dataset,
+  DatasetItem,
+  Feedback,
+  FeedbackStrategy,
+  Maybe,
+  Step,
+  User
+} from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require('../package.json');
@@ -726,5 +734,139 @@ export class API {
     const variables = { id, ...updateParams };
     const result = await this.makeGqlCall(query, variables);
     return new Feedback(result.data.updateFeedback);
+  }
+
+  public async createDataset(
+    dataset: {
+      name?: Maybe<string>;
+      description?: Maybe<string>;
+      metadata?: Maybe<Record<string, any>>;
+    } = {}
+  ) {
+    const query = `
+      mutation CreateDataset($name: String, $description: String, $metadata: Json) {
+        createDataset(name: $name, description: $description, metadata: $metadata) {
+          id
+          createdAt
+          metadata
+          name
+          description
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, dataset);
+
+    return new Dataset(result.data.createDataset);
+  }
+
+  public async getDataset(id: string) {
+    const result = await this.makeApiCall('/export/dataset', { id });
+
+    return new Dataset(result.data);
+  }
+
+  public async updateDataset(
+    id: string,
+    dataset: {
+      name?: Maybe<string>;
+      description?: Maybe<string>;
+      metadata?: Maybe<Record<string, any>>;
+    }
+  ) {
+    const query = `
+      mutation UpdadeDataset($id: String!, $name: String, $description: String, $metadata: Json) {
+        updateDataset(id: $id, name: $name, description: $description, metadata: $metadata) {
+          id
+          createdAt
+          metadata
+          name
+          description
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, { id, ...dataset });
+
+    return new Dataset(result.data.updateDataset);
+  }
+
+  public async deleteDataset(id: string) {
+    const query = `
+      mutation DeleteDataset($id: String!) {
+        deleteDataset(id: $id) {
+          id
+          createdAt
+          metadata
+          name
+          description
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, { id });
+
+    return new Dataset(result.data.deleteDataset);
+  }
+
+  public async createDatasetItem(
+    datasetId: string,
+    datasetItem: {
+      input: Record<string, any>;
+      output?: Maybe<Record<string, any>>;
+      metadata?: Maybe<Record<string, any>>;
+    }
+  ) {
+    const query = `
+      mutation CreateDatasetItem($datasetId: String!, $input: Json!, $output: Json, $metadata: Json) {
+        createDatasetItem(datasetId: $datasetId, input: $input, output: $output, metadata: $metadata) {
+          id
+          createdAt
+          datasetId
+          metadata
+          input
+          output
+          intermediarySteps
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, { datasetId, ...datasetItem });
+
+    return new DatasetItem(result.data.createDatasetItem);
+  }
+
+  public async getDatasetItem(id: string) {
+    const query = `
+      query GetDatasetItem($id: String!) {
+        datasetItem(id: $id) {
+          id
+          createdAt
+          datasetId
+          metadata
+          input
+          output
+          intermediarySteps
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, { id });
+
+    return new DatasetItem(result.data.datasetItem);
+  }
+
+  public async deleteDatasetItem(id: string) {
+    const query = `
+      mutation DeleteDatasetItem($id: String!) {
+        deleteDatasetItem(id: $id) {
+          id
+          createdAt
+          datasetId
+          metadata
+          input
+          output
+          intermediarySteps
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, { id });
+
+    return new DatasetItem(result.data.deleteDatasetItem);
   }
 }

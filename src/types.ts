@@ -224,3 +224,32 @@ export class User extends Utils {
     Object.assign(this, data);
   }
 }
+
+export class Dataset extends Utils {
+  id!: string;
+  createdAt!: string;
+  name?: Maybe<string>;
+  description?: Maybe<string>;
+  metadata!: Record<string, any>;
+  items?: Maybe<Array<OmitUtils<DatasetItem>>>;
+
+  constructor(data: OmitUtils<Dataset>) {
+    super();
+    Object.assign(this, data);
+  }
+}
+
+export class DatasetItem extends Utils {
+  id!: string;
+  createdAt!: string;
+  datasetId!: string;
+  metadata!: Record<string, any>;
+  input!: Record<string, any>;
+  output?: Maybe<Record<string, any>>;
+  intermediarySteps!: Array<Record<string, any>>;
+
+  constructor(data: OmitUtils<DatasetItem>) {
+    super();
+    Object.assign(this, data);
+  }
+}
