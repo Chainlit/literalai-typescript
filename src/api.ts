@@ -756,13 +756,17 @@ export class API {
     `;
     const result = await this.makeGqlCall(query, dataset);
 
-    return new Dataset(result.data.createDataset);
+    return new Dataset(this, result.data.createDataset);
   }
 
   public async getDataset(id: string) {
     const result = await this.makeApiCall('/export/dataset', { id });
 
-    return new Dataset(result.data);
+    if (!result.data) {
+      return null;
+    }
+
+    return new Dataset(this, result.data);
   }
 
   public async updateDataset(
@@ -786,7 +790,7 @@ export class API {
     `;
     const result = await this.makeGqlCall(query, { id, ...dataset });
 
-    return new Dataset(result.data.updateDataset);
+    return new Dataset(this, result.data.updateDataset);
   }
 
   public async deleteDataset(id: string) {
@@ -803,7 +807,7 @@ export class API {
     `;
     const result = await this.makeGqlCall(query, { id });
 
-    return new Dataset(result.data.deleteDataset);
+    return new Dataset(this, result.data.deleteDataset);
   }
 
   public async createDatasetItem(

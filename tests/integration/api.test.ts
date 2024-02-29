@@ -171,6 +171,8 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     const feedback = await client.api.createFeedback({
       stepId: step.id!,
       value: 1,
@@ -217,6 +219,8 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     const fetchedStep = await client.api.getStep(step.id!);
     expect(fetchedStep?.attachments?.length).toBe(1);
     expect(fetchedStep?.attachments![0].objectKey).toBe(objectKey);
@@ -246,15 +250,16 @@ describe('End to end tests for the SDK', function () {
         description: 'test',
         metadata: { foo: 'bar' }
       });
-      const updatedDataset = await client.api.updateDataset(dataset.id, {
+
+      await dataset.update({
         name: 'updated',
         description: 'updated',
         metadata: { foo: 'baz' }
       });
 
-      expect(updatedDataset.name).toBe('updated');
-      expect(updatedDataset.description).toBe('updated');
-      expect(updatedDataset.metadata).toStrictEqual({ foo: 'baz' });
+      expect(dataset.name).toBe('updated');
+      expect(dataset.description).toBe('updated');
+      expect(dataset.metadata).toStrictEqual({ foo: 'baz' });
     });
 
     it('should delete a dataset', async () => {
@@ -263,9 +268,9 @@ describe('End to end tests for the SDK', function () {
         description: 'test',
         metadata: { foo: 'bar' }
       });
-      const deletedDataset = await client.api.deleteDataset(dataset.id);
-
-      expect(deletedDataset).not.toBeNull();
+      await dataset.delete();
+      const deletedDataset = await client.api.getDataset(dataset.id);
+      expect(deletedDataset).toBeNull();
     });
 
     it('should get a dataset', async () => {
@@ -276,11 +281,11 @@ describe('End to end tests for the SDK', function () {
       });
       const fetchedDataset = await client.api.getDataset(dataset.id);
 
-      expect(fetchedDataset.id).toBe(dataset.id);
-      expect(fetchedDataset.name).toBe(dataset.name);
-      expect(fetchedDataset.description).toBe(dataset.description);
-      expect(fetchedDataset.metadata).toStrictEqual(dataset.metadata);
-      expect(fetchedDataset.items).toEqual([]);
+      expect(fetchedDataset?.id).toBe(dataset.id);
+      expect(fetchedDataset?.name).toBe(dataset.name);
+      expect(fetchedDataset?.description).toBe(dataset.description);
+      expect(fetchedDataset?.metadata).toStrictEqual(dataset.metadata);
+      expect(fetchedDataset?.items).toEqual([]);
     });
   });
 
@@ -292,11 +297,13 @@ describe('End to end tests for the SDK', function () {
     });
 
     it('should create a dataset item', async () => {
-      const datasetItem = await client.api.createDatasetItem(dataset.id, {
+      await dataset.createItem({
         input: { foo: 'bar' },
         expectedOutput: { foo: 'baz' },
         metadata: { foo: 'bar' }
       });
+
+      const datasetItem = dataset.items[0];
 
       expect(datasetItem.id).not.toBeNull();
       expect(datasetItem.createdAt).not.toBeNull();
@@ -306,18 +313,20 @@ describe('End to end tests for the SDK', function () {
     });
 
     it('should delete a dataset item', async () => {
-      const datasetItem = await client.api.createDatasetItem(dataset.id, {
+      const datasetItem = await dataset.createItem({
         input: { foo: 'bar' }
       });
-      const deletedDatasetItem = await client.api.deleteDatasetItem(
-        datasetItem.id
-      );
+      expect(dataset.items.length).toBe(2);
+
+      const deletedDatasetItem = await dataset.deleteItem(datasetItem.id);
+
+      expect(dataset.items.length).toBe(1);
 
       expect(deletedDatasetItem).not.toBeNull();
     });
 
     it('should get a dataset item', async () => {
-      const datasetItem = await client.api.createDatasetItem(dataset.id, {
+      const datasetItem = await dataset.createItem({
         input: { foo: 'bar' }
       });
       const fetchedDatasetItem = await client.api.getDatasetItem(
@@ -331,7 +340,7 @@ describe('End to end tests for the SDK', function () {
     it('should get a dataset item through dataset', async () => {
       const fetchedDataset = await client.api.getDataset(dataset.id);
 
-      expect(fetchedDataset.items?.length).toBeGreaterThan(0);
+      expect(fetchedDataset?.items.length).toBeGreaterThan(0);
     });
 
     it('should add a step to a dataset', async () => {
@@ -354,10 +363,7 @@ describe('End to end tests for the SDK', function () {
         })
         .send();
 
-      const datasetItem = await client.api.addStepToDataset(
-        dataset.id,
-        step.id!
-      );
+      const datasetItem = await dataset.addStep(step.id!);
 
       expect(datasetItem.id).not.toBeNull();
       expect(datasetItem.input).toStrictEqual({ content: 'hello' });

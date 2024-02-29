@@ -225,17 +225,70 @@ export class User extends Utils {
   }
 }
 
-export class Dataset extends Utils {
+class DatasetFields extends Utils {
   id!: string;
   createdAt!: string;
   name?: Maybe<string>;
   description?: Maybe<string>;
   metadata!: Record<string, any>;
-  items?: Maybe<Array<OmitUtils<DatasetItem>>>;
+  items!: Array<OmitUtils<DatasetItem>>;
+}
 
-  constructor(data: OmitUtils<Dataset>) {
+export type DatasetConstructor = OmitUtils<DatasetFields>;
+
+export class Dataset extends DatasetFields {
+  api: API;
+
+  constructor(api: API, data: DatasetConstructor) {
     super();
+    this.api = api;
     Object.assign(this, data);
+    if (!this.items) {
+      this.items = [];
+    }
+  }
+
+  async update(dataset: {
+    name?: Maybe<string>;
+    description?: Maybe<string>;
+    metadata?: Maybe<Record<string, any>>;
+  }) {
+    const update_res = await this.api.updateDataset(this.id, dataset);
+    this.name = update_res.name;
+    this.description = update_res.description;
+    this.metadata = update_res.metadata;
+  }
+
+  async delete() {
+    return this.api.deleteDataset(this.id);
+  }
+
+  async createItem(datasetItem: {
+    input: Record<string, any>;
+    expectedOutput?: Maybe<Record<string, any>>;
+    metadata?: Maybe<Record<string, any>>;
+  }) {
+    const item = await this.api.createDatasetItem(this.id, datasetItem);
+
+    this.items.push(item);
+    return item;
+  }
+
+  async deleteItem(id: string) {
+    const deletedItem = await this.api.deleteDatasetItem(id);
+    if (this.items) {
+      this.items = this.items.filter((item) => item.id !== id);
+    }
+    return deletedItem;
+  }
+
+  public async addStep(
+    stepId: string,
+    metadata?: Maybe<Record<string, unknown>>
+  ) {
+    const item = await this.api.addStepToDataset(this.id, stepId, metadata);
+    this.items.push(item);
+    return item;
   }
 }
 
