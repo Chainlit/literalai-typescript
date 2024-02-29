@@ -245,7 +245,7 @@ export class DatasetItem extends Utils {
   datasetId!: string;
   metadata!: Record<string, any>;
   input!: Record<string, any>;
-  output?: Maybe<Record<string, any>>;
+  expectedOutput?: Maybe<Record<string, any>>;
   intermediarySteps!: Array<Record<string, any>>;
 
   constructor(data: OmitUtils<DatasetItem>) {

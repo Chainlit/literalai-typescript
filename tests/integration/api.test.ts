@@ -294,14 +294,14 @@ describe('End to end tests for the SDK', function () {
     it('should create a dataset item', async () => {
       const datasetItem = await client.api.createDatasetItem(dataset.id, {
         input: { foo: 'bar' },
-        output: { foo: 'baz' },
+        expectedOutput: { foo: 'baz' },
         metadata: { foo: 'bar' }
       });
 
       expect(datasetItem.id).not.toBeNull();
       expect(datasetItem.createdAt).not.toBeNull();
       expect(datasetItem.input).toStrictEqual({ foo: 'bar' });
-      expect(datasetItem.output).toStrictEqual({ foo: 'baz' });
+      expect(datasetItem.expectedOutput).toStrictEqual({ foo: 'baz' });
       expect(datasetItem.metadata).toStrictEqual({ foo: 'bar' });
     });
 
@@ -361,7 +361,7 @@ describe('End to end tests for the SDK', function () {
 
       expect(datasetItem.id).not.toBeNull();
       expect(datasetItem.input).toStrictEqual({ content: 'hello' });
-      expect(datasetItem.output).toStrictEqual({ content: 'hello!' });
+      expect(datasetItem.expectedOutput).toStrictEqual({ content: 'hello!' });
       expect(datasetItem.intermediarySteps).toHaveLength(1);
     });
   });

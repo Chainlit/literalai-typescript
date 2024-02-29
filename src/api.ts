@@ -810,19 +810,19 @@ export class API {
     datasetId: string,
     datasetItem: {
       input: Record<string, any>;
-      output?: Maybe<Record<string, any>>;
+      expectedOutput?: Maybe<Record<string, any>>;
       metadata?: Maybe<Record<string, any>>;
     }
   ) {
     const query = `
-      mutation CreateDatasetItem($datasetId: String!, $input: Json!, $output: Json, $metadata: Json) {
-        createDatasetItem(datasetId: $datasetId, input: $input, output: $output, metadata: $metadata) {
+      mutation CreateDatasetItem($datasetId: String!, $input: Json!, $expectedOutput: Json, $metadata: Json) {
+        createDatasetItem(datasetId: $datasetId, input: $input, expectedOutput: $expectedOutput, metadata: $metadata) {
           id
           createdAt
           datasetId
           metadata
           input
-          output
+          expectedOutput
           intermediarySteps
         }
       }
@@ -841,7 +841,7 @@ export class API {
           datasetId
           metadata
           input
-          output
+          expectedOutput
           intermediarySteps
         }
       }
@@ -860,7 +860,7 @@ export class API {
           datasetId
           metadata
           input
-          output
+          expectedOutput
           intermediarySteps
         }
       }
@@ -883,7 +883,7 @@ export class API {
           datasetId
           metadata
           input
-          output
+          expectedOutput
           intermediarySteps
         }
       }
