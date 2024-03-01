@@ -5,7 +5,15 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ThreadFilter } from './filter';
 import { Generation } from './generation';
-import { Feedback, FeedbackStrategy, Maybe, Step, User } from './types';
+import {
+  Dataset,
+  DatasetItem,
+  Feedback,
+  FeedbackStrategy,
+  Maybe,
+  Step,
+  User
+} from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require('../package.json');
@@ -726,5 +734,170 @@ export class API {
     const variables = { id, ...updateParams };
     const result = await this.makeGqlCall(query, variables);
     return new Feedback(result.data.updateFeedback);
+  }
+
+  public async createDataset(
+    dataset: {
+      name?: Maybe<string>;
+      description?: Maybe<string>;
+      metadata?: Maybe<Record<string, any>>;
+    } = {}
+  ) {
+    const query = `
+      mutation CreateDataset($name: String, $description: String, $metadata: Json) {
+        createDataset(name: $name, description: $description, metadata: $metadata) {
+          id
+          createdAt
+          metadata
+          name
+          description
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, dataset);
+
+    return new Dataset(this, result.data.createDataset);
+  }
+
+  public async getDataset(id: string) {
+    const result = await this.makeApiCall('/export/dataset', { id });
+
+    if (!result.data) {
+      return null;
+    }
+
+    return new Dataset(this, result.data);
+  }
+
+  public async updateDataset(
+    id: string,
+    dataset: {
+      name?: Maybe<string>;
+      description?: Maybe<string>;
+      metadata?: Maybe<Record<string, any>>;
+    }
+  ) {
+    const query = `
+      mutation UpdadeDataset($id: String!, $name: String, $description: String, $metadata: Json) {
+        updateDataset(id: $id, name: $name, description: $description, metadata: $metadata) {
+          id
+          createdAt
+          metadata
+          name
+          description
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, { id, ...dataset });
+
+    return new Dataset(this, result.data.updateDataset);
+  }
+
+  public async deleteDataset(id: string) {
+    const query = `
+      mutation DeleteDataset($id: String!) {
+        deleteDataset(id: $id) {
+          id
+          createdAt
+          metadata
+          name
+          description
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, { id });
+
+    return new Dataset(this, result.data.deleteDataset);
+  }
+
+  public async createDatasetItem(
+    datasetId: string,
+    datasetItem: {
+      input: Record<string, any>;
+      expectedOutput?: Maybe<Record<string, any>>;
+      metadata?: Maybe<Record<string, any>>;
+    }
+  ) {
+    const query = `
+      mutation CreateDatasetItem($datasetId: String!, $input: Json!, $expectedOutput: Json, $metadata: Json) {
+        createDatasetItem(datasetId: $datasetId, input: $input, expectedOutput: $expectedOutput, metadata: $metadata) {
+          id
+          createdAt
+          datasetId
+          metadata
+          input
+          expectedOutput
+          intermediarySteps
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, { datasetId, ...datasetItem });
+
+    return new DatasetItem(result.data.createDatasetItem);
+  }
+
+  public async getDatasetItem(id: string) {
+    const query = `
+      query GetDatasetItem($id: String!) {
+        datasetItem(id: $id) {
+          id
+          createdAt
+          datasetId
+          metadata
+          input
+          expectedOutput
+          intermediarySteps
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, { id });
+
+    return new DatasetItem(result.data.datasetItem);
+  }
+
+  public async deleteDatasetItem(id: string) {
+    const query = `
+      mutation DeleteDatasetItem($id: String!) {
+        deleteDatasetItem(id: $id) {
+          id
+          createdAt
+          datasetId
+          metadata
+          input
+          expectedOutput
+          intermediarySteps
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, { id });
+
+    return new DatasetItem(result.data.deleteDatasetItem);
+  }
+
+  public async addStepToDataset(
+    datasetId: string,
+    stepId: string,
+    metadata?: Maybe<Record<string, unknown>>
+  ) {
+    const query = `
+     mutation AddStepToDataset($datasetId: String!, $stepId: String!, $metadata: Json) {
+      addStepToDataset(datasetId: $datasetId, stepId: $stepId, metadata: $metadata) {
+          id
+          createdAt
+          datasetId
+          metadata
+          input
+          expectedOutput
+          intermediarySteps
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, {
+      datasetId,
+      stepId,
+      metadata
+    });
+
+    return new DatasetItem(result.data.addStepToDataset);
   }
 }

@@ -1,7 +1,7 @@
 import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Attachment, ChatGeneration, LiteralClient } from '../../src';
+import { Attachment, ChatGeneration, Dataset, LiteralClient } from '../../src';
 
 describe('End to end tests for the SDK', function () {
   let client: LiteralClient;
@@ -171,6 +171,8 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     const feedback = await client.api.createFeedback({
       stepId: step.id!,
       value: 1,
@@ -217,11 +219,156 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     const fetchedStep = await client.api.getStep(step.id!);
     expect(fetchedStep?.attachments?.length).toBe(1);
     expect(fetchedStep?.attachments![0].objectKey).toBe(objectKey);
     expect(fetchedStep?.attachments![0].url).toBeDefined();
 
     await client.api.deleteThread(thread.id);
+  });
+
+  describe('dataset api', () => {
+    it('should create a dataset', async () => {
+      const dataset = await client.api.createDataset({
+        name: 'test',
+        description: 'test',
+        metadata: { foo: 'bar' }
+      });
+
+      expect(dataset.id).not.toBeNull();
+      expect(dataset.createdAt).not.toBeNull();
+      expect(dataset.name).toBe('test');
+      expect(dataset.description).toBe('test');
+      expect(dataset.metadata).toStrictEqual({ foo: 'bar' });
+    });
+
+    it('should update a dataset', async () => {
+      const dataset = await client.api.createDataset({
+        name: 'test',
+        description: 'test',
+        metadata: { foo: 'bar' }
+      });
+
+      await dataset.update({
+        name: 'updated',
+        description: 'updated',
+        metadata: { foo: 'baz' }
+      });
+
+      expect(dataset.name).toBe('updated');
+      expect(dataset.description).toBe('updated');
+      expect(dataset.metadata).toStrictEqual({ foo: 'baz' });
+    });
+
+    it('should delete a dataset', async () => {
+      const dataset = await client.api.createDataset({
+        name: 'test',
+        description: 'test',
+        metadata: { foo: 'bar' }
+      });
+      await dataset.delete();
+      const deletedDataset = await client.api.getDataset(dataset.id);
+      expect(deletedDataset).toBeNull();
+    });
+
+    it('should get a dataset', async () => {
+      const dataset = await client.api.createDataset({
+        name: 'test',
+        description: 'test',
+        metadata: { foo: 'bar' }
+      });
+      const fetchedDataset = await client.api.getDataset(dataset.id);
+
+      expect(fetchedDataset?.id).toBe(dataset.id);
+      expect(fetchedDataset?.name).toBe(dataset.name);
+      expect(fetchedDataset?.description).toBe(dataset.description);
+      expect(fetchedDataset?.metadata).toStrictEqual(dataset.metadata);
+      expect(fetchedDataset?.items).toEqual([]);
+    });
+  });
+
+  describe('dataset item api', () => {
+    let dataset: Dataset;
+
+    beforeAll(async () => {
+      dataset = await client.api.createDataset();
+    });
+
+    it('should create a dataset item', async () => {
+      await dataset.createItem({
+        input: { foo: 'bar' },
+        expectedOutput: { foo: 'baz' },
+        metadata: { foo: 'bar' }
+      });
+
+      const datasetItem = dataset.items[0];
+
+      expect(datasetItem.id).not.toBeNull();
+      expect(datasetItem.createdAt).not.toBeNull();
+      expect(datasetItem.input).toStrictEqual({ foo: 'bar' });
+      expect(datasetItem.expectedOutput).toStrictEqual({ foo: 'baz' });
+      expect(datasetItem.metadata).toStrictEqual({ foo: 'bar' });
+    });
+
+    it('should delete a dataset item', async () => {
+      const datasetItem = await dataset.createItem({
+        input: { foo: 'bar' }
+      });
+      expect(dataset.items.length).toBe(2);
+
+      const deletedDatasetItem = await dataset.deleteItem(datasetItem.id);
+
+      expect(dataset.items.length).toBe(1);
+
+      expect(deletedDatasetItem).not.toBeNull();
+    });
+
+    it('should get a dataset item', async () => {
+      const datasetItem = await dataset.createItem({
+        input: { foo: 'bar' }
+      });
+      const fetchedDatasetItem = await client.api.getDatasetItem(
+        datasetItem.id
+      );
+
+      expect(fetchedDatasetItem.id).toBe(datasetItem.id);
+      expect(fetchedDatasetItem.input).toStrictEqual(datasetItem.input);
+    });
+
+    it('should get a dataset item through dataset', async () => {
+      const fetchedDataset = await client.api.getDataset(dataset.id);
+
+      expect(fetchedDataset?.items.length).toBeGreaterThan(0);
+    });
+
+    it('should add a step to a dataset', async () => {
+      const thread = await client.thread({ id: uuidv4() }).upsert();
+      const step = await thread
+        .step({
+          name: 'Run',
+          type: 'run',
+          input: { content: 'hello' },
+          output: { content: 'hello!' }
+        })
+        .send();
+
+      await step
+        .step({
+          name: 'gpt-4',
+          type: 'llm',
+          input: { content: 'hello' },
+          output: { content: 'hello!' }
+        })
+        .send();
+
+      const datasetItem = await dataset.addStep(step.id!);
+
+      expect(datasetItem.id).not.toBeNull();
+      expect(datasetItem.input).toStrictEqual({ content: 'hello' });
+      expect(datasetItem.expectedOutput).toStrictEqual({ content: 'hello!' });
+      expect(datasetItem.intermediarySteps).toHaveLength(1);
+    });
   });
 });
