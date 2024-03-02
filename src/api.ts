@@ -11,6 +11,7 @@ import {
   Feedback,
   FeedbackStrategy,
   Maybe,
+  Prompt,
   Step,
   User
 } from './types';
@@ -899,5 +900,44 @@ export class API {
     });
 
     return new DatasetItem(result.data.addStepToDataset);
+  }
+
+  public async getPrompt(name: string, version?: number) {
+    const query = `
+    query GetPrompt($name: String!, $version: Int) {
+      promptVersion(name: $name, version: $version) {
+          id
+          createdAt
+          updatedAt
+          type
+          templateMessages
+          tools
+          settings
+          variables
+          variablesDefaultValues
+          version
+          lineage {
+              name
+          }
+      }
+  }
+    `;
+    const result = await this.makeGqlCall(query, {
+      name,
+      version
+    });
+
+    if (!result.data) {
+      return null;
+    }
+
+    const promptData = result.data.promptVersion;
+
+    promptData.provider = promptData.settings.provider;
+    promptData.name = promptData.lineage?.name;
+    delete promptData.lineage;
+    delete promptData.settings.provider;
+
+    return new Prompt(this, promptData);
   }
 }

@@ -1,7 +1,8 @@
+import mustache from 'mustache';
 import { v4 as uuidv4 } from 'uuid';
 
 import { API } from './api';
-import { Generation } from './generation';
+import { Generation, GenerationType, IGenerationMessage } from './generation';
 
 export type Maybe<T> = T | null | undefined;
 
@@ -304,5 +305,80 @@ export class DatasetItem extends Utils {
   constructor(data: OmitUtils<DatasetItem>) {
     super();
     Object.assign(this, data);
+  }
+}
+
+export interface IPromptVariableDefinition {
+  name: string;
+  language: 'json' | 'plaintext';
+}
+
+export interface IProviderSettings {
+  provider: string;
+  model: string;
+  frequency_penalty: number;
+  max_tokens: number;
+  presence_penalty: number;
+  stop?: string[];
+  temperature: number;
+  top_p: number;
+}
+
+class PromptFields extends Utils {
+  id!: string;
+  type!: GenerationType;
+  createdAt!: string;
+  name!: string;
+  version!: number;
+  versionDesc?: Maybe<string>;
+  metadata!: Record<string, any>;
+  items!: Array<OmitUtils<DatasetItem>>;
+  variablesDefaultValues?: Maybe<Record<string, any>>;
+  templateMessages!: IGenerationMessage[];
+  tools?: Maybe<Record<string, any>>;
+  provider!: string;
+  settings!: IProviderSettings;
+  variables!: IPromptVariableDefinition[];
+}
+
+export type PromptConstructor = OmitUtils<PromptFields>;
+
+export class Prompt extends PromptFields {
+  api: API;
+
+  constructor(api: API, data: PromptConstructor) {
+    super();
+    this.api = api;
+    Object.assign(this, data);
+  }
+
+  format(variables?: Record<string, any>) {
+    const variablesWithDefault = {
+      ...(this.variablesDefaultValues || {}),
+      ...variables
+    };
+
+    return this.templateMessages.map((templateMessage) => {
+      const formattedMessage = { ...templateMessage };
+
+      if (Array.isArray(formattedMessage.content)) {
+        formattedMessage.content = formattedMessage.content.map((content) => {
+          if (content.type === 'text') {
+            return {
+              ...content,
+              text: mustache.render(content.text, variablesWithDefault)
+            };
+          }
+          return content;
+        });
+      } else if (typeof formattedMessage.content === 'string') {
+        formattedMessage.content = mustache.render(
+          formattedMessage.content,
+          variablesWithDefault
+        );
+      }
+
+      return formattedMessage;
+    });
   }
 }
