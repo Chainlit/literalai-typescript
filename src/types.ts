@@ -1,4 +1,8 @@
 import mustache from 'mustache';
+import {
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from 'openai/resources';
 import { v4 as uuidv4 } from 'uuid';
 
 import { API } from './api';
@@ -335,7 +339,7 @@ class PromptFields extends Utils {
   items!: Array<OmitUtils<DatasetItem>>;
   variablesDefaultValues?: Maybe<Record<string, any>>;
   templateMessages!: IGenerationMessage[];
-  tools?: Maybe<Record<string, any>>;
+  tools?: ChatCompletionTool[];
   provider!: string;
   settings!: IProviderSettings;
   variables!: IPromptVariableDefinition[];
@@ -350,35 +354,51 @@ export class Prompt extends PromptFields {
     super();
     this.api = api;
     Object.assign(this, data);
+    if (this.tools?.length === 0) {
+      this.tools = undefined;
+    }
   }
 
-  format(variables?: Record<string, any>) {
+  format(variables?: Record<string, any>): ChatCompletionMessageParam[] {
     const variablesWithDefault = {
       ...(this.variablesDefaultValues || {}),
       ...variables
     };
 
-    return this.templateMessages.map((templateMessage) => {
-      const formattedMessage = { ...templateMessage };
+    const promptId = this.id;
 
-      if (Array.isArray(formattedMessage.content)) {
-        formattedMessage.content = formattedMessage.content.map((content) => {
-          if (content.type === 'text') {
-            return {
-              ...content,
-              text: mustache.render(content.text, variablesWithDefault)
-            };
-          }
-          return content;
-        });
-      } else if (typeof formattedMessage.content === 'string') {
-        formattedMessage.content = mustache.render(
-          formattedMessage.content,
-          variablesWithDefault
-        );
+    return this.templateMessages.map(
+      ({ uuid, templated, ...templateMessage }) => {
+        const formattedMessage = {
+          ...templateMessage
+        } as ChatCompletionMessageParam;
+        // @ts-expect-error Hacky way to add metadata to the formatted message
+        formattedMessage.literalMetadata = () => {
+          return {
+            uuid: uuid,
+            promptId,
+            variables: variablesWithDefault
+          };
+        };
+        if (Array.isArray(formattedMessage.content)) {
+          formattedMessage.content = formattedMessage.content.map((content) => {
+            if (content.type === 'text') {
+              return {
+                ...content,
+                text: mustache.render(content.text, variablesWithDefault)
+              };
+            }
+            return content;
+          });
+        } else if (typeof formattedMessage.content === 'string') {
+          formattedMessage.content = mustache.render(
+            formattedMessage.content,
+            variablesWithDefault
+          );
+        }
+
+        return formattedMessage;
       }
-
-      return formattedMessage;
-    });
+    );
   }
 }
