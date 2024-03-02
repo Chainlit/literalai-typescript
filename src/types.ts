@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { API } from './api';
 import { Generation, GenerationType, IGenerationMessage } from './generation';
+import { CustomChatPromptTemplate } from './instrumentation/langchain';
 
 export type Maybe<T> = T | null | undefined;
 
@@ -400,5 +401,18 @@ export class Prompt extends PromptFields {
         return formattedMessage;
       }
     );
+  }
+
+  toLangchainChatPromptTemplate() {
+    const lcMessages: [string, string][] = this.templateMessages.map((m) => [
+      m.role,
+      m.content as string
+    ]);
+    const chatTemplate = CustomChatPromptTemplate.fromMessages(lcMessages);
+    chatTemplate.variablesDefaultValues = this.variablesDefaultValues;
+    chatTemplate.literalTemplateMessages = this.templateMessages;
+    chatTemplate.promptId = this.id;
+
+    return chatTemplate;
   }
 }
