@@ -1,6 +1,6 @@
 {
   "name": "@literalai/client",
-  "version": "0.0.201",
+  "version": "0.0.300",
   "description": "",
   "exports": {
     ".": {
@@ -28,6 +28,7 @@
     "@trivago/prettier-plugin-sort-imports": "^4.2.0",
     "@types/jest": "^29.5.11",
     "@types/mime-types": "^2.1.4",
+    "@types/mustache": "^4.2.5",
     "@types/uuid": "^9.0.7",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
@@ -45,6 +46,7 @@
   "dependencies": {
     "axios": "^1.6.2",
     "mime-types": "^2.1.35",
+    "mustache": "^4.2.0",
     "uuid": "^9.0.1"
   },
   "peerDependencies": {

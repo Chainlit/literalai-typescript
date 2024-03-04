@@ -6,9 +6,22 @@ import {
 } from '@langchain/core/callbacks/base';
 import { DocumentInterface } from '@langchain/core/documents';
 import { Serialized } from '@langchain/core/load/serializable';
-import { BaseMessage } from '@langchain/core/messages';
+import {
+  AIMessage,
+  BaseMessage,
+  HumanMessage,
+  SystemMessage
+} from '@langchain/core/messages';
 import { LLMResult } from '@langchain/core/outputs';
-import { ChainValues } from '@langchain/core/utils/types';
+import {
+  AIMessagePromptTemplate,
+  BaseMessagePromptTemplateLike,
+  ChatPromptTemplate,
+  HumanMessagePromptTemplate,
+  TypedPromptInputValues
+} from '@langchain/core/prompts';
+import { ChainValues, InputValues } from '@langchain/core/utils/types';
+import mustache from 'mustache';
 
 import {
   ChatGeneration,
@@ -19,7 +32,63 @@ import {
 } from '..';
 import { Step } from '../types';
 
+// @ts-expect-error Generics
+export class CustomChatPromptTemplate extends ChatPromptTemplate {
+  public literalTemplateMessages?: IGenerationMessage[] | null;
+  public variablesDefaultValues?: Record<string, any> | null;
+  public promptId?: string | null;
+
+  static fromMessages(
+    promptMessages: (
+      | ChatPromptTemplate<InputValues, string>
+      | BaseMessagePromptTemplateLike
+    )[]
+  ): CustomChatPromptTemplate {
+    const chatTemplate = ChatPromptTemplate.fromMessages(promptMessages);
+
+    return new CustomChatPromptTemplate({
+      inputVariables: chatTemplate.inputVariables,
+      promptMessages: chatTemplate.promptMessages,
+      partialVariables: chatTemplate.partialVariables
+    });
+  }
+
+  async formatMessages(
+    values: TypedPromptInputValues<any>
+  ): Promise<BaseMessage[]> {
+    const variables = { ...(this.variablesDefaultValues || {}), ...values };
+
+    if (!this.literalTemplateMessages) return [];
+
+    return this.promptMessages.map((message, i) => {
+      //@ts-expect-error Check if message is a prompt template
+      const content = mustache.render(message.prompt.template, variables);
+      let additonalKwargs = {};
+      if (
+        this.literalTemplateMessages &&
+        i < this.literalTemplateMessages.length
+      ) {
+        additonalKwargs = {
+          uuid: this.literalTemplateMessages[i].uuid,
+          promptId: this.promptId,
+          variables
+        };
+      }
+
+      if (message instanceof HumanMessagePromptTemplate) {
+        return new HumanMessage(content, additonalKwargs);
+      } else if (message instanceof AIMessagePromptTemplate) {
+        return new AIMessage(content, additonalKwargs);
+      } else {
+        return new SystemMessage(content, additonalKwargs);
+      }
+    });
+  }
+}
+
 interface ChatGenerationStart {
+  promptId?: string;
+  variables?: Record<string, any>;
   provider: string;
   model: string;
   settings: Record<string, any>;
@@ -54,12 +123,31 @@ function convertMessageRole(role: string) {
   }
 }
 
+function checkForLiteralPrompt(messages: BaseMessage[]) {
+  let promptId: string | undefined;
+  let variables: Record<string, any> | undefined;
+
+  for (const message of messages) {
+    if (message.additional_kwargs.promptId) {
+      promptId = message.additional_kwargs.promptId as string;
+    }
+    if (message.additional_kwargs.variables) {
+      variables = message.additional_kwargs.variables as Record<string, any>;
+    }
+  }
+
+  return { promptId, variables };
+}
+
 function convertMessage(message: BaseMessage): IGenerationMessage {
+  const uuid = message.additional_kwargs.uuid as string | undefined;
   return {
     name: message.name,
     role: convertMessageRole(message._getType()),
     content: message.content as any,
-    function_call: message.additional_kwargs.function_call
+    function_call: message.additional_kwargs.function_call,
+    uuid: uuid,
+    templated: !!uuid
   };
 }
 
@@ -110,7 +198,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   ) {
     const provider = llm.id[llm.id.length - 1];
     const settings: Record<string, any> = extraParams?.invocation_params || {};
-    //make sure there is no api key specification
+    // make sure there is no api key specification
     delete settings.apiKey;
     delete settings.api_key;
     const model = settings.model || settings.modelName;
@@ -137,6 +225,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       .send();
     this.steps[runId] = step;
   }
+
   handleLLMNewToken(
     token: string,
     idx: NewTokenIndices,
@@ -200,6 +289,8 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       this.steps[runId].endTime = new Date().toISOString();
     } else if (chatGeneration) {
       const {
+        promptId,
+        variables,
         start,
         outputTokenCount,
         ttFirstToken,
@@ -215,7 +306,10 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       const messageCompletion = convertMessage(
         (output.generations[0][0] as any).message
       );
+
       this.steps[runId].generation = new ChatGeneration({
+        promptId,
+        variables,
         provider,
         model,
         settings,
@@ -256,17 +350,24 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     delete settings.apiKey;
     delete settings.api_key;
 
+    const messageList = messages[0];
+
+    const { promptId, variables } = checkForLiteralPrompt(messageList);
+
     const model = settings.model || settings.modelName;
     const tools = settings.tools || [];
     this.chatGenerations[runId] = {
+      promptId,
+      variables,
       provider,
       model,
       settings,
       tools,
-      inputMessages: messages[0].map(convertMessage),
+      inputMessages: messageList.map(convertMessage),
       start: Date.now(),
       outputTokenCount: 0
     };
+
     const step = await this.client
       .step({
         name: name || model,
@@ -293,19 +394,19 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     name?: string | undefined
   ) {
     const chainType = chain.id[chain.id.length - 1];
-    if (!runType || !name) {
-      if (!chainType.toLowerCase().includes('runnable')) {
-        name = chainType;
-      } else {
-        if (parentRunId) {
-          this.parentIdMap[runId] = parentRunId;
-        }
-        return;
-      }
-    }
+    // if (!runType || !name) {
+    //   if (!chainType.toLowerCase().includes('runnable')) {
+    //     name = chainType;
+    //   } else {
+    //     if (parentRunId) {
+    //       this.parentIdMap[runId] = parentRunId;
+    //     }
+    //     return;
+    //   }
+    // }
     const step = await this.client
       .step({
-        name: name,
+        name: name || chainType,
         type: this.typeRun() || 'tool',
         tags: tags,
         threadId: this.threadId,

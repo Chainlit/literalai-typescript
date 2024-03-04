@@ -371,4 +371,48 @@ describe('End to end tests for the SDK', function () {
       expect(datasetItem.intermediarySteps).toHaveLength(1);
     });
   });
+
+  describe('Prompt api', () => {
+    it('should get a prompt', async () => {
+      const prompt = await client.api.getPrompt('Default');
+
+      expect(prompt).not.toBeNull();
+      expect(prompt?.name).toBe('Default');
+      expect(prompt?.version).toBe(0);
+    });
+
+    it('should format a prompt with default values', async () => {
+      const prompt = await client.api.getPrompt('Default');
+
+      const formatted = prompt!.format();
+
+      const expected = `Hello, this is a test value and this
+
+* item 0
+* item 1
+* item 2
+
+is a templated list.`;
+
+      expect(formatted.length).toBe(1);
+      expect(formatted[0].content).toBe(expected);
+    });
+
+    it('should format a prompt with custom values', async () => {
+      const prompt = await client.api.getPrompt('Default');
+
+      const formatted = prompt!.format({ test_var: 'Edited value' });
+
+      const expected = `Hello, this is a Edited value and this
+
+* item 0
+* item 1
+* item 2
+
+is a templated list.`;
+
+      expect(formatted.length).toBe(1);
+      expect(formatted[0].content).toBe(expected);
+    });
+  });
 });

@@ -20,7 +20,9 @@ export interface IImageUrlContent {
 }
 
 export interface IGenerationMessage {
-  content: string | [ITextContent | IImageUrlContent];
+  uuid?: string;
+  templated?: boolean;
+  content: string | (ITextContent | IImageUrlContent)[];
   role: GenerationMessageRole;
   name?: string;
   function_call?: Record<string, any>;
@@ -44,12 +46,13 @@ export interface ITool {
 }
 
 export class BaseGeneration extends Utils {
+  promptId?: string;
   provider?: Maybe<string>;
   model?: Maybe<string>;
   id?: Maybe<string>;
   tags?: Maybe<string[]>;
   error?: Maybe<string>;
-  variables?: Maybe<Record<string, string>>;
+  variables?: Maybe<Record<string, any>>;
   settings?: Maybe<ILLMSettings>;
   tools?: Maybe<ITool[]>;
   tokenCount?: Maybe<number>;

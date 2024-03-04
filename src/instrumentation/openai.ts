@@ -206,13 +206,17 @@ async function processStreamResponse(
   };
   let completion = '';
 
+  let model;
+
   let isChat = true;
 
   let outputTokenCount = 0;
   let ttFirstToken: number | undefined = undefined;
   for await (const chunk of stream) {
-    console.log('hi4');
     let ok = false;
+    if (chunk.model) {
+      model = chunk.model;
+    }
     if (chunk.object === 'chat.completion.chunk') {
       isChat = true;
       ok = processChatDelta(chunk.choices[0].delta, messageCompletion);
@@ -247,8 +251,30 @@ async function processStreamResponse(
     ttFirstToken,
     duration,
     outputTokenCount,
+    model,
     tokenThroughputInSeconds
   };
+}
+
+function postprocessMessages(inputMessages: any[]) {
+  let promptId: string | undefined;
+  let variables: Record<string, any> | undefined;
+  const messages = inputMessages.map((m: any) => {
+    if (m.literalMetadata) {
+      const metadata = m.literalMetadata();
+      if (!promptId) {
+        promptId = metadata.promptId;
+      }
+      if (!variables) {
+        variables = metadata.variables;
+      }
+      m.uuid = metadata.uuid;
+      m.templated = true;
+    }
+    return m;
+  });
+
+  return { promptId, variables, messages };
 }
 
 export type OpenAIOutput =
@@ -264,12 +290,11 @@ const instrumentOpenAI = async (
   parent?: Step | Thread
 ) => {
   //@ts-expect-error - This is a hacky way to get the id from the stream
-  const { stream, start, inputs } = openaiReqs[output.id];
-
+  const outputId = output.id;
+  const { stream, start, inputs } = openaiReqs[outputId];
   const baseGeneration = {
     provider: 'openai',
     model: inputs.model,
-
     settings: getSettings(inputs)
   };
 
@@ -278,17 +303,28 @@ const instrumentOpenAI = async (
       throw new Error('Stream not found');
     }
 
-    const { isChat, completion, messageCompletion, ...metrics } =
+    const { isChat, completion, messageCompletion, model, ...metrics } =
       await processStreamResponse(stream, start);
 
     if (isChat) {
+      const { promptId, messages, variables } = postprocessMessages(
+        inputs.messages
+      );
+
       const generation = new ChatGeneration({
         ...baseGeneration,
         messageCompletion,
-        messages: inputs.messages,
+        messages,
+        variables,
+        promptId,
         tools: inputs.tools,
         ...metrics
       });
+
+      if (model) {
+        generation.model = model;
+      }
+
       if (parent) {
         const step = parent.step({
           name: generation.model || 'openai',
@@ -310,6 +346,11 @@ const instrumentOpenAI = async (
         prompt: inputs.prompt,
         ...metrics
       });
+
+      if (model) {
+        generation.model = model;
+      }
+
       if (parent) {
         const step = parent.step({
           name: generation.model || 'openai',
@@ -326,13 +367,22 @@ const instrumentOpenAI = async (
       }
     }
   } else {
+    if (output.model) {
+      baseGeneration.model = output.model;
+    }
     if (output.object === 'chat.completion') {
+      const { promptId, messages, variables } = postprocessMessages(
+        inputs.messages
+      );
+
       const messageCompletion = output.choices[0].message as IGenerationMessage;
       jsonLoadArgs(messageCompletion);
       const generation = new ChatGeneration({
         ...baseGeneration,
+        promptId,
         messageCompletion: messageCompletion,
-        messages: inputs.messages,
+        messages,
+        variables,
         tools: inputs.tools,
         inputTokenCount: output.usage?.prompt_tokens,
         outputTokenCount: output.usage?.completion_tokens,
@@ -379,6 +429,8 @@ const instrumentOpenAI = async (
       }
     }
   }
+
+  delete openaiReqs[outputId];
 };
 
 export default instrumentOpenAI;
