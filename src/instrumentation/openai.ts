@@ -206,12 +206,17 @@ async function processStreamResponse(
   };
   let completion = '';
 
+  let model;
+
   let isChat = true;
 
   let outputTokenCount = 0;
   let ttFirstToken: number | undefined = undefined;
   for await (const chunk of stream) {
     let ok = false;
+    if (chunk.model) {
+      model = chunk.model;
+    }
     if (chunk.object === 'chat.completion.chunk') {
       isChat = true;
       ok = processChatDelta(chunk.choices[0].delta, messageCompletion);
@@ -246,6 +251,7 @@ async function processStreamResponse(
     ttFirstToken,
     duration,
     outputTokenCount,
+    model,
     tokenThroughputInSeconds
   };
 }
@@ -297,7 +303,7 @@ const instrumentOpenAI = async (
       throw new Error('Stream not found');
     }
 
-    const { isChat, completion, messageCompletion, ...metrics } =
+    const { isChat, completion, messageCompletion, model, ...metrics } =
       await processStreamResponse(stream, start);
 
     if (isChat) {
@@ -314,6 +320,11 @@ const instrumentOpenAI = async (
         tools: inputs.tools,
         ...metrics
       });
+
+      if (model) {
+        generation.model = model;
+      }
+
       if (parent) {
         const step = parent.step({
           name: generation.model || 'openai',
@@ -335,6 +346,11 @@ const instrumentOpenAI = async (
         prompt: inputs.prompt,
         ...metrics
       });
+
+      if (model) {
+        generation.model = model;
+      }
+
       if (parent) {
         const step = parent.step({
           name: generation.model || 'openai',

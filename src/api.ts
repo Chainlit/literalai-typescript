@@ -927,12 +927,11 @@ export class API {
       version
     });
 
-    if (!result.data) {
+    if (!result.data || !result.data.promptVersion) {
       return null;
     }
 
     const promptData = result.data.promptVersion;
-
     promptData.provider = promptData.settings.provider;
     promptData.name = promptData.lineage?.name;
     delete promptData.lineage;
