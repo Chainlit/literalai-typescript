@@ -611,7 +611,7 @@ export class API {
       const updatedUser = await this.updateUser(
         existingUser.id!,
         existingUser.identifier,
-        existingUser.metadata
+        metadata
       );
       return updatedUser.id!;
     } else {
@@ -922,6 +922,10 @@ export class API {
       }
   }
     `;
+    console.log({
+      name,
+      version
+    });
     const result = await this.makeGqlCall(query, {
       name,
       version
