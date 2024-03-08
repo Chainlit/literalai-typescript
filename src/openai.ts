@@ -194,7 +194,11 @@ class OpenAIAssistantSyncer {
     await Promise.all(toolPromises);
   }
 
-  async syncThread(threadId: string, user?: User) {
+  async syncThread(
+    threadId: string,
+    user?: User,
+    threadMetadata?: Record<string, any>
+  ) {
     let userId: string | undefined = undefined;
     if (user) {
       userId = await this.client.api.getOrCreateUser(
@@ -228,7 +232,12 @@ class OpenAIAssistantSyncer {
     await this.client.api.upsertThread(
       litThreadId,
       name,
-      { assistantId, threadId, assistantName: assistant.name },
+      {
+        assistantId,
+        threadId,
+        assistantName: assistant.name,
+        ...threadMetadata
+      },
       userId
     );
 

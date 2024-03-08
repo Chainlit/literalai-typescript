@@ -174,7 +174,9 @@ async function main() {
 
   // Optional: Add/update a user to the thread. Use any unique identifier you like.
   const user = new User({ identifier: 'willy', metadata: { name: 'Willy' } });
-  await syncer.syncThread(threadId, user);
+  // Optional: Add/update metadata to the thread
+  const threadMetadata = {};
+  await syncer.syncThread(threadId, user, threadMetadata);
 }
 
 main();
