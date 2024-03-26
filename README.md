@@ -100,29 +100,35 @@ const finalStep = await thread
   .send();
 ```
 
-### Add Feedback
+### Create Score
 
 ```ts
-const feedback = await client.api.createFeedback({
+const score = await client.api.createScore({
   stepId: finalStep.id!,
+  name: 'user-feedback',
   value: 1,
+  type: 'Human',
   comment: 'Great!'
 });
 ```
 
-### List/Export Threads
+### Get Threads
 
 ```ts
-const first = 20;
-const after = undefined;
-const filter = {
-  createdAt: { operator: 'gt' as const, value: new Date().toISOString() }
-};
-
-const shallowThreads = await client.api.listThreads(first, after, filter);
-
-const page = 1;
-const threads = await client.api.exportThreads(page, filter);
+const threads = await client.api.getThreads({
+  first: 20,
+  filters: [
+    {
+      field: 'createdAt',
+      operator: 'gt',
+      value: '2021-01-01'
+    }
+  ],
+  orderBy: {
+    column: 'createdAt',
+    direction: 'DESC'
+  }
+});
 ```
 
 ## Integrations

@@ -64,9 +64,6 @@ describe('End to end tests for the SDK', function () {
     );
     expect(updatedThread.tags).toStrictEqual(['hello:world']);
 
-    const threads = await client.api.listThreads(1);
-    expect(threads.data.length).toBe(1);
-
     await client.api.deleteThread(thread.id);
 
     const deletedThread = await client.api.getThread(thread.id);
@@ -86,12 +83,22 @@ describe('End to end tests for the SDK', function () {
     expect(thread.id).not.toBeNull();
     expect(thread.metadata).toStrictEqual({ foo: 'bar' });
 
-    const threadsAfterNow = await client.api.exportThreads(1, {
-      createdAt: { operator: 'gt', value: new Date().toISOString() }
+    const threadsAfterNow = await client.api.getThreads({
+      first: 1,
+      filters: [
+        {
+          field: 'createdAt',
+          operator: 'gt',
+          value: new Date().toISOString()
+        }
+      ]
     });
     expect(threadsAfterNow.data.length).toBe(0);
 
-    const threads = await client.api.exportThreads();
+    const threads = await client.api.getThreads({
+      first: 1,
+      orderBy: { column: 'createdAt', direction: 'DESC' }
+    });
     expect(threads.data.length).toBeGreaterThan(0);
     expect(threads.data[0]['id']).toBe(thread.id);
 
@@ -161,7 +168,7 @@ describe('End to end tests for the SDK', function () {
     expect(deletedStep).toBeNull();
   });
 
-  it('should test feedback', async function () {
+  it('should test score', async function () {
     const thread = await client.thread({ id: uuidv4() });
     const step = await thread
       .step({
@@ -173,20 +180,23 @@ describe('End to end tests for the SDK', function () {
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const feedback = await client.api.createFeedback({
+    const score = await client.api.createScore({
       stepId: step.id!,
+      name: 'user-feedback',
+      type: 'HUMAN',
       value: 1,
       comment: 'hello'
     });
 
-    expect(feedback.id).not.toBeNull();
-    expect(feedback.comment).toBe('hello');
+    expect(score.id).not.toBeNull();
+    expect(score.comment).toBe('hello');
 
-    const updatedFeedback = await client.api.updateFeedback(feedback.id!, {
-      comment: 'updated'
+    const updatedScore = await client.api.updateScore(score.id!, {
+      comment: 'updated',
+      value: 1
     });
-    expect(updatedFeedback.value).toBe(1);
-    expect(updatedFeedback.comment).toBe('updated');
+    expect(updatedScore.value).toBe(1);
+    expect(updatedScore.comment).toBe('updated');
 
     await client.api.deleteThread(thread.id);
   });

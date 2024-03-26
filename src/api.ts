@@ -3,15 +3,17 @@ import FormData from 'form-data';
 import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-import { ThreadFilter } from './filter';
+import { OmitUtils } from '../dist';
+import { ThreadsFilter, ThreadsOrderBy } from './filter';
 import { Generation } from './generation';
 import {
+  CleanThreadFields,
   Dataset,
   DatasetItem,
-  Feedback,
-  FeedbackStrategy,
   Maybe,
+  PaginatedResponse,
   Prompt,
+  Score,
   Step,
   User
 } from './types';
@@ -32,10 +34,12 @@ const stepFields = `
     input
     output
     metadata
-    feedback {
-        id
-        value
-        comment
+    scores {
+      id
+      type
+      name
+      value
+      comment
     }
     tags
     generation {
@@ -86,18 +90,6 @@ const threadFields = `
         ${stepFields}
     }`;
 
-const shallowThreadFields = `
-    id
-    name
-    metadata
-    tags
-    createdAt
-    participant {
-        id
-        identifier
-        metadata
-    }`;
-
 function serialize(step: Step, id: number) {
   const result: any = {};
 
@@ -132,7 +124,7 @@ function ingestStepsFieldsBuilder(steps: Step[]) {
         $parentId_${id}: String
         $name_${id}: String
         $generation_${id}: GenerationPayloadInput
-        $feedback_${id}: FeedbackPayloadInput
+        $scores_${id}: [ScorePayloadInput!]
         $attachments_${id}: [AttachmentPayloadInput!]
         `;
   }
@@ -156,7 +148,7 @@ function ingestStepsArgsBuilder(steps: Step[]) {
         parentId: $parentId_${id}
         name: $name_${id}
         generation: $generation_${id}
-        feedback: $feedback_${id}
+        scores: $scores_${id}
         attachments: $attachments_${id}
       ) {
         ok
@@ -435,31 +427,33 @@ export class API {
     return response.data.upsertThread;
   }
 
-  async listThreads(
-    first?: Maybe<number>,
-    after?: Maybe<string>,
-    filters?: Maybe<ThreadFilter>
-  ) {
+  async getThreads(variables: {
+    first?: Maybe<number>;
+    after?: Maybe<string>;
+    before?: Maybe<string>;
+    filters?: ThreadsFilter[];
+    orderBy?: ThreadsOrderBy;
+  }): Promise<PaginatedResponse<CleanThreadFields>> {
     const query = `
     query GetThreads(
         $after: ID,
         $before: ID,
         $cursorAnchor: DateTime,
-        $filters: ThreadFiltersInput,
+        $filters: [ThreadsInputType!],
+        $orderBy: ThreadsOrderByInput,
         $first: Int,
         $last: Int,
         $projectId: String,
-        $skip: Int
         ) {
         threads(
             after: $after,
             before: $before,
             cursorAnchor: $cursorAnchor,
             filters: $filters,
+            orderBy: $orderBy,
             first: $first,
             last: $last,
             projectId: $projectId,
-            skip: $skip
             ) {
             pageInfo {
                 startCursor
@@ -471,23 +465,11 @@ export class API {
             edges {
                 cursor
                 node {
-                    ${shallowThreadFields}
+                    ${threadFields}
                 }
             }
         }
     }`;
-
-    const variables: Record<string, any> = {};
-
-    if (first) {
-      variables['first'] = first;
-    }
-    if (after) {
-      variables['after'] = after;
-    }
-    if (filters) {
-      variables['filters'] = filters;
-    }
 
     const result = await this.makeGqlCall(query, variables);
 
@@ -497,30 +479,6 @@ export class API {
     delete response.edges;
 
     return response;
-  }
-
-  async exportThreads(
-    page?: Maybe<number>,
-    filters?: Maybe<ThreadFilter>,
-    cursorAnchor?: Maybe<string>
-  ) {
-    const body: Record<string, any> = {};
-
-    if (cursorAnchor) {
-      body['cursorAnchor'] = cursorAnchor;
-    }
-
-    if (page) {
-      body['page'] = page;
-    }
-
-    if (filters) {
-      body['filters'] = filters;
-    }
-
-    const result = await this.makeApiCall('/export/threads', body);
-
-    return result;
   }
 
   async getThread(id: string) {
@@ -655,88 +613,98 @@ export class API {
     return result.data.deleteParticipant.id;
   }
 
-  // Feedback
-  async createFeedback({
-    stepId,
-    value,
-    comment,
-    strategy = 'BINARY'
-  }: {
-    stepId: string;
-    value: number;
-    comment?: Maybe<string>;
-    strategy?: FeedbackStrategy;
-  }) {
+  // Score
+  async createScore(variables: OmitUtils<Score>) {
     const query = `
-      mutation CreateFeedback(
-          $comment: String,
-          $stepId: String!,
-          $strategy: FeedbackStrategy,
-          $value: Int!,
+    mutation CreateScore(
+      $name: String!,
+      $type: ScoreType!,
+      $value: Float!,
+      $stepId: String,
+      $generationId: String,
+      $datasetExperimentItemId: String,
+      $comment: String,
+      $tags: [String!],
+
+  ) {
+      createScore(
+          name: $name,
+          type: $type,
+          value: $value,
+          stepId: $stepId,
+          generationId: $generationId,
+          datasetExperimentItemId: $datasetExperimentItemId,
+          comment: $comment,
+          tags: $tags,
       ) {
-          createFeedback(
-              comment: $comment,
-              stepId: $stepId,
-              strategy: $strategy,
-              value: $value,
-          ) {
-              id
-              threadId
-              stepId
-              value
-              comment
-              strategy
-          }
+          id
+          name,
+          type,
+          value,
+          stepId,
+          generationId,
+          datasetExperimentItemId,
+          comment,
+          tags,
       }
+  }
     `;
 
-    const variables = {
-      comment,
-      stepId,
-      strategy,
-      value
-    };
-
     const result = await this.makeGqlCall(query, variables);
-    return new Feedback(result.data.createFeedback);
+    return new Score(result.data.createScore);
   }
 
-  async updateFeedback(
+  async updateScore(
     id: string,
     updateParams: {
       comment?: Maybe<string>;
-      value?: Maybe<number>;
-      strategy?: Maybe<string>;
+      value: number;
     }
   ) {
     const query = `
-      mutation UpdateFeedback(
-          $id: String!,
-          $comment: String,
-          $value: Int,
-          $strategy: FeedbackStrategy,
+    mutation UpdateScore(
+      $id: String!,
+      $comment: String,
+      $value: Float!,
+  ) {
+      updateScore(
+          id: $id,
+          comment: $comment,
+          value: $value,
       ) {
-          updateFeedback(
-              id: $id,
-              comment: $comment,
-              value: $value,
-              strategy: $strategy,
-          ) {
-              id
-              threadId
-              stepId
-              value
-              comment
-              strategy
-          }
+          id
+          name,
+          type,
+          value,
+          stepId,
+          generationId,
+          datasetExperimentItemId,
+          comment,
+          tags,
       }
+  }
     `;
 
     const variables = { id, ...updateParams };
     const result = await this.makeGqlCall(query, variables);
-    return new Feedback(result.data.updateFeedback);
+    return new Score(result.data.updateScore);
   }
 
+  async deleteScore(id: string) {
+    const query = `
+    mutation DeleteScore($id: String!) {
+      deleteScore(id: $id) {
+          id
+      }
+  }
+    `;
+
+    const variables = { id };
+    const result = await this.makeGqlCall(query, variables);
+    return result.data.deleteScore;
+  }
+
+  // Dataset
   public async createDataset(
     dataset: {
       name?: Maybe<string>;
@@ -902,6 +870,7 @@ export class API {
     return new DatasetItem(result.data.addStepToDataset);
   }
 
+  // Prompt
   public async getPrompt(name: string, version?: number) {
     const query = `
     query GetPrompt($name: String!, $version: Int) {
