@@ -32,10 +32,35 @@ describe('End to end tests for the SDK', function () {
     const fetchedUser = await client.api.getUser(identifier);
     expect(fetchedUser?.id).toBe(user.id);
 
+    const users = await client.api.getUsers({
+      first: 1
+    });
+
+    expect(users.data.length).toBe(1);
+
     await client.api.deleteUser(user.id!);
 
     const deletedUser = await client.api.getUser(identifier);
     expect(deletedUser).toBeUndefined();
+  });
+
+  it('should test generation', async function () {
+    const generation = await client.api.createGeneration({
+      provider: 'test',
+      model: 'test',
+      messages: [
+        { role: 'system', content: 'Hello, how can I help you today?' }
+      ]
+    });
+
+    expect(generation.id).not.toBeNull();
+
+    const generations = await client.api.getGenerations({
+      first: 1,
+      orderBy: { column: 'createdAt', direction: 'DESC' }
+    });
+    expect(generations.data.length).toBe(1);
+    expect(generations.data[0].id).toBe(generation.id);
   });
 
   it('should test thread', async function () {
@@ -197,6 +222,13 @@ describe('End to end tests for the SDK', function () {
     });
     expect(updatedScore.value).toBe(1);
     expect(updatedScore.comment).toBe('updated');
+
+    const scores = await client.api.getScores({
+      first: 1,
+      orderBy: { column: 'createdAt', direction: 'DESC' }
+    });
+    expect(scores.data.length).toBe(1);
+    expect(scores.data[0].id).toBe(score.id);
 
     await client.api.deleteThread(thread.id);
   });

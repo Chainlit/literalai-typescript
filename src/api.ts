@@ -4,7 +4,15 @@ import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
 import { OmitUtils } from '../dist';
-import { ThreadsFilter, ThreadsOrderBy } from './filter';
+import {
+  GenerationsFilter,
+  GenerationsOrderBy,
+  ParticipantsFilter,
+  ScoresFilter,
+  ScoresOrderBy,
+  ThreadsFilter,
+  ThreadsOrderBy
+} from './filter';
 import { Generation } from './generation';
 import {
   CleanThreadFields,
@@ -43,7 +51,6 @@ const stepFields = `
     }
     tags
     generation {
-      tags
       prompt
       completion
       createdAt
@@ -366,11 +373,97 @@ export class API {
   }
 
   // Generation
+
+  async getGenerations(variables: {
+    first?: Maybe<number>;
+    after?: Maybe<string>;
+    before?: Maybe<string>;
+    filters?: GenerationsFilter[];
+    orderBy?: GenerationsOrderBy;
+  }): Promise<PaginatedResponse<Generation>> {
+    const query = `
+    query GetGenerations(
+      $after: ID,
+      $before: ID,
+      $cursorAnchor: DateTime,
+      $filters: [generationsInputType!],
+      $orderBy: GenerationsOrderByInput,
+      $first: Int,
+      $last: Int,
+      $projectId: String,
+      ) {
+      generations(
+          after: $after,
+          before: $before,
+          cursorAnchor: $cursorAnchor,
+          filters: $filters,
+          orderBy: $orderBy,
+          first: $first,
+          last: $last,
+          projectId: $projectId,
+          ) {
+          pageInfo {
+              startCursor
+              endCursor
+              hasNextPage
+              hasPreviousPage
+          }
+          totalCount
+          edges {
+              cursor
+              node {
+                  id
+                  projectId
+                  prompt
+                  completion
+                  createdAt
+                  provider
+                  model
+                  variables
+                  messages
+                  messageCompletion
+                  tools
+                  settings
+                  stepId
+                  tokenCount
+                  duration
+                  inputTokenCount
+                  outputTokenCount
+                  ttFirstToken
+                  duration
+                  tokenThroughputInSeconds
+                  error
+                  type
+                  tags
+                  step {
+                      threadId
+                      thread {
+                      participant {
+                          identifier
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }`;
+
+    const result = await this.makeGqlCall(query, variables);
+
+    const response = result.data.generations;
+
+    response.data = response.edges.map((x: any) => x.node);
+    delete response.edges;
+
+    return response;
+  }
+
   async createGeneration(generation: Generation) {
     const mutation = `
     mutation CreateGeneration($generation: GenerationPayloadInput!) {
       createGeneration(generation: $generation) {
-          id
+          id,
+          type
       }
   }
     `;
@@ -380,7 +473,7 @@ export class API {
     };
 
     const response = await this.makeGqlCall(mutation, variables);
-    return response.data.createGeneration;
+    return response.data.createGeneration as Generation;
   }
 
   // Thread
@@ -512,6 +605,63 @@ export class API {
   }
 
   // User
+  async getUsers(variables: {
+    first?: Maybe<number>;
+    after?: Maybe<string>;
+    before?: Maybe<string>;
+    filters?: ParticipantsFilter[];
+  }): Promise<PaginatedResponse<OmitUtils<User>>> {
+    const query = `
+    query GetParticipants(
+      $after: ID,
+      $before: ID,
+      $cursorAnchor: DateTime,
+      $filters: [participantsInputType!],
+      $first: Int,
+      $last: Int,
+      $projectId: String,
+      ) {
+      participants(
+          after: $after,
+          before: $before,
+          cursorAnchor: $cursorAnchor,
+          filters: $filters,
+          first: $first,
+          last: $last,
+          projectId: $projectId,
+          ) {
+          pageInfo {
+              startCursor
+              endCursor
+              hasNextPage
+              hasPreviousPage
+          }
+          totalCount
+          edges {
+              cursor
+              node {
+                  id
+                  createdAt
+                  lastEngaged
+                  threadCount
+                  tokenCount
+                  identifier
+                  metadata
+              }
+          }
+      }
+  }`;
+
+    const result = await this.makeGqlCall(query, variables);
+
+    const response = result.data.participants;
+
+    response.data = response.edges.map((x: any) => x.node);
+    delete response.edges;
+
+    return response;
+  }
+
   public async createUser(
     identifier: string,
     metadata?: Maybe<Record<string, any>>
@@ -614,6 +764,80 @@ export class API {
   }
 
   // Score
+
+  async getScores(variables: {
+    first?: Maybe<number>;
+    after?: Maybe<string>;
+    before?: Maybe<string>;
+    filters?: ScoresFilter[];
+    orderBy?: ScoresOrderBy;
+  }): Promise<PaginatedResponse<OmitUtils<Score>>> {
+    const query = `
+    query GetScores(
+      $after: ID,
+      $before: ID,
+      $cursorAnchor: DateTime,
+      $filters: [scoresInputType!],
+      $orderBy: ScoresOrderByInput,
+      $first: Int,
+      $last: Int,
+      $projectId: String,
+      ) {
+      scores(
+          after: $after,
+          before: $before,
+          cursorAnchor: $cursorAnchor,
+          filters: $filters,
+          orderBy: $orderBy,
+          first: $first,
+          last: $last,
+          projectId: $projectId,
+          ) {
+          pageInfo {
+              startCursor
+              endCursor
+              hasNextPage
+              hasPreviousPage
+          }
+          totalCount
+          edges {
+              cursor
+              node {
+                  comment
+                  createdAt
+                  id
+                  projectId
+                  stepId
+                  generationId
+                  datasetExperimentItemId
+                  type
+                  updatedAt
+                  name
+                  value
+                  tags
+                  step {
+                      thread {
+                      id
+                      participant {
+                          identifier
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }`;
+
+    const result = await this.makeGqlCall(query, variables);
+
+    const response = result.data.scores;
+
+    response.data = response.edges.map((x: any) => x.node);
+    delete response.edges;
+
+    return response;
+  }
+
   async createScore(variables: OmitUtils<Score>) {
     const query = `
     mutation CreateScore(
@@ -679,8 +903,7 @@ export class API {
           stepId,
           generationId,
           datasetExperimentItemId,
-          comment,
-          tags,
+          comment
       }
   }
     `;
