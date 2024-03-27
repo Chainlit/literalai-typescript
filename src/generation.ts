@@ -87,4 +87,6 @@ export class ChatGeneration extends BaseGeneration {
   }
 }
 
-export type Generation = CompletionGeneration | ChatGeneration;
+export type Generation =
+  | OmitUtils<CompletionGeneration>
+  | OmitUtils<ChatGeneration>;

@@ -13,6 +13,17 @@ export type Maybe<T> = T | null | undefined;
 
 export type OmitUtils<T> = Omit<T, keyof Utils>;
 
+export type PageInfo = {
+  hasNextPage: boolean;
+  startCursor: string;
+  endCursor: string;
+};
+
+export type PaginatedResponse<T> = {
+  data: T[];
+  pageInfo: PageInfo;
+};
+
 export class Utils {
   serialize(): any {
     const dict: any = {};
@@ -46,24 +57,20 @@ export class Utils {
   }
 }
 
-export type FeedbackStrategy =
-  | 'BINARY'
-  | 'STARS'
-  | 'BIG_STARS'
-  | 'LIKERT'
-  | 'CONTINUOUS'
-  | 'LETTERS'
-  | 'PERCENTAGE';
+export type ScoreType = 'HUMAN' | 'AI';
 
-export class Feedback extends Utils {
-  id: Maybe<string>;
-  threadId: Maybe<string>;
-  stepId: Maybe<string>;
-  value: Maybe<number>;
-  strategy: FeedbackStrategy = 'BINARY';
-  comment: Maybe<string>;
+export class Score extends Utils {
+  id?: Maybe<string>;
+  stepId?: Maybe<string>;
+  generationId?: Maybe<string>;
+  datasetExperimentItemId?: Maybe<string>;
+  name: string = 'user-feedback';
+  value: number = 0;
+  type: ScoreType = 'AI';
+  comment?: Maybe<string>;
+  tags?: Maybe<string[]>;
 
-  constructor(data: OmitUtils<Feedback>) {
+  constructor(data: OmitUtils<Score>) {
     super();
     Object.assign(this, data);
   }
@@ -92,10 +99,11 @@ class ThreadFields extends Utils {
   environment?: Maybe<string>;
   name?: Maybe<string>;
   metadata?: Maybe<Record<string, any>>;
+  steps?: Maybe<Step[]>;
   tags?: Maybe<string[]>;
 }
 
-type CleanThreadFields = OmitUtils<ThreadFields>;
+export type CleanThreadFields = OmitUtils<ThreadFields>;
 export type ThreadConstructor = Omit<CleanThreadFields, 'id'> &
   Partial<Pick<CleanThreadFields, 'id'>>;
 
@@ -159,7 +167,7 @@ class StepFields extends Utils {
   parentId?: Maybe<string>;
   endTime?: Maybe<string>;
   generation?: Maybe<Generation>;
-  feedback?: Maybe<Feedback>;
+  scores?: Maybe<Score[]>;
   attachments?: Maybe<Attachment[]>;
 }
 
