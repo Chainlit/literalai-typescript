@@ -56,7 +56,9 @@ export type ThreadsFilter =
   | Filter<'tokenCount', 'number', true>
   | Filter<'stepType', 'stringList'>
   | Filter<'stepName', 'string', true>
+  | Filter<'stepOutput', 'json', true>
   | Filter<'tags', 'stringList', true>
+  | Filter<'participantId', 'string', true>
   | Filter<'participantIdentifiers', 'stringList', true>
   | Filter<'scoreValue', 'number'>
   | Filter<'duration', 'number', true>;
