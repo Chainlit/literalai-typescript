@@ -3,7 +3,6 @@ import FormData from 'form-data';
 import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-import { OmitUtils } from '../dist';
 import {
   GenerationsFilter,
   GenerationsOrderBy,
@@ -19,6 +18,7 @@ import {
   Dataset,
   DatasetItem,
   Maybe,
+  OmitUtils,
   PaginatedResponse,
   Prompt,
   Score,
