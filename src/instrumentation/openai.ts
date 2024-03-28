@@ -237,7 +237,7 @@ async function processStreamResponse(
     }
     outputTokenCount += 1;
   }
-  const duration = Date.now() - start;
+  const duration = (Date.now() - start) / 1000;
   const tokenThroughputInSeconds =
     duration && outputTokenCount
       ? outputTokenCount / (duration / 1000)

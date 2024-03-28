@@ -210,20 +210,25 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       start: Date.now(),
       outputTokenCount: 0
     };
-    const step = await this.client
-      .step({
-        name: name || model,
-        type: 'llm',
-        tags: tags,
-        threadId: this.threadId,
-        id: runId,
-        startTime: new Date().toISOString(),
-        parentId: this.getParentId(parentRunId),
-        metadata: metadata,
-        input: { content: prompts }
-      })
-      .send();
-    this.steps[runId] = step;
+
+    const parentId = this.getParentId(parentRunId);
+
+    if (parentId || this.threadId) {
+      const step = await this.client
+        .step({
+          name: name || model,
+          type: 'llm',
+          tags: tags,
+          threadId: this.threadId,
+          id: runId,
+          startTime: new Date().toISOString(),
+          parentId: this.getParentId(parentRunId),
+          metadata: metadata,
+          input: { content: prompts }
+        })
+        .send();
+      this.steps[runId] = step;
+    }
   }
 
   handleLLMNewToken(
@@ -271,10 +276,13 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         provider,
         settings
       } = this.completionGenerations[runId];
-      const duration = Date.now() - start;
+      const duration = (Date.now() - start) / 1000;
       const tokenThroughputInSeconds =
-        duration && outputTokenCount ? outputTokenCount / (duration / 1000) : 0;
-      this.steps[runId].generation = new CompletionGeneration({
+        duration && outputTokenCount
+          ? outputTokenCount / (duration / 1000)
+          : undefined;
+
+      const generation = new CompletionGeneration({
         provider,
         model,
         settings,
@@ -285,8 +293,16 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         outputTokenCount,
         tokenThroughputInSeconds: tokenThroughputInSeconds
       });
-      this.steps[runId].output = output.generations[0][0];
-      this.steps[runId].endTime = new Date().toISOString();
+
+      if (this.steps[runId]) {
+        this.steps[runId].generation = generation;
+        this.steps[runId].output = output.generations[0][0];
+        this.steps[runId].endTime = new Date().toISOString();
+
+        await this.steps[runId].send();
+      } else {
+        await this.client.api.createGeneration(generation);
+      }
     } else if (chatGeneration) {
       const {
         promptId,
@@ -300,14 +316,16 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         settings,
         tools
       } = this.chatGenerations[runId];
-      const duration = Date.now() - start;
+      const duration = (Date.now() - start) / 1000;
       const tokenThroughputInSeconds =
-        duration && outputTokenCount ? outputTokenCount / (duration / 1000) : 0;
+        duration && outputTokenCount
+          ? outputTokenCount / (duration / 1000)
+          : undefined;
       const messageCompletion = convertMessage(
         (output.generations[0][0] as any).message
       );
 
-      this.steps[runId].generation = new ChatGeneration({
+      const generation = new ChatGeneration({
         promptId,
         variables,
         provider,
@@ -321,17 +339,24 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         outputTokenCount,
         tokenThroughputInSeconds: tokenThroughputInSeconds
       });
-      this.steps[runId].generation!.inputTokenCount =
-        output.llmOutput?.estimatedTokenUsage?.promptTokens;
-      this.steps[runId].generation!.outputTokenCount =
-        output.llmOutput?.estimatedTokenUsage?.completionTokens;
-      this.steps[runId].generation!.tokenCount =
-        output.llmOutput?.estimatedTokenUsage?.totalTokens;
 
-      this.steps[runId].output = messageCompletion;
-      this.steps[runId].endTime = new Date().toISOString();
+      if (this.steps[runId]) {
+        this.steps[runId].generation = generation;
+        this.steps[runId].generation!.inputTokenCount =
+          output.llmOutput?.estimatedTokenUsage?.promptTokens;
+        this.steps[runId].generation!.outputTokenCount =
+          output.llmOutput?.estimatedTokenUsage?.completionTokens;
+        this.steps[runId].generation!.tokenCount =
+          output.llmOutput?.estimatedTokenUsage?.totalTokens;
+
+        this.steps[runId].output = messageCompletion;
+        this.steps[runId].endTime = new Date().toISOString();
+
+        await this.steps[runId].send();
+      } else {
+        await this.client.api.createGeneration(generation);
+      }
     }
-    await this.steps[runId].send();
   }
   async handleChatModelStart(
     llm: Serialized,
@@ -346,7 +371,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     const provider = llm.id[llm.id.length - 1];
     const settings: Record<string, any> = extraParams?.invocation_params || {};
 
-    //make sure there is no api key specification
+    // make sure there is no api key specification
     delete settings.apiKey;
     delete settings.api_key;
 
@@ -368,20 +393,25 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       outputTokenCount: 0
     };
 
-    const step = await this.client
-      .step({
-        name: name || model,
-        type: 'llm',
-        tags: tags,
-        threadId: this.threadId,
-        id: runId,
-        startTime: new Date().toISOString(),
-        parentId: this.getParentId(parentRunId),
-        metadata: metadata,
-        input: { content: messages[0] }
-      })
-      .send();
-    this.steps[runId] = step;
+    const parentId = this.getParentId(parentRunId);
+
+    if (this.threadId || parentId) {
+      const step = await this.client
+        .step({
+          name: name || model,
+          type: 'llm',
+          tags: tags,
+          threadId: this.threadId,
+          id: runId,
+          startTime: new Date().toISOString(),
+          parentId: parentId,
+          metadata: metadata,
+          input: { content: messages[0] }
+        })
+        .send();
+
+      this.steps[runId] = step;
+    }
   }
   async handleChainStart(
     chain: Serialized,
@@ -394,16 +424,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     name?: string | undefined
   ) {
     const chainType = chain.id[chain.id.length - 1];
-    // if (!runType || !name) {
-    //   if (!chainType.toLowerCase().includes('runnable')) {
-    //     name = chainType;
-    //   } else {
-    //     if (parentRunId) {
-    //       this.parentIdMap[runId] = parentRunId;
-    //     }
-    //     return;
-    //   }
-    // }
+
     const step = await this.client
       .step({
         name: name || chainType,

@@ -1114,10 +1114,7 @@ export class API {
       }
   }
     `;
-    console.log({
-      name,
-      version
-    });
+
     const result = await this.makeGqlCall(query, {
       name,
       version
