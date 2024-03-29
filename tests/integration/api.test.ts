@@ -284,6 +284,23 @@ describe('End to end tests for the SDK', function () {
       expect(dataset.name).toBe('test');
       expect(dataset.description).toBe('test');
       expect(dataset.metadata).toStrictEqual({ foo: 'bar' });
+      expect(dataset.type).toBe('key_value');
+    });
+
+    it('should create a generation dataset', async () => {
+      const dataset = await client.api.createDataset({
+        name: 'test',
+        description: 'test',
+        metadata: { foo: 'bar' },
+        type: 'generation'
+      });
+
+      expect(dataset.id).not.toBeNull();
+      expect(dataset.createdAt).not.toBeNull();
+      expect(dataset.name).toBe('test');
+      expect(dataset.description).toBe('test');
+      expect(dataset.metadata).toStrictEqual({ foo: 'bar' });
+      expect(dataset.type).toBe('generation');
     });
 
     it('should update a dataset', async () => {
@@ -333,9 +350,13 @@ describe('End to end tests for the SDK', function () {
 
   describe('dataset item api', () => {
     let dataset: Dataset;
+    let generationDataset: Dataset;
 
     beforeAll(async () => {
       dataset = await client.api.createDataset();
+      generationDataset = await client.api.createDataset({
+        type: 'generation'
+      });
     });
 
     it('should create a dataset item', async () => {

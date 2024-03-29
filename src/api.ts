@@ -17,6 +17,7 @@ import {
   CleanThreadFields,
   Dataset,
   DatasetItem,
+  DatasetType,
   Maybe,
   OmitUtils,
   PaginatedResponse,
@@ -933,16 +934,18 @@ export class API {
       name?: Maybe<string>;
       description?: Maybe<string>;
       metadata?: Maybe<Record<string, any>>;
+      type?: DatasetType;
     } = {}
   ) {
     const query = `
-      mutation CreateDataset($name: String, $description: String, $metadata: Json) {
-        createDataset(name: $name, description: $description, metadata: $metadata) {
+      mutation CreateDataset($name: String, $description: String, $metadata: Json, $type: DatasetType) {
+        createDataset(name: $name, description: $description, metadata: $metadata, type: $type) {
           id
           createdAt
           metadata
           name
           description
+          type
         }
       }
     `;
@@ -977,6 +980,7 @@ export class API {
           metadata
           name
           description
+          type
         }
       }
     `;
@@ -994,6 +998,7 @@ export class API {
           metadata
           name
           description
+          type
         }
       }
     `;
