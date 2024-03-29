@@ -716,12 +716,14 @@ export class API {
   ) {
     const existingUser = await this.getUser(identifier);
     if (existingUser) {
-      const updatedUser = await this.updateUser(
-        existingUser.id!,
-        existingUser.identifier,
-        metadata
-      );
-      return updatedUser.id!;
+      if (metadata !== undefined) {
+        await this.updateUser(
+          existingUser.id!,
+          existingUser.identifier,
+          metadata
+        );
+      }
+      return existingUser.id!;
     } else {
       const createdUser = await this.createUser(identifier, metadata);
       return createdUser.id!;
