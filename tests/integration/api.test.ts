@@ -433,6 +433,43 @@ describe('End to end tests for the SDK', function () {
       expect(datasetItem.expectedOutput).toStrictEqual({ content: 'hello!' });
       expect(datasetItem.intermediarySteps).toHaveLength(1);
     });
+
+    it('should create a generation dataset item', async () => {
+      const datasetItem = await generationDataset.createItem({
+        input: { messages: ['bar'] },
+        expectedOutput: { messageCompletion: 'baz' },
+        metadata: { type: 'CHAT' }
+      });
+
+      expect(datasetItem.id).not.toBeNull();
+      expect(datasetItem.createdAt).not.toBeNull();
+      expect(datasetItem.input).toStrictEqual({ messages: ['bar'] });
+      expect(datasetItem.expectedOutput).toStrictEqual({
+        messageCompletion: 'baz'
+      });
+      expect(datasetItem.metadata).toStrictEqual({ type: 'CHAT' });
+    });
+
+    it('should add a generation to a dataset', async () => {
+      const generation = await client.api.createGeneration({
+        provider: 'test',
+        model: 'test',
+        messages: [
+          { role: 'system', content: 'Hello, how can I help you today?' }
+        ]
+      });
+
+      if (generation?.id == null) {
+        throw new Error('Could not create a generation');
+      }
+      const datasetItem = await generationDataset.addGeneration(generation.id);
+
+      expect(datasetItem.id).not.toBeNull();
+      expect(datasetItem.createdAt).not.toBeNull();
+      expect(datasetItem.input).not.toBeNull();
+      expect(datasetItem.expectedOutput).not.toBeNull();
+      expect(datasetItem.metadata.type).toBe('CHAT');
+    });
   });
 
   describe('Prompt api', () => {

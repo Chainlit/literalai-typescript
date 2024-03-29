@@ -313,6 +313,22 @@ export class Dataset extends DatasetFields {
     this.items.push(item);
     return item;
   }
+
+  public async addGeneration(
+    generationId: string,
+    metadata?: Maybe<Record<string, unknown>>
+  ) {
+    if (this.type === 'key_value') {
+      throw new Error('Cannot add generations to a kv dataset');
+    }
+    const item = await this.api.addGenerationToDataset(
+      this.id,
+      generationId,
+      metadata
+    );
+    this.items.push(item);
+    return item;
+  }
 }
 
 export class DatasetItem extends Utils {

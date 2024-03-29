@@ -1098,6 +1098,33 @@ export class API {
     return new DatasetItem(result.data.addStepToDataset);
   }
 
+  public async addGenerationToDataset(
+    datasetId: string,
+    generationId: string,
+    metadata?: Maybe<Record<string, unknown>>
+  ) {
+    const query = `
+     mutation AddGenerationToDataset($datasetId: String!, $generationId: String!, $metadata: Json) {
+      addGenerationToDataset(datasetId: $datasetId, generationId: $generationId, metadata: $metadata) {
+          id
+          createdAt
+          datasetId
+          metadata
+          input
+          expectedOutput
+          intermediarySteps
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, {
+      datasetId,
+      generationId,
+      metadata
+    });
+
+    return new DatasetItem(result.data.addGenerationToDataset);
+  }
+
   // Prompt
   public async getPrompt(name: string, version?: number) {
     const query = `
