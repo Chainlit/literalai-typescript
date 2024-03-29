@@ -273,23 +273,25 @@ describe('End to end tests for the SDK', function () {
 
   describe('dataset api', () => {
     it('should create a dataset', async () => {
+      const datasetName = `test_${uuidv4()}`;
       const dataset = await client.api.createDataset({
-        name: 'test',
+        name: datasetName,
         description: 'test',
         metadata: { foo: 'bar' }
       });
 
       expect(dataset.id).not.toBeNull();
       expect(dataset.createdAt).not.toBeNull();
-      expect(dataset.name).toBe('test');
+      expect(dataset.name).toBe(datasetName);
       expect(dataset.description).toBe('test');
       expect(dataset.metadata).toStrictEqual({ foo: 'bar' });
       expect(dataset.type).toBe('key_value');
     });
 
     it('should create a generation dataset', async () => {
+      const datasetName = `test_${uuidv4()}`;
       const dataset = await client.api.createDataset({
-        name: 'test',
+        name: datasetName,
         description: 'test',
         metadata: { foo: 'bar' },
         type: 'generation'
@@ -297,33 +299,36 @@ describe('End to end tests for the SDK', function () {
 
       expect(dataset.id).not.toBeNull();
       expect(dataset.createdAt).not.toBeNull();
-      expect(dataset.name).toBe('test');
+      expect(dataset.name).toBe(datasetName);
       expect(dataset.description).toBe('test');
       expect(dataset.metadata).toStrictEqual({ foo: 'bar' });
       expect(dataset.type).toBe('generation');
     });
 
     it('should update a dataset', async () => {
+      const datasetName = `test_${uuidv4()}`;
       const dataset = await client.api.createDataset({
-        name: 'test',
+        name: datasetName,
         description: 'test',
         metadata: { foo: 'bar' }
       });
 
+      const nextName = `test_${uuidv4()}`;
       await dataset.update({
-        name: 'updated',
+        name: nextName,
         description: 'updated',
         metadata: { foo: 'baz' }
       });
 
-      expect(dataset.name).toBe('updated');
+      expect(dataset.name).toBe(nextName);
       expect(dataset.description).toBe('updated');
       expect(dataset.metadata).toStrictEqual({ foo: 'baz' });
     });
 
     it('should delete a dataset', async () => {
+      const datasetName = `test_${uuidv4()}`;
       const dataset = await client.api.createDataset({
-        name: 'test',
+        name: datasetName,
         description: 'test',
         metadata: { foo: 'bar' }
       });
@@ -333,8 +338,9 @@ describe('End to end tests for the SDK', function () {
     });
 
     it('should get a dataset', async () => {
+      const datasetName = `test_${uuidv4()}`;
       const dataset = await client.api.createDataset({
-        name: 'test',
+        name: datasetName,
         description: 'test',
         metadata: { foo: 'bar' }
       });
@@ -353,8 +359,11 @@ describe('End to end tests for the SDK', function () {
     let generationDataset: Dataset;
 
     beforeAll(async () => {
-      dataset = await client.api.createDataset();
+      dataset = await client.api.createDataset({
+        name: `test_${uuidv4()}`
+      });
       generationDataset = await client.api.createDataset({
+        name: `test_${uuidv4()}`,
         type: 'generation'
       });
     });

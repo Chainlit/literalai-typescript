@@ -929,16 +929,14 @@ export class API {
   }
 
   // Dataset
-  public async createDataset(
-    dataset: {
-      name?: Maybe<string>;
-      description?: Maybe<string>;
-      metadata?: Maybe<Record<string, any>>;
-      type?: DatasetType;
-    } = {}
-  ) {
+  public async createDataset(dataset: {
+    name: string;
+    description?: Maybe<string>;
+    metadata?: Maybe<Record<string, any>>;
+    type?: DatasetType;
+  }) {
     const query = `
-      mutation CreateDataset($name: String, $description: String, $metadata: Json, $type: DatasetType) {
+      mutation CreateDataset($name: String!, $description: String, $metadata: Json, $type: DatasetType) {
         createDataset(name: $name, description: $description, metadata: $metadata, type: $type) {
           id
           createdAt
