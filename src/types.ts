@@ -318,9 +318,6 @@ export class Dataset extends DatasetFields {
     generationId: string,
     metadata?: Maybe<Record<string, unknown>>
   ) {
-    if (this.type === 'key_value') {
-      throw new Error('Cannot add generations to a kv dataset');
-    }
     const item = await this.api.addGenerationToDataset(
       this.id,
       generationId,
