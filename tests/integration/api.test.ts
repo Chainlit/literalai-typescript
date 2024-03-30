@@ -445,8 +445,8 @@ describe('End to end tests for the SDK', function () {
 
     it('should create a generation dataset item', async () => {
       const datasetItem = await generationDataset.createItem({
-        input: { messages: ['bar'] },
-        expectedOutput: { messageCompletion: 'baz' },
+        input: { messages: [{ role: 'user', content: 'input' }] },
+        expectedOutput: { role: 'assistant', content: 'output' },
         metadata: { type: 'CHAT' }
       });
 
