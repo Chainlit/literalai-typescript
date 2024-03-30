@@ -452,9 +452,12 @@ describe('End to end tests for the SDK', function () {
 
       expect(datasetItem.id).not.toBeNull();
       expect(datasetItem.createdAt).not.toBeNull();
-      expect(datasetItem.input).toStrictEqual({ messages: ['bar'] });
+      expect(datasetItem.input).toStrictEqual({
+        messages: [{ role: 'user', content: 'input' }]
+      });
       expect(datasetItem.expectedOutput).toStrictEqual({
-        messageCompletion: 'baz'
+        role: 'assistant',
+        content: 'output'
       });
       expect(datasetItem.metadata).toStrictEqual({ type: 'CHAT' });
     });
