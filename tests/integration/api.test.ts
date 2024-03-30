@@ -273,40 +273,62 @@ describe('End to end tests for the SDK', function () {
 
   describe('dataset api', () => {
     it('should create a dataset', async () => {
+      const datasetName = `test_${uuidv4()}`;
       const dataset = await client.api.createDataset({
-        name: 'test',
+        name: datasetName,
         description: 'test',
         metadata: { foo: 'bar' }
       });
 
       expect(dataset.id).not.toBeNull();
       expect(dataset.createdAt).not.toBeNull();
-      expect(dataset.name).toBe('test');
+      expect(dataset.name).toBe(datasetName);
       expect(dataset.description).toBe('test');
       expect(dataset.metadata).toStrictEqual({ foo: 'bar' });
+      expect(dataset.type).toBe('key_value');
+    });
+
+    it('should create a generation dataset', async () => {
+      const datasetName = `test_${uuidv4()}`;
+      const dataset = await client.api.createDataset({
+        name: datasetName,
+        description: 'test',
+        metadata: { foo: 'bar' },
+        type: 'generation'
+      });
+
+      expect(dataset.id).not.toBeNull();
+      expect(dataset.createdAt).not.toBeNull();
+      expect(dataset.name).toBe(datasetName);
+      expect(dataset.description).toBe('test');
+      expect(dataset.metadata).toStrictEqual({ foo: 'bar' });
+      expect(dataset.type).toBe('generation');
     });
 
     it('should update a dataset', async () => {
+      const datasetName = `test_${uuidv4()}`;
       const dataset = await client.api.createDataset({
-        name: 'test',
+        name: datasetName,
         description: 'test',
         metadata: { foo: 'bar' }
       });
 
+      const nextName = `test_${uuidv4()}`;
       await dataset.update({
-        name: 'updated',
+        name: nextName,
         description: 'updated',
         metadata: { foo: 'baz' }
       });
 
-      expect(dataset.name).toBe('updated');
+      expect(dataset.name).toBe(nextName);
       expect(dataset.description).toBe('updated');
       expect(dataset.metadata).toStrictEqual({ foo: 'baz' });
     });
 
     it('should delete a dataset', async () => {
+      const datasetName = `test_${uuidv4()}`;
       const dataset = await client.api.createDataset({
-        name: 'test',
+        name: datasetName,
         description: 'test',
         metadata: { foo: 'bar' }
       });
@@ -316,8 +338,9 @@ describe('End to end tests for the SDK', function () {
     });
 
     it('should get a dataset', async () => {
+      const datasetName = `test_${uuidv4()}`;
       const dataset = await client.api.createDataset({
-        name: 'test',
+        name: datasetName,
         description: 'test',
         metadata: { foo: 'bar' }
       });
@@ -333,9 +356,16 @@ describe('End to end tests for the SDK', function () {
 
   describe('dataset item api', () => {
     let dataset: Dataset;
+    let generationDataset: Dataset;
 
     beforeAll(async () => {
-      dataset = await client.api.createDataset();
+      dataset = await client.api.createDataset({
+        name: `test_${uuidv4()}`
+      });
+      generationDataset = await client.api.createDataset({
+        name: `test_${uuidv4()}`,
+        type: 'generation'
+      });
     });
 
     it('should create a dataset item', async () => {
@@ -411,6 +441,46 @@ describe('End to end tests for the SDK', function () {
       expect(datasetItem.input).toStrictEqual({ content: 'hello' });
       expect(datasetItem.expectedOutput).toStrictEqual({ content: 'hello!' });
       expect(datasetItem.intermediarySteps).toHaveLength(1);
+    });
+
+    it('should create a generation dataset item', async () => {
+      const datasetItem = await generationDataset.createItem({
+        input: { messages: [{ role: 'user', content: 'input' }] },
+        expectedOutput: { role: 'assistant', content: 'output' },
+        metadata: { type: 'CHAT' }
+      });
+
+      expect(datasetItem.id).not.toBeNull();
+      expect(datasetItem.createdAt).not.toBeNull();
+      expect(datasetItem.input).toStrictEqual({
+        messages: [{ role: 'user', content: 'input' }]
+      });
+      expect(datasetItem.expectedOutput).toStrictEqual({
+        role: 'assistant',
+        content: 'output'
+      });
+      expect(datasetItem.metadata).toStrictEqual({ type: 'CHAT' });
+    });
+
+    it('should add a generation to a dataset', async () => {
+      const generation = await client.api.createGeneration({
+        provider: 'test',
+        model: 'test',
+        messages: [
+          { role: 'system', content: 'Hello, how can I help you today?' }
+        ]
+      });
+
+      if (generation?.id == null) {
+        throw new Error('Could not create a generation');
+      }
+      const datasetItem = await generationDataset.addGeneration(generation.id);
+
+      expect(datasetItem.id).not.toBeNull();
+      expect(datasetItem.createdAt).not.toBeNull();
+      expect(datasetItem.input).not.toBeNull();
+      expect(datasetItem.expectedOutput).not.toBeNull();
+      expect(datasetItem.metadata.type).toBe('CHAT');
     });
   });
 

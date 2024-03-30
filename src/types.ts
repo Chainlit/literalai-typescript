@@ -239,6 +239,8 @@ export class User extends Utils {
   }
 }
 
+export type DatasetType = 'key_value' | 'generation';
+
 class DatasetFields extends Utils {
   id!: string;
   createdAt!: string;
@@ -246,6 +248,7 @@ class DatasetFields extends Utils {
   description?: Maybe<string>;
   metadata!: Record<string, any>;
   items!: Array<OmitUtils<DatasetItem>>;
+  type?: DatasetType;
 }
 
 export type DatasetConstructor = OmitUtils<DatasetFields>;
@@ -259,6 +262,9 @@ export class Dataset extends DatasetFields {
     Object.assign(this, data);
     if (!this.items) {
       this.items = [];
+    }
+    if (!this.type) {
+      this.type = 'key_value';
     }
   }
 
@@ -300,7 +306,23 @@ export class Dataset extends DatasetFields {
     stepId: string,
     metadata?: Maybe<Record<string, unknown>>
   ) {
+    if (this.type === 'generation') {
+      throw new Error('Cannot add steps to a generation dataset');
+    }
     const item = await this.api.addStepToDataset(this.id, stepId, metadata);
+    this.items.push(item);
+    return item;
+  }
+
+  public async addGeneration(
+    generationId: string,
+    metadata?: Maybe<Record<string, unknown>>
+  ) {
+    const item = await this.api.addGenerationToDataset(
+      this.id,
+      generationId,
+      metadata
+    );
     this.items.push(item);
     return item;
   }
