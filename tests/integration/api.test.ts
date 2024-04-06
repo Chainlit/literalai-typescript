@@ -170,6 +170,7 @@ describe('End to end tests for the SDK', function () {
         type: 'run',
         error: 'test',
         metadata: { foo: 'bar' },
+        tags: ['hello'],
         generation: new ChatGeneration({
           provider: 'openai',
           model: 'gpt-3.5-turbo',

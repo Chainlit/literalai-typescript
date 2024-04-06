@@ -134,6 +134,7 @@ function ingestStepsFieldsBuilder(steps: Step[]) {
         $generation_${id}: GenerationPayloadInput
         $scores_${id}: [ScorePayloadInput!]
         $attachments_${id}: [AttachmentPayloadInput!]
+        $tags_${id}: [String!]
         `;
   }
   return generated;
@@ -158,6 +159,7 @@ function ingestStepsArgsBuilder(steps: Step[]) {
         generation: $generation_${id}
         scores: $scores_${id}
         attachments: $attachments_${id}
+        tags: $tags_${id}
       ) {
         ok
         message
