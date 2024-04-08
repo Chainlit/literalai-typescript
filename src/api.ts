@@ -1156,7 +1156,8 @@ export class API {
 
   public async createPrompt(
     name: string,
-    templateMessages: IGenerationMessage[]
+    templateMessages: IGenerationMessage[],
+    settings?: Maybe<Record<string, any>>
   ) {
     const mutation = `mutation createPromptVersion(
       $lineageId: String!
@@ -1189,7 +1190,8 @@ export class API {
 
     const result = await this.makeGqlCall(mutation, {
       lineageId: lineage.id,
-      templateMessages
+      templateMessages,
+      settings
     });
 
     const promptData = result.data.createPromptVersion;
