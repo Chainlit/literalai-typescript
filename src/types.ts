@@ -128,6 +128,9 @@ export class Thread extends ThreadFields {
   }
 
   async upsert() {
+    if (this.api.disabled) {
+      return this;
+    }
     await this.api.upsertThread(
       this.id,
       this.name,
@@ -219,6 +222,9 @@ export class Step extends StepFields {
   }
 
   async send() {
+    if (this.api.disabled) {
+      return this;
+    }
     await new Promise((resolve) => setTimeout(resolve, 1));
     if (!this.endTime) {
       this.endTime = new Date().toISOString();

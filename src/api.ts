@@ -182,12 +182,14 @@ export class API {
   private url: string;
   private graphqlEndpoint: string;
   private restEndpoint: string;
+  public disabled: boolean;
 
-  constructor(apiKey: string, url: string) {
+  constructor(apiKey: string, url: string, disabled?: boolean) {
     this.apiKey = apiKey;
     this.url = url;
     this.graphqlEndpoint = `${url}/api/graphql`;
     this.restEndpoint = `${url}/api`;
+    this.disabled = !!disabled;
 
     if (!this.apiKey) {
       throw new Error('LITERAL_API_KEY not set');
