@@ -12,7 +12,7 @@ import {
   ThreadsFilter,
   ThreadsOrderBy
 } from './filter';
-import { Generation } from './generation';
+import { Generation, IGenerationMessage } from './generation';
 import {
   CleanThreadFields,
   Dataset,
@@ -1128,6 +1128,83 @@ export class API {
   }
 
   // Prompt
+  public async createPromptLineage(name: string, description?: string) {
+    const mutation = `mutation createPromptLineage(
+      $name: String!
+      $description: String
+    ) {
+      createPromptLineage(
+        name: $name
+        description: $description
+      ) {
+        id
+        name
+      }
+    }`;
+
+    const result = await this.makeGqlCall(mutation, {
+      name,
+      description
+    });
+
+    if (!result.data || !result.data.createPromptLineage) {
+      return null;
+    }
+
+    return result.data.createPromptLineage;
+  }
+
+  public async createPrompt(
+    name: string,
+    templateMessages: IGenerationMessage[],
+    settings?: Maybe<Record<string, any>>
+  ) {
+    const mutation = `mutation createPromptVersion(
+      $lineageId: String!
+      $versionDesc: String
+      $templateMessages: Json
+      $tools: Json
+      $settings: Json
+      $variables: Json
+      $variablesDefaultValues: Json
+    ) {
+      createPromptVersion(
+        lineageId: $lineageId
+        versionDesc: $versionDesc
+        templateMessages: $templateMessages
+        tools: $tools
+        settings: $settings
+        variables: $variables
+        variablesDefaultValues: $variablesDefaultValues
+      ) {
+        id
+        version
+        createdAt
+        tools
+        settings
+        templateMessages
+      }
+    }`;
+
+    const lineage = await this.createPromptLineage(name);
+
+    const result = await this.makeGqlCall(mutation, {
+      lineageId: lineage.id,
+      templateMessages,
+      settings
+    });
+
+    const promptData = result.data.createPromptVersion;
+    promptData.provider = promptData.settings?.provider;
+    promptData.name = promptData.lineage?.name;
+    delete promptData.lineage;
+    if (promptData.settings) {
+      delete promptData.settings.provider;
+    }
+
+    return new Prompt(this, promptData);
+  }
+
   public async getPrompt(name: string, version?: number) {
     const query = `
     query GetPrompt($name: String!, $version: Int) {
@@ -1159,10 +1236,12 @@ export class API {
     }
 
     const promptData = result.data.promptVersion;
-    promptData.provider = promptData.settings.provider;
+    promptData.provider = promptData.settings?.provider;
     promptData.name = promptData.lineage?.name;
     delete promptData.lineage;
-    delete promptData.settings.provider;
+    if (promptData.settings) {
+      delete promptData.settings.provider;
+    }
 
     return new Prompt(this, promptData);
   }
