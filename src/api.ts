@@ -16,6 +16,8 @@ import { Generation, IGenerationMessage } from './generation';
 import {
   CleanThreadFields,
   Dataset,
+  DatasetExperiment,
+  DatasetExperimentItem,
   DatasetItem,
   DatasetType,
   Maybe,
@@ -856,6 +858,7 @@ export class API {
       $datasetExperimentItemId: String,
       $comment: String,
       $tags: [String!],
+      $assertion: Json
 
   ) {
       createScore(
@@ -867,6 +870,7 @@ export class API {
           datasetExperimentItemId: $datasetExperimentItemId,
           comment: $comment,
           tags: $tags,
+          assertion: $assertion,
       ) {
           id
           name,
@@ -961,6 +965,7 @@ export class API {
   public async getDataset(id: string) {
     const result = await this.makeApiCall('/export/dataset', { id });
 
+    // console.log(sresult);
     if (!result.data) {
       return null;
     }
@@ -1127,6 +1132,38 @@ export class API {
     });
 
     return new DatasetItem(result.data.addGenerationToDataset);
+  }
+
+  public async createDatasetExperiment(datasetExperiment: {
+    name: string;
+    datasetId: string;
+  }) {
+    const query = `
+      mutation CreateDatasetExperiment($name: String!, $datasetId: String!) {
+        createDatasetExperiment(name: $name, datasetId: $datasetId) {
+          id
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, datasetExperiment);
+
+    return new DatasetExperiment(result.data.createDatasetExperiment);
+  }
+
+  public async createDatasetExperimentItem(datasetExperimentItem: {
+    datasetExperimentId: string;
+    datasetItemId: string;
+  }) {
+    const query = `
+      mutation CreateDatasetExperimentItem($datasetExperimentId: String!, $datasetItemId: String!) {
+        createDatasetExperimentItem(datasetExperimentId: $datasetExperimentId, datasetItemId: $datasetItemId) {
+          id
+        }
+      }
+    `;
+    const result = await this.makeGqlCall(query, datasetExperimentItem);
+
+    return new DatasetExperimentItem(result.data.createDatasetExperimentItem);
   }
 
   // Prompt

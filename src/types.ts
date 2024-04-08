@@ -69,6 +69,7 @@ export class Score extends Utils {
   type: ScoreType = 'AI';
   comment?: Maybe<string>;
   tags?: Maybe<string[]>;
+  assertion?: Maybe<Record<string, any>>;
 
   constructor(data: OmitUtils<Score>) {
     super();
@@ -349,6 +350,29 @@ export class DatasetItem extends Utils {
   }
 }
 
+export class DatasetExperiment extends Utils {
+  id!: string;
+  createdAt!: string;
+  name!: string;
+  datasetId!: string;
+
+  constructor(data: OmitUtils<DatasetExperiment>) {
+    super();
+    Object.assign(this, data);
+  }
+}
+
+export class DatasetExperimentItem extends Utils {
+  id!: string;
+  createdAt!: string;
+  datasetExperimentId!: string;
+  datasetItemId!: string;
+
+  constructor(data: OmitUtils<DatasetExperimentItem>) {
+    super();
+    Object.assign(this, data);
+  }
+}
 export interface IPromptVariableDefinition {
   name: string;
   language: 'json' | 'plaintext';
