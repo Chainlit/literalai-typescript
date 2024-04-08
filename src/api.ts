@@ -110,11 +110,31 @@ function serialize(step: Step, id: number) {
   return result;
 }
 
+// TODO: Refactor Step + Score functions to only one.
+function scoreSerialize(score: Score, id: number) {
+  const result: any = {};
+
+  for (const [key, value] of Object.entries(score.serialize())) {
+    result[`${key}_${id}`] = value;
+  }
+
+  return result;
+}
+
 function variablesBuilder(steps: Step[]) {
   let variables: any = {};
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
     variables = { ...variables, ...serialize(step, i) };
+  }
+  return variables;
+}
+
+function scoreVariablesBuilder(scores: Score[]) {
+  let variables: any = {};
+  for (let i = 0; i < scores.length; i++) {
+    const score = scores[i];
+    variables = { ...variables, ...scoreSerialize(score, i) };
   }
   return variables;
 }
@@ -166,7 +186,7 @@ function ingestStepsArgsBuilder(steps: Step[]) {
         ok
         message
       }
-`;
+    `;
   }
   return generated;
 }
@@ -175,6 +195,51 @@ function ingestStepsQueryBuilder(steps: Step[]) {
   return `
     mutation AddStep(${ingestStepsFieldsBuilder(steps)}) {
       ${ingestStepsArgsBuilder(steps)}
+    }
+    `;
+}
+
+function createScoresFieldsBuilder(scores: Score[]) {
+  let generated = '';
+  for (let id = 0; id < scores.length; id++) {
+    generated += `$name_${id}: String!
+        $type_${id}: ScoreType!
+        $value_${id}: Float!
+        $stepId_${id}: String
+        $generationId_${id}: String
+        $datasetExperimentItemId_${id}: String
+        $comment_${id}: String
+        $tags_${id}: [String!]
+        `;
+  }
+  return generated;
+}
+
+function createScoresArgsBuilder(scores: Score[]) {
+  let generated = '';
+  for (let id = 0; id < scores.length; id++) {
+    generated += `
+      score${id}: createScore(
+        name: $name_${id}
+        type: $type_${id}
+        value: $value_${id}
+        stepId: $stepId_${id}
+        generationId: $generationId_${id}
+        datasetExperimentItemId: $datasetExperimentItemId_${id}
+        comment: $comment_${id}
+        tags: $tags_${id}
+      ) {
+        id
+      }
+    `;
+  }
+  return generated;
+}
+
+function createScoresQueryBuilder(scores: Score[]) {
+  return `
+    mutation CreateScores(${createScoresFieldsBuilder(scores)}) {
+      ${createScoresArgsBuilder(scores)}
     }
     `;
 }
@@ -847,6 +912,13 @@ export class API {
     return response;
   }
 
+  async createScores(scores: Score[]) {
+    const query = createScoresQueryBuilder(scores);
+    const variables = scoreVariablesBuilder(scores);
+
+    return this.makeGqlCall(query, variables);
+  }
+
   async createScore(variables: OmitUtils<Score>) {
     const query = `
     mutation CreateScore(
@@ -858,8 +930,6 @@ export class API {
       $datasetExperimentItemId: String,
       $comment: String,
       $tags: [String!],
-      $assertion: Json
-
   ) {
       createScore(
           name: $name,
@@ -870,7 +940,6 @@ export class API {
           datasetExperimentItemId: $datasetExperimentItemId,
           comment: $comment,
           tags: $tags,
-          assertion: $assertion,
       ) {
           id
           name,
@@ -965,7 +1034,6 @@ export class API {
   public async getDataset(id: string) {
     const result = await this.makeApiCall('/export/dataset', { id });
 
-    // console.log(sresult);
     if (!result.data) {
       return null;
     }
@@ -1137,17 +1205,25 @@ export class API {
   public async createDatasetExperiment(datasetExperiment: {
     name: string;
     datasetId: string;
+    assertions: Record<string, any> | Array<Record<string, any>>;
   }) {
     const query = `
-      mutation CreateDatasetExperiment($name: String!, $datasetId: String!) {
-        createDatasetExperiment(name: $name, datasetId: $datasetId) {
+      mutation CreateDatasetExperiment($name: String!, $datasetId: String!, $assertions: Json!) {
+        createDatasetExperiment(name: $name, datasetId: $datasetId, assertions: $assertions) {
           id
         }
       }
     `;
-    const result = await this.makeGqlCall(query, datasetExperiment);
+    const datasetExperimentInput = {
+      name: datasetExperiment.name,
+      datasetId: datasetExperiment.datasetId,
+      assertions: {
+        content: datasetExperiment.assertions
+      }
+    };
+    const result = await this.makeGqlCall(query, datasetExperimentInput);
 
-    return new DatasetExperiment(result.data.createDatasetExperiment);
+    return new DatasetExperiment(this, result.data.createDatasetExperiment);
   }
 
   public async createDatasetExperimentItem(datasetExperimentItem: {

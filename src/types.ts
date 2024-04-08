@@ -309,6 +309,18 @@ export class Dataset extends DatasetFields {
     return deletedItem;
   }
 
+  async createExperiment(experiment: {
+    name: string;
+    assertions: Record<string, any> | Array<Record<string, any>>;
+  }) {
+    const datasetExperiment = await this.api.createDatasetExperiment({
+      name: experiment.name,
+      datasetId: this.id,
+      assertions: experiment.assertions
+    });
+    return new DatasetExperiment(this.api, datasetExperiment);
+  }
+
   public async addStep(
     stepId: string,
     metadata?: Maybe<Record<string, unknown>>
@@ -355,10 +367,38 @@ export class DatasetExperiment extends Utils {
   createdAt!: string;
   name!: string;
   datasetId!: string;
+  api: API;
+  assertions!: Record<string, any> | Array<Record<string, any>>;
+  items!: DatasetExperimentItem[];
 
-  constructor(data: OmitUtils<DatasetExperiment>) {
+  constructor(api: API, data: OmitUtils<DatasetExperiment>) {
     super();
+    this.api = api;
     Object.assign(this, data);
+    if (!this.items) {
+      this.items = [];
+    }
+  }
+
+  async log(datasetExperimentItem: { datasetItemId: string; scores: Score[] }) {
+    const datasetExperimentItemInput = {
+      datasetExperimentId: this.id,
+      datasetItemId: datasetExperimentItem.datasetItemId
+    };
+
+    const item = await this.api.createDatasetExperimentItem(
+      datasetExperimentItemInput
+    );
+
+    await this.api.createScores(
+      datasetExperimentItem.scores.map((score) => {
+        score.datasetExperimentItemId = item.id;
+        return score;
+      })
+    );
+
+    this.items.push(item);
+    return item;
   }
 }
 

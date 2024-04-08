@@ -1,7 +1,13 @@
 import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Attachment, ChatGeneration, Dataset, LiteralClient } from '../../src';
+import {
+  Attachment,
+  ChatGeneration,
+  Dataset,
+  LiteralClient,
+  Score
+} from '../../src';
 
 describe('End to end tests for the SDK', function () {
   let client: LiteralClient;
@@ -232,6 +238,38 @@ describe('End to end tests for the SDK', function () {
     expect(scores.data[0].id).toBe(score.id);
 
     await client.api.deleteThread(thread.id);
+  });
+
+  it('should test scores', async function () {
+    const thread = await client.thread({ id: uuidv4() });
+    const step = await thread
+      .step({
+        name: 'test',
+        type: 'run',
+        metadata: { foo: 'bar' }
+      })
+      .send();
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const firstScoreValue = 0.9234;
+    const scores = await client.api.createScores([
+      new Score({
+        stepId: step.id!,
+        name: 'Similarity',
+        type: 'AI',
+        value: firstScoreValue
+      }),
+      new Score({
+        stepId: step.id!,
+        name: 'Factuality',
+        type: 'AI',
+        value: 1
+      })
+    ]);
+
+    expect(scores.length).toEqual(2);
+    expect(scores[0].value).toBe(firstScoreValue);
   });
 
   it('should test attachment', async function () {
