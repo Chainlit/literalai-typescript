@@ -26,7 +26,8 @@ import {
   Prompt,
   Score,
   Step,
-  User
+  User,
+  Utils
 } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -100,41 +101,32 @@ const threadFields = `
         ${stepFields}
     }`;
 
-function serialize(step: Step, id: number) {
+function serialize(object: Utils, id: number) {
   const result: any = {};
 
-  for (const [key, value] of Object.entries(step.serialize())) {
+  for (const [key, value] of Object.entries(object.serialize())) {
     result[`${key}_${id}`] = value;
   }
 
   return result;
 }
 
-// TODO: Refactor Step + Score functions to only one.
-function scoreSerialize(score: Score, id: number) {
-  const result: any = {};
-
-  for (const [key, value] of Object.entries(score.serialize())) {
-    result[`${key}_${id}`] = value;
-  }
-
-  return result;
-}
-
-function variablesBuilder(steps: Step[]) {
+function variablesBuilder(objects: Utils[]) {
   let variables: any = {};
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i];
-    variables = { ...variables, ...serialize(step, i) };
+  for (let i = 0; i < objects.length; i++) {
+    variables = { ...variables, ...serialize(objects[i], i) };
   }
   return variables;
 }
 
-function scoreVariablesBuilder(scores: Score[]) {
-  let variables: any = {};
-  for (let i = 0; i < scores.length; i++) {
-    const score = scores[i];
-    variables = { ...variables, ...scoreSerialize(score, i) };
+function generationsVariablesBuilder(
+  datasetId: string,
+  generationIds: string[]
+) {
+  const variables: any = { datasetId };
+  for (let i = 0; i < generationIds.length; i++) {
+    const generationId = generationIds[i];
+    variables[`generationId_${i}`] = generationId;
   }
   return variables;
 }
@@ -244,6 +236,47 @@ function createScoresQueryBuilder(scores: Score[]) {
   return `
     mutation CreateScores(${createScoresFieldsBuilder(scores)}) {
       ${createScoresArgsBuilder(scores)}
+    }
+    `;
+}
+
+function addGenerationsToDatasetFieldsBuilder(generationIds: string[]) {
+  let generated = '$datasetId: String!';
+  for (let id = 0; id < generationIds.length; id++) {
+    generated += `
+        $generationId_${id}: String!
+        `;
+  }
+  return generated;
+}
+
+function addGenerationsToDatasetArgsBuilder(generationIds: string[]) {
+  let generated = '';
+  for (let id = 0; id < generationIds.length; id++) {
+    generated += `
+      datasetItem${id}: addGenerationToDataset(
+        datasetId: $datasetId
+        generationId: $generationId_${id}
+      ) {
+        id
+        createdAt
+        datasetId
+        metadata
+        input
+        expectedOutput
+        intermediarySteps
+      }
+    `;
+  }
+  return generated;
+}
+
+function addGenerationsToDatasetQueryBuilder(generationIds: string[]) {
+  return `
+    mutation AddGenerationsToDataset(${addGenerationsToDatasetFieldsBuilder(
+      generationIds
+    )}) {
+      ${addGenerationsToDatasetArgsBuilder(generationIds)}
     }
     `;
 }
@@ -918,7 +951,7 @@ export class API {
 
   async createScores(scores: Score[]) {
     const query = createScoresQueryBuilder(scores);
-    const variables = scoreVariablesBuilder(scores);
+    const variables = variablesBuilder(scores);
 
     return this.makeGqlCall(query, variables);
   }
@@ -1204,6 +1237,17 @@ export class API {
     });
 
     return new DatasetItem(result.data.addGenerationToDataset);
+  }
+
+  public async addGenerationsToDataset(
+    datasetId: string,
+    generationIds: string[]
+  ): Promise<DatasetItem[]> {
+    const query = addGenerationsToDatasetQueryBuilder(generationIds);
+    const variables = generationsVariablesBuilder(datasetId, generationIds);
+
+    const result = await this.makeGqlCall(query, variables);
+    return Object.values(result.data).map((x: any) => new DatasetItem(x));
   }
 
   public async createDatasetExperiment(datasetExperiment: {

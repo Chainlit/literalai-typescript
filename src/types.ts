@@ -344,6 +344,19 @@ export class Dataset extends DatasetFields {
     this.items.push(item);
     return item;
   }
+
+  public async addGenerations(generationIds?: string[]) {
+    if (generationIds == undefined || generationIds?.length === 0) {
+      return [];
+    }
+
+    const items = await this.api.addGenerationsToDataset(
+      this.id,
+      generationIds
+    );
+    this.items = this.items.concat(items);
+    return items;
+  }
 }
 
 export class DatasetItem extends Utils {
