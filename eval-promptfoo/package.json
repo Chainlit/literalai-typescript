@@ -1,0 +1,21 @@
+{
+  "name": "eval-promptfoo",
+  "version": "1.0.0",
+  "description": "Example to evaluate Literal datasets offline with promptfoo",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npm run copy-files && tsc-watch --onSuccess \"npm start\"",
+    "start": "node dist/src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "copy-files": "cp ./node_modules/@literalai/client/package.json ./dist/typescript-client"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@literalai/client": "@literalai/client",
+    "copyfiles": "^2.4.1",
+    "promptfoo": "^0.48.0",
+    "tsc-watch": "^6.2.0",
+    "typescript": "^5.4.4"
+  }
+}
