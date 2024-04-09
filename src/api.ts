@@ -949,11 +949,12 @@ export class API {
     return response;
   }
 
-  async createScores(scores: Score[]) {
+  async createScores(scores: Score[]): Promise<Score[]> {
     const query = createScoresQueryBuilder(scores);
     const variables = variablesBuilder(scores);
 
-    return this.makeGqlCall(query, variables);
+    const result = await this.makeGqlCall(query, variables);
+    return Object.values(result.data).map((x: any) => new Score(x));
   }
 
   async createScore(variables: OmitUtils<Score>) {
