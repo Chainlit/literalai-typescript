@@ -1,6 +1,6 @@
 {
   "name": "@literalai/client",
-  "version": "0.0.501",
+  "version": "0.0.6",
   "description": "",
   "exports": {
     ".": {
@@ -51,6 +51,6 @@
   },
   "peerDependencies": {
     "langchain": "^0.1.14",
-    "openai": "^4.26.0"
+    "openai": "=4.26.0"
   }
 }

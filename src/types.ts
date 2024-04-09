@@ -69,7 +69,6 @@ export class Score extends Utils {
   type: ScoreType = 'AI';
   comment?: Maybe<string>;
   tags?: Maybe<string[]>;
-  assertion?: Maybe<Record<string, any>>;
 
   constructor(data: OmitUtils<Score>) {
     super();
@@ -311,7 +310,7 @@ export class Dataset extends DatasetFields {
 
   async createExperiment(experiment: {
     name: string;
-    assertions: Record<string, any> | Array<Record<string, any>>;
+    assertions?: Record<string, any> | Array<Record<string, any>>;
   }) {
     const datasetExperiment = await this.api.createDatasetExperiment({
       name: experiment.name,
@@ -380,33 +379,27 @@ export class DatasetExperiment extends Utils {
     }
   }
 
-  async log(datasetExperimentItem: { datasetItemId: string; scores: Score[] }) {
-    const datasetExperimentItemInput = {
-      datasetExperimentId: this.id,
-      datasetItemId: datasetExperimentItem.datasetItemId
-    };
+  async log(datasetExperimentItem: DatasetExperimentItem) {
+    if (datasetExperimentItem.datasetExperimentId != this.id) {
+      throw new Error(
+        `Cannot log experiment item with experiment ${datasetExperimentItem.datasetExperimentId} onto experiment ${this.id}.`
+      );
+    }
 
+    // TODO: How to check that this.datasetId === datasetExperimentItem.datasetItemId.parentDatasetId
     const item = await this.api.createDatasetExperimentItem(
-      datasetExperimentItemInput
-    );
-
-    await this.api.createScores(
-      datasetExperimentItem.scores.map((score) => {
-        score.datasetExperimentItemId = item.id;
-        return score;
-      })
+      datasetExperimentItem
     );
 
     this.items.push(item);
     return item;
   }
 }
-
 export class DatasetExperimentItem extends Utils {
-  id!: string;
-  createdAt!: string;
+  id?: string;
   datasetExperimentId!: string;
   datasetItemId!: string;
+  scores!: Score[];
 
   constructor(data: OmitUtils<DatasetExperimentItem>) {
     super();

@@ -230,6 +230,10 @@ function createScoresArgsBuilder(scores: Score[]) {
         tags: $tags_${id}
       ) {
         id
+        name
+        type
+        value
+        comment
       }
     `;
   }
@@ -1205,7 +1209,7 @@ export class API {
   public async createDatasetExperiment(datasetExperiment: {
     name: string;
     datasetId: string;
-    assertions: Record<string, any> | Array<Record<string, any>>;
+    assertions?: Record<string, any> | Array<Record<string, any>>;
   }) {
     const query = `
       mutation CreateDatasetExperiment($name: String!, $datasetId: String!, $assertions: Json!) {
@@ -1226,10 +1230,9 @@ export class API {
     return new DatasetExperiment(this, result.data.createDatasetExperiment);
   }
 
-  public async createDatasetExperimentItem(datasetExperimentItem: {
-    datasetExperimentId: string;
-    datasetItemId: string;
-  }) {
+  public async createDatasetExperimentItem(
+    datasetExperimentItem: DatasetExperimentItem
+  ) {
     const query = `
       mutation CreateDatasetExperimentItem($datasetExperimentId: String!, $datasetItemId: String!) {
         createDatasetExperimentItem(datasetExperimentId: $datasetExperimentId, datasetItemId: $datasetItemId) {
@@ -1237,9 +1240,24 @@ export class API {
         }
       }
     `;
-    const result = await this.makeGqlCall(query, datasetExperimentItem);
 
-    return new DatasetExperimentItem(result.data.createDatasetExperimentItem);
+    const result = await this.makeGqlCall(query, {
+      datasetExperimentId: datasetExperimentItem.datasetExperimentId,
+      datasetItemId: datasetExperimentItem.datasetItemId
+    });
+
+    const scores = await this.createScores(
+      datasetExperimentItem.scores.map((score) => {
+        score.datasetExperimentItemId =
+          result.data.createDatasetExperimentItem.id;
+        return score;
+      })
+    );
+
+    return new DatasetExperimentItem({
+      ...result.data.createDatasetExperimentItem,
+      scores
+    });
   }
 
   // Prompt
