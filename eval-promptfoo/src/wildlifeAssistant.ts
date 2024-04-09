@@ -2,12 +2,8 @@ import OpenAI from 'openai';
 import { ChatCompletionMessageParam } from 'openai/resources';
 
 import { Prompt, Thread } from '@literalai/client';
-import { LiteralClient } from '@literalai/client';
 
-const LITERAL_API_KEY = 'my-initial-api-key';
-const LITERAL_API_URL = 'http://localhost:3001';
-
-const client = new LiteralClient(LITERAL_API_KEY, LITERAL_API_URL);
+import { client } from './index';
 
 const openai = new OpenAI({});
 

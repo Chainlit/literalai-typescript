@@ -1,5 +1,4 @@
-import { Dataset } from '@literalai/client';
-import { LiteralClient } from '@literalai/client';
+import { Dataset, LiteralClient } from '@literalai/client';
 
 import promptTemplate_1 from '../promptTemplate_1.json';
 import promptTemplate_2 from '../promptTemplate_2.json';
@@ -7,11 +6,12 @@ import { evaluateWithPromptfoo } from './promptFooHelpers';
 import { runApplication } from './wildlifeAssistant';
 
 const LITERAL_API_KEY = 'my-initial-api-key';
-const LITERAL_API_URL = 'http://localhost:3001';
+const LITERAL_API_URL = 'http://localhost:3000';
 
-const client = new LiteralClient(LITERAL_API_KEY, LITERAL_API_URL);
+export const client = new LiteralClient(LITERAL_API_KEY, LITERAL_API_URL);
 
-const PROMPT_TEMPLATE_NAME = 'Animal Facts Template 6';
+const PROMPT_TEMPLATE_NAME = 'Animal Facts Template';
+const MAX_NUMBER_OF_GENERATIONS = 3;
 
 const main = async () => {
   /**
@@ -49,7 +49,7 @@ const main = async () => {
         }
       ]
     })
-  ).data.slice(0, 3);
+  ).data.slice(0, MAX_NUMBER_OF_GENERATIONS);
 
   /**
    * Add the generations to the dataset. Adapt the expected output.
