@@ -414,6 +414,8 @@ export class DatasetExperimentItem extends Utils {
   datasetExperimentId!: string;
   datasetItemId!: string;
   scores!: Score[];
+  input?: Record<string, any>;
+  output?: Record<string, any>;
 
   constructor(data: OmitUtils<DatasetExperimentItem>) {
     super();

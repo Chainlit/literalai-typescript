@@ -1281,24 +1281,32 @@ export class API {
     return new DatasetExperiment(this, result.data.createDatasetExperiment);
   }
 
-  public async createDatasetExperimentItem(
-    datasetExperimentItem: DatasetExperimentItem
-  ) {
+  public async createDatasetExperimentItem({
+    datasetExperimentId,
+    datasetItemId,
+    input,
+    output,
+    scores
+  }: DatasetExperimentItem) {
     const query = `
-      mutation CreateDatasetExperimentItem($datasetExperimentId: String!, $datasetItemId: String!) {
-        createDatasetExperimentItem(datasetExperimentId: $datasetExperimentId, datasetItemId: $datasetItemId) {
+      mutation CreateDatasetExperimentItem($datasetExperimentId: String!, $datasetItemId: String!, $input: Json, $output: Json) {
+        createDatasetExperimentItem(datasetExperimentId: $datasetExperimentId, datasetItemId: $datasetItemId, input: $input, output: $output) {
           id
+          input
+          output
         }
       }
     `;
 
     const result = await this.makeGqlCall(query, {
-      datasetExperimentId: datasetExperimentItem.datasetExperimentId,
-      datasetItemId: datasetExperimentItem.datasetItemId
+      datasetExperimentId,
+      datasetItemId,
+      input,
+      output
     });
 
-    const scores = await this.createScores(
-      datasetExperimentItem.scores.map((score) => {
+    const createdScores = await this.createScores(
+      scores.map((score) => {
         score.datasetExperimentItemId =
           result.data.createDatasetExperimentItem.id;
         return score;
@@ -1307,7 +1315,7 @@ export class API {
 
     return new DatasetExperimentItem({
       ...result.data.createDatasetExperimentItem,
-      scores
+      createdScores
     });
   }
 
