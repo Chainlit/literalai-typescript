@@ -5,12 +5,7 @@ import promptfoo, {
   TestCase
 } from 'promptfoo';
 
-import {
-  Dataset,
-  DatasetExperimentItem,
-  Prompt,
-  Score
-} from '@literalai/client';
+import { Dataset, Prompt, Score } from '@literalai/client';
 
 /**
  * Evaluate a dataset against a prompt template.
@@ -22,25 +17,20 @@ export async function evaluateWithPromptfoo(
   const assertions = [
     {
       type: 'similar',
-      value: '{{expectedOutput}}',
-      provider: { id: 'openai:gpt-3.5-turbo' }
+      value: '{{expectedOutput}}'
     }
   ] as Assertion[];
 
   // Test cases checking similarity between expected & reached output embeddings.
   const testCases: TestCase[] = dataset?.items.map((item) => {
+    const promptVariables = item.metadata?.variables;
+    const expectedOutput = item.expectedOutput?.content;
     return {
       vars: {
-        ...item.metadata?.variables,
-        expectedOutput: item.expectedOutput?.content
+        ...promptVariables,
+        expectedOutput
       },
-      assert: [
-        {
-          type: 'similar',
-          value: '{{expectedOutput}}',
-          provider: 'openai:gpt-3.5-turbo'
-        }
-      ] as Assertion[]
+      assert: assertions
     };
   });
 
@@ -87,13 +77,10 @@ export async function addExperimentToLiteral(
     );
 
     // Log an experiment item.
-    datasetExperiment.log(
-      new DatasetExperimentItem({
-        datasetExperimentId: datasetExperiment.id,
-        datasetItemId: dataset.items[index].id,
-        scores: scores || []
-      })
-    );
+    datasetExperiment.log({
+      datasetItemId: dataset.items[index].id,
+      scores: scores || []
+    });
   });
   return datasetExperiment;
 }

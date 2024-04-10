@@ -377,6 +377,15 @@ export class DatasetItem extends Utils {
   }
 }
 
+class DatasetExperimentItemFields extends Utils {
+  id?: string;
+  datasetExperimentId!: string;
+  datasetItemId!: string;
+  scores!: Score[];
+  input?: Record<string, any>;
+  output?: Record<string, any>;
+}
+
 export class DatasetExperiment extends Utils {
   id!: string;
   createdAt!: string;
@@ -396,12 +405,16 @@ export class DatasetExperiment extends Utils {
     }
   }
 
-  async log(datasetExperimentItem: DatasetExperimentItem) {
-    if (datasetExperimentItem.datasetExperimentId != this.id) {
-      throw new Error(
-        `Cannot log experiment item with experiment ${datasetExperimentItem.datasetExperimentId} onto experiment ${this.id}.`
-      );
-    }
+  async log(
+    itemFields: Omit<
+      OmitUtils<DatasetExperimentItemFields>,
+      'id' | 'datasetExperimentId'
+    >
+  ) {
+    const datasetExperimentItem = new DatasetExperimentItem({
+      ...itemFields,
+      datasetExperimentId: this.id
+    });
 
     // TODO: How to check that this.datasetId === datasetExperimentItem.datasetItemId.parentDatasetId
     const item = await this.api.createDatasetExperimentItem(
@@ -412,15 +425,12 @@ export class DatasetExperiment extends Utils {
     return item;
   }
 }
-export class DatasetExperimentItem extends Utils {
-  id?: string;
-  datasetExperimentId!: string;
-  datasetItemId!: string;
-  scores!: Score[];
-  input?: Record<string, any>;
-  output?: Record<string, any>;
 
-  constructor(data: OmitUtils<DatasetExperimentItem>) {
+export type DatasetExperimentItemConstructor =
+  OmitUtils<DatasetExperimentItemFields>;
+
+export class DatasetExperimentItem extends DatasetExperimentItemFields {
+  constructor(data: DatasetExperimentItemConstructor) {
     super();
     Object.assign(this, data);
   }
