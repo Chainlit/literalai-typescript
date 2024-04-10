@@ -258,18 +258,21 @@ describe('End to end tests for the SDK', function () {
         stepId: step.id!,
         name: 'Similarity',
         type: 'AI',
-        value: firstScoreValue
+        value: firstScoreValue,
+        comment: 'Automated eval run'
       }),
       new Score({
         stepId: step.id!,
         name: 'Factuality',
         type: 'AI',
-        value: 1
+        value: 1,
+        scorer: 'openai:gpt-3.5-turbo'
       })
     ]);
 
     expect(scores.length).toEqual(2);
     expect(scores[0].value).toBe(firstScoreValue);
+    expect(scores[1].scorer).toBe('openai:gpt-3.5-turbo');
   });
 
   it('should test attachment', async function () {

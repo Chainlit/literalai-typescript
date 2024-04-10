@@ -67,6 +67,7 @@ export class Score extends Utils {
   name: string = 'user-feedback';
   value: number = 0;
   type: ScoreType = 'AI';
+  scorer?: Maybe<string>;
   comment?: Maybe<string>;
   tags?: Maybe<string[]>;
 

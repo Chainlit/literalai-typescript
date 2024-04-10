@@ -200,6 +200,7 @@ function createScoresFieldsBuilder(scores: Score[]) {
         $stepId_${id}: String
         $generationId_${id}: String
         $datasetExperimentItemId_${id}: String
+        $scorer_${id}: String
         $comment_${id}: String
         $tags_${id}: [String!]
         `;
@@ -218,6 +219,7 @@ function createScoresArgsBuilder(scores: Score[]) {
         stepId: $stepId_${id}
         generationId: $generationId_${id}
         datasetExperimentItemId: $datasetExperimentItemId_${id}
+        scorer: $scorer_${id}
         comment: $comment_${id}
         tags: $tags_${id}
       ) {
@@ -226,6 +228,7 @@ function createScoresArgsBuilder(scores: Score[]) {
         type
         value
         comment
+        scorer
       }
     `;
   }
@@ -966,6 +969,7 @@ export class API {
       $stepId: String,
       $generationId: String,
       $datasetExperimentItemId: String,
+      $scorer: String,
       $comment: String,
       $tags: [String!],
   ) {
@@ -976,6 +980,7 @@ export class API {
           stepId: $stepId,
           generationId: $generationId,
           datasetExperimentItemId: $datasetExperimentItemId,
+          scorer: $scorer,
           comment: $comment,
           tags: $tags,
       ) {
@@ -986,6 +991,7 @@ export class API {
           stepId,
           generationId,
           datasetExperimentItemId,
+          scorer,
           comment,
           tags,
       }
