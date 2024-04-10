@@ -67,18 +67,22 @@ export async function addExperimentToLiteral(
   results.forEach(async (result, index) => {
     // Create corresponding Score objects.
     const scores = result.gradingResult?.componentResults?.map(
-      (componentResult) =>
-        new Score({
+      (componentResult) => {
+        return new Score({
           name: componentResult.assertion?.type || 'N/A',
           value: componentResult.score,
           comment: componentResult.reason,
+          scorer: componentResult.assertion?.provider?.toString(),
           type: 'AI'
-        })
+        });
+      }
     );
 
     // Log an experiment item.
     datasetExperiment.log({
       datasetItemId: dataset.items[index].id,
+      input: { content: result.prompt.raw },
+      output: { content: result.response?.output },
       scores: scores || []
     });
   });
