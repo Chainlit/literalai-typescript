@@ -53,23 +53,30 @@ export async function evaluateWithPromptfoo(
 
   const results = (await promptfoo.evaluate(testSuite)).results;
 
-  return addExperimentToLiteral(dataset, assertions, results);
+  return addExperimentToLiteral(
+    dataset,
+    promptTemplate.id,
+    assertions,
+    results
+  );
 }
 
 export async function addExperimentToLiteral(
   dataset: Dataset,
+  promptId: string,
   assertions: Assertion[],
   results: EvaluateResult[]
 ) {
   const datasetExperiment = await dataset.createExperiment({
     name: 'Similarity Experiment',
+    promptId,
     assertions
   });
 
   // For each dataset item.
   results.forEach(async (result, index) => {
     // Create corresponding Score objects.
-    const scores: Score[] = result.gradingResult?.componentResults?.map(
+    const scores = result.gradingResult?.componentResults?.map(
       (componentResult) =>
         new Score({
           name: componentResult.assertion?.type || 'N/A',
@@ -77,14 +84,14 @@ export async function addExperimentToLiteral(
           comment: componentResult.reason,
           type: 'AI'
         })
-    ) as Score[];
+    );
 
     // Log an experiment item.
     datasetExperiment.log(
       new DatasetExperimentItem({
         datasetExperimentId: datasetExperiment.id,
         datasetItemId: dataset.items[index].id,
-        scores
+        scores: scores || []
       })
     );
   });

@@ -12,7 +12,11 @@ import {
   ThreadsFilter,
   ThreadsOrderBy
 } from './filter';
-import { Generation, IGenerationMessage } from './generation';
+import {
+  Generation,
+  IGenerationMessage,
+  PersistedGeneration
+} from './generation';
 import {
   CleanThreadFields,
   Dataset,
@@ -353,7 +357,7 @@ export class API {
       return response.data;
     } catch (e) {
       if (e instanceof AxiosError) {
-        throw new Error(JSON.stringify(e.response?.data.errors));
+        throw new Error(JSON.stringify(e.response?.data));
       } else {
         throw e;
       }
@@ -492,7 +496,7 @@ export class API {
     before?: Maybe<string>;
     filters?: GenerationsFilter[];
     orderBy?: GenerationsOrderBy;
-  }): Promise<PaginatedResponse<Generation>> {
+  }): Promise<PaginatedResponse<PersistedGeneration>> {
     const query = `
     query GetGenerations(
       $after: ID,
@@ -585,7 +589,7 @@ export class API {
     };
 
     const response = await this.makeGqlCall(mutation, variables);
-    return response.data.createGeneration as Generation;
+    return response.data.createGeneration as PersistedGeneration;
   }
 
   // Thread
@@ -1075,8 +1079,8 @@ export class API {
     return new Dataset(this, result.data.createDataset);
   }
 
-  public async getDataset(id: string) {
-    const result = await this.makeApiCall('/export/dataset', { id });
+  public async getDataset(variables: { id?: string; name?: string }) {
+    const result = await this.makeApiCall('/export/dataset', variables);
 
     if (!result.data) {
       return null;
@@ -1260,11 +1264,12 @@ export class API {
   public async createDatasetExperiment(datasetExperiment: {
     name: string;
     datasetId: string;
+    promptId?: string;
     assertions?: Record<string, any> | Array<Record<string, any>>;
   }) {
     const query = `
-      mutation CreateDatasetExperiment($name: String!, $datasetId: String!, $assertions: Json!) {
-        createDatasetExperiment(name: $name, datasetId: $datasetId, assertions: $assertions) {
+      mutation CreateDatasetExperiment($name: String!, $datasetId: String! $promptId: String, $assertions: Json!) {
+        createDatasetExperiment(name: $name, datasetId: $datasetId, promptId: $promptId, assertions: $assertions) {
           id
         }
       }
@@ -1272,6 +1277,7 @@ export class API {
     const datasetExperimentInput = {
       name: datasetExperiment.name,
       datasetId: datasetExperiment.datasetId,
+      promptId: datasetExperiment.promptId,
       assertions: {
         content: datasetExperiment.assertions
       }
@@ -1379,7 +1385,6 @@ export class API {
     }`;
 
     const lineage = await this.createPromptLineage(name);
-
     const result = await this.makeGqlCall(mutation, {
       lineageId: lineage.id,
       templateMessages,

@@ -1,4 +1,4 @@
-import { Dataset, LiteralClient } from '@literalai/client';
+import { Dataset, IGenerationMessage, LiteralClient } from '@literalai/client';
 
 import promptTemplate_1 from '../promptTemplate_1.json';
 import promptTemplate_2 from '../promptTemplate_2.json';
@@ -10,26 +10,34 @@ const LITERAL_API_URL = 'http://localhost:3000';
 
 export const client = new LiteralClient(LITERAL_API_KEY, LITERAL_API_URL);
 
+const DATASET_NAME = 'Animal Facts Dataset';
 const PROMPT_TEMPLATE_NAME = 'Animal Facts Template';
 const MAX_NUMBER_OF_GENERATIONS = 3;
 
-const main = async () => {
+const createDataset = async () => {
+  /**
+   * Create a prompt template.
+   */
+
+  const promptTemplate = await client.api.createPrompt(
+    PROMPT_TEMPLATE_NAME,
+    promptTemplate_1 as IGenerationMessage[]
+  );
+
+  const existingDataset = await client.api.getDataset({
+    name: DATASET_NAME
+  });
+
+  if (existingDataset) return { dataset: existingDataset, promptTemplate };
+
   /**
    * Create a dataset.
    */
   const dataset: Dataset = await client.api.createDataset({
-    name: `Prompt ${new Date().toISOString()}`,
+    name: DATASET_NAME,
     description: 'Dataset to evaluate our prompt template.',
     type: 'generation'
   });
-
-  /**
-   * Create a prompt template.
-   */
-  const promptTemplate = await client.api.createPrompt(
-    PROMPT_TEMPLATE_NAME,
-    promptTemplate_1 as any
-  );
 
   /**
    * Small application to create 10 Generations.
@@ -41,6 +49,7 @@ const main = async () => {
    */
   const generations = (
     await client.api.getGenerations({
+      first: MAX_NUMBER_OF_GENERATIONS,
       filters: [
         {
           field: 'promptLineage',
@@ -49,16 +58,23 @@ const main = async () => {
         }
       ]
     })
-  ).data.slice(0, MAX_NUMBER_OF_GENERATIONS);
+  ).data;
 
   /**
    * Add the generations to the dataset. Adapt the expected output.
    */
-  await dataset.addGenerations(generations.map(({ id }) => id as string));
+  await dataset.addGenerations(generations.map(({ id }) => id));
 
+  return { dataset, promptTemplate };
+};
+
+const main = async () => {
   /**
    * Evaluate the prompt template with promptfoo and create experiment on Literal.
    */
+
+  const { dataset, promptTemplate } = await createDataset();
+
   await evaluateWithPromptfoo(dataset, promptTemplate);
 
   /**
@@ -67,7 +83,7 @@ const main = async () => {
    */
   const promptTemplateEnhanced = await client.api.createPrompt(
     PROMPT_TEMPLATE_NAME,
-    promptTemplate_2 as any
+    promptTemplate_2 as IGenerationMessage[]
   );
 
   await evaluateWithPromptfoo(dataset, promptTemplateEnhanced);
