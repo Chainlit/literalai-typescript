@@ -72,7 +72,9 @@ export async function addExperimentToLiteral(
           name: componentResult.assertion?.type || 'N/A',
           value: componentResult.score,
           comment: componentResult.reason,
-          scorer: componentResult.assertion?.provider?.toString(),
+          scorer:
+            componentResult.assertion?.provider?.toString() ||
+            result.provider.toString(),
           type: 'AI'
         });
       }
