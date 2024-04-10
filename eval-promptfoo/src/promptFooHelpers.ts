@@ -74,7 +74,7 @@ export async function addExperimentToLiteral(
           comment: componentResult.reason,
           scorer:
             componentResult.assertion?.provider?.toString() ||
-            result.provider.toString(),
+            result.provider.id,
           type: 'AI'
         });
       }
