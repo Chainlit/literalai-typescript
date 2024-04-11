@@ -11,6 +11,7 @@ import { Dataset, Prompt, Score } from '@literalai/client';
  * Evaluate a dataset against a prompt template.
  */
 export async function evaluateWithPromptfoo(
+  name: string,
   dataset: Dataset,
   promptTemplate: Prompt
 ) {
@@ -42,8 +43,8 @@ export async function evaluateWithPromptfoo(
   };
 
   const results = (await promptfoo.evaluate(testSuite)).results;
-
   return addExperimentToLiteral(
+    name,
     dataset,
     promptTemplate.id,
     assertions,
@@ -52,13 +53,14 @@ export async function evaluateWithPromptfoo(
 }
 
 export async function addExperimentToLiteral(
+  name: string,
   dataset: Dataset,
   promptId: string,
   assertions: Assertion[],
   results: EvaluateResult[]
 ) {
   const datasetExperiment = await dataset.createExperiment({
-    name: 'Similarity Experiment',
+    name,
     promptId,
     assertions
   });

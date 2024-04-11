@@ -75,7 +75,11 @@ const main = async () => {
 
   const { dataset, promptTemplate } = await createDataset();
 
-  await evaluateWithPromptfoo(dataset, promptTemplate);
+  await evaluateWithPromptfoo(
+    'Animal Facts Experiment',
+    dataset,
+    promptTemplate
+  );
 
   /**
    * Use another prompt template and evaluate anew.
@@ -86,7 +90,11 @@ const main = async () => {
     promptTemplate_2 as IGenerationMessage[]
   );
 
-  await evaluateWithPromptfoo(dataset, promptTemplateEnhanced);
+  await evaluateWithPromptfoo(
+    'Wild life Experiment',
+    dataset,
+    promptTemplateEnhanced
+  );
 };
 
 main();

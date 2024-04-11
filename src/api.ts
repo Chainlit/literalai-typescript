@@ -1391,7 +1391,7 @@ export class API {
 
     const promptData = result.data.createPromptVersion;
     promptData.provider = promptData.settings?.provider;
-    promptData.name = promptData.lineage?.name;
+    promptData.name = name;
     delete promptData.lineage;
     if (promptData.settings) {
       delete promptData.settings.provider;
