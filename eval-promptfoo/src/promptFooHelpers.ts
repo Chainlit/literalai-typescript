@@ -79,11 +79,10 @@ export async function addExperimentToLiteral(
         });
       }
     );
-
     // Log an experiment item.
     datasetExperiment.log({
       datasetItemId: dataset.items[index].id,
-      input: { content: result.prompt.raw },
+      input: { content: JSON.parse(result.prompt.raw) },
       output: { content: result.response?.output },
       scores: scores || []
     });
