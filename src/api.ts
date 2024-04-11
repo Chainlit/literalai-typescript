@@ -1278,9 +1278,7 @@ export class API {
       name: datasetExperiment.name,
       datasetId: datasetExperiment.datasetId,
       promptId: datasetExperiment.promptId,
-      assertions: {
-        content: datasetExperiment.assertions
-      }
+      assertions: datasetExperiment.assertions
     };
     const result = await this.makeGqlCall(query, datasetExperimentInput);
 
