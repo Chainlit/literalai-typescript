@@ -312,13 +312,13 @@ export class Dataset extends DatasetFields {
   async createExperiment(experiment: {
     name: string;
     promptId?: string;
-    assertions?: Record<string, any> | Array<Record<string, any>>;
+    params?: Record<string, any> | Array<Record<string, any>>;
   }) {
     const datasetExperiment = await this.api.createDatasetExperiment({
       name: experiment.name,
       datasetId: this.id,
       promptId: experiment.promptId,
-      assertions: experiment.assertions
+      params: experiment.params
     });
     return new DatasetExperiment(this.api, datasetExperiment);
   }
@@ -393,7 +393,7 @@ export class DatasetExperiment extends Utils {
   datasetId!: string;
   promptId?: string;
   api: API;
-  assertions!: Record<string, any> | Array<Record<string, any>>;
+  params!: Record<string, any> | Array<Record<string, any>>;
   items!: DatasetExperimentItem[];
 
   constructor(api: API, data: OmitUtils<DatasetExperiment>) {

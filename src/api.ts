@@ -1265,11 +1265,11 @@ export class API {
     name: string;
     datasetId: string;
     promptId?: string;
-    assertions?: Record<string, any> | Array<Record<string, any>>;
+    params?: Record<string, any> | Array<Record<string, any>>;
   }) {
     const query = `
-      mutation CreateDatasetExperiment($name: String!, $datasetId: String! $promptId: String, $assertions: Json!) {
-        createDatasetExperiment(name: $name, datasetId: $datasetId, promptId: $promptId, assertions: $assertions) {
+      mutation CreateDatasetExperiment($name: String!, $datasetId: String! $promptId: String, $params: Json!) {
+        createDatasetExperiment(name: $name, datasetId: $datasetId, promptId: $promptId, params: $params) {
           id
         }
       }
@@ -1278,7 +1278,7 @@ export class API {
       name: datasetExperiment.name,
       datasetId: datasetExperiment.datasetId,
       promptId: datasetExperiment.promptId,
-      assertions: datasetExperiment.assertions
+      params: datasetExperiment.params
     };
     const result = await this.makeGqlCall(query, datasetExperimentInput);
 

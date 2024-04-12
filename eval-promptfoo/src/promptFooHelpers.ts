@@ -15,7 +15,7 @@ export async function evaluateWithPromptfoo(
   dataset: Dataset,
   promptTemplate: Prompt
 ) {
-  const assertions = [
+  const params = [
     {
       type: 'similar',
       value: '{{expectedOutput}}'
@@ -31,7 +31,7 @@ export async function evaluateWithPromptfoo(
         ...promptVariables,
         expectedOutput
       },
-      assert: assertions
+      assert: params
     };
   });
 
@@ -47,7 +47,7 @@ export async function evaluateWithPromptfoo(
     name,
     dataset,
     promptTemplate.id,
-    assertions,
+    params,
     results
   );
 }
@@ -56,13 +56,13 @@ export async function addExperimentToLiteral(
   name: string,
   dataset: Dataset,
   promptId: string,
-  assertions: Assertion[],
+  params: Assertion[],
   results: EvaluateResult[]
 ) {
   const datasetExperiment = await dataset.createExperiment({
     name,
     promptId,
-    assertions
+    params
   });
 
   // For each dataset item.
