@@ -90,3 +90,5 @@ export class ChatGeneration extends BaseGeneration {
 export type Generation =
   | OmitUtils<CompletionGeneration>
   | OmitUtils<ChatGeneration>;
+
+export type PersistedGeneration = Generation & { id: string };

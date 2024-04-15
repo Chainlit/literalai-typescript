@@ -67,6 +67,7 @@ export class Score extends Utils {
   name: string = 'user-feedback';
   value: number = 0;
   type: ScoreType = 'AI';
+  scorer?: Maybe<string>;
   comment?: Maybe<string>;
   tags?: Maybe<string[]>;
 
@@ -308,6 +309,20 @@ export class Dataset extends DatasetFields {
     return deletedItem;
   }
 
+  async createExperiment(experiment: {
+    name: string;
+    promptId?: string;
+    params?: Record<string, any> | Array<Record<string, any>>;
+  }) {
+    const datasetExperiment = await this.api.createExperiment({
+      name: experiment.name,
+      datasetId: this.id,
+      promptId: experiment.promptId,
+      params: experiment.params
+    });
+    return new DatasetExperiment(this.api, datasetExperiment);
+  }
+
   public async addStep(
     stepId: string,
     metadata?: Maybe<Record<string, unknown>>
@@ -332,6 +347,19 @@ export class Dataset extends DatasetFields {
     this.items.push(item);
     return item;
   }
+
+  public async addGenerations(generationIds?: string[]) {
+    if (generationIds == undefined || generationIds?.length === 0) {
+      return [];
+    }
+
+    const items = await this.api.addGenerationsToDataset(
+      this.id,
+      generationIds
+    );
+    this.items = this.items.concat(items);
+    return items;
+  }
 }
 
 export class DatasetItem extends Utils {
@@ -349,6 +377,61 @@ export class DatasetItem extends Utils {
   }
 }
 
+class DatasetExperimentItemFields extends Utils {
+  id?: string;
+  datasetExperimentId!: string;
+  datasetItemId!: string;
+  scores!: Score[];
+  input?: Record<string, any>;
+  output?: Record<string, any>;
+}
+
+export class DatasetExperiment extends Utils {
+  id!: string;
+  createdAt!: string;
+  name!: string;
+  datasetId!: string;
+  promptId?: string;
+  api: API;
+  params!: Record<string, any> | Array<Record<string, any>>;
+  items!: DatasetExperimentItem[];
+
+  constructor(api: API, data: OmitUtils<DatasetExperiment>) {
+    super();
+    this.api = api;
+    Object.assign(this, data);
+    if (!this.items) {
+      this.items = [];
+    }
+  }
+
+  async log(
+    itemFields: Omit<
+      OmitUtils<DatasetExperimentItemFields>,
+      'id' | 'datasetExperimentId'
+    >
+  ) {
+    const datasetExperimentItem = new DatasetExperimentItem({
+      ...itemFields,
+      datasetExperimentId: this.id
+    });
+
+    const item = await this.api.createExperimentItem(datasetExperimentItem);
+
+    this.items.push(item);
+    return item;
+  }
+}
+
+export type DatasetExperimentItemConstructor =
+  OmitUtils<DatasetExperimentItemFields>;
+
+export class DatasetExperimentItem extends DatasetExperimentItemFields {
+  constructor(data: DatasetExperimentItemConstructor) {
+    super();
+    Object.assign(this, data);
+  }
+}
 export interface IPromptVariableDefinition {
   name: string;
   language: 'json' | 'plaintext';

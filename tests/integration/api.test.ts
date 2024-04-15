@@ -1,7 +1,13 @@
 import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Attachment, ChatGeneration, Dataset, LiteralClient } from '../../src';
+import {
+  Attachment,
+  ChatGeneration,
+  Dataset,
+  LiteralClient,
+  Score
+} from '../../src';
 
 describe('End to end tests for the SDK', function () {
   let client: LiteralClient;
@@ -234,6 +240,41 @@ describe('End to end tests for the SDK', function () {
     await client.api.deleteThread(thread.id);
   });
 
+  it('should test scores', async function () {
+    const thread = await client.thread({ id: uuidv4() });
+    const step = await thread
+      .step({
+        name: 'test',
+        type: 'run',
+        metadata: { foo: 'bar' }
+      })
+      .send();
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const firstScoreValue = 0.9234;
+    const scores = await client.api.createScores([
+      new Score({
+        stepId: step.id!,
+        name: 'Similarity',
+        type: 'AI',
+        value: firstScoreValue,
+        comment: 'Automated eval run'
+      }),
+      new Score({
+        stepId: step.id!,
+        name: 'Factuality',
+        type: 'AI',
+        value: 1,
+        scorer: 'openai:gpt-3.5-turbo'
+      })
+    ]);
+
+    expect(scores.length).toEqual(2);
+    expect(scores[0].value).toBe(firstScoreValue);
+    expect(scores[1].scorer).toBe('openai:gpt-3.5-turbo');
+  });
+
   it('should test attachment', async function () {
     const thread = await client.thread({ id: uuidv4() });
     // Upload an attachment
@@ -334,7 +375,7 @@ describe('End to end tests for the SDK', function () {
         metadata: { foo: 'bar' }
       });
       await dataset.delete();
-      const deletedDataset = await client.api.getDataset(dataset.id);
+      const deletedDataset = await client.api.getDataset({ id: dataset.id });
       expect(deletedDataset).toBeNull();
     });
 
@@ -345,7 +386,7 @@ describe('End to end tests for the SDK', function () {
         description: 'test',
         metadata: { foo: 'bar' }
       });
-      const fetchedDataset = await client.api.getDataset(dataset.id);
+      const fetchedDataset = await client.api.getDataset({ id: dataset.id });
 
       expect(fetchedDataset?.id).toBe(dataset.id);
       expect(fetchedDataset?.name).toBe(dataset.name);
@@ -411,7 +452,7 @@ describe('End to end tests for the SDK', function () {
     });
 
     it('should get a dataset item through dataset', async () => {
-      const fetchedDataset = await client.api.getDataset(dataset.id);
+      const fetchedDataset = await client.api.getDataset({ id: dataset.id });
 
       expect(fetchedDataset?.items.length).toBeGreaterThan(0);
     });
