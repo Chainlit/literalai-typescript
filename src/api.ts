@@ -1261,7 +1261,7 @@ export class API {
     return Object.values(result.data).map((x: any) => new DatasetItem(x));
   }
 
-  public async createDatasetExperiment(datasetExperiment: {
+  public async createExperiment(datasetExperiment: {
     name: string;
     datasetId: string;
     promptId?: string;
@@ -1285,7 +1285,7 @@ export class API {
     return new DatasetExperiment(this, result.data.createDatasetExperiment);
   }
 
-  public async createDatasetExperimentItem({
+  public async createExperimentItem({
     datasetExperimentId,
     datasetItemId,
     input,

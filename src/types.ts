@@ -314,7 +314,7 @@ export class Dataset extends DatasetFields {
     promptId?: string;
     params?: Record<string, any> | Array<Record<string, any>>;
   }) {
-    const datasetExperiment = await this.api.createDatasetExperiment({
+    const datasetExperiment = await this.api.createExperiment({
       name: experiment.name,
       datasetId: this.id,
       promptId: experiment.promptId,
@@ -416,10 +416,7 @@ export class DatasetExperiment extends Utils {
       datasetExperimentId: this.id
     });
 
-    // TODO: How to check that this.datasetId === datasetExperimentItem.datasetItemId.parentDatasetId
-    const item = await this.api.createDatasetExperimentItem(
-      datasetExperimentItem
-    );
+    const item = await this.api.createExperimentItem(datasetExperimentItem);
 
     this.items.push(item);
     return item;
