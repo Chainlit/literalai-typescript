@@ -19,5 +19,6 @@
     "outputFileStrategy": "modules",
     "hideInPageTOC": true,
     "githubPages": false
-  }
+  },
+  "exclude": ["eval-promptfoo/*"]
 }

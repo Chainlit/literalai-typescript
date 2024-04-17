@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { Assistant } from 'openai/resources/beta/assistants/assistants';
-import { ThreadMessage } from 'openai/resources/beta/threads/messages/messages';
+import { Message } from 'openai/resources/beta/threads/messages/messages';
 import { Run } from 'openai/resources/beta/threads/runs/runs';
 import {
   RunStep,
@@ -27,7 +27,7 @@ class OpenAIAssistantSyncer {
     return uuidv5(id, this.NAMESPACE_UUID);
   }
 
-  async processMessageContent(threadId: string, message: ThreadMessage) {
+  async processMessageContent(threadId: string, message: Message) {
     const litThreadId = this.generateUUIDv5FromID(threadId);
 
     const output = { content: '' };
@@ -70,7 +70,7 @@ class OpenAIAssistantSyncer {
   async processMessage(
     threadId: string,
     assistant: Assistant,
-    message: ThreadMessage
+    message: Message
   ) {
     const createdAt = new Date(message.created_at * 1000).toISOString();
     const { output, attachments } = await this.processMessageContent(

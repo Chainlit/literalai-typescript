@@ -12,10 +12,16 @@ import {
   ThreadsFilter,
   ThreadsOrderBy
 } from './filter';
-import { Generation, IGenerationMessage } from './generation';
+import {
+  Generation,
+  IGenerationMessage,
+  PersistedGeneration
+} from './generation';
 import {
   CleanThreadFields,
   Dataset,
+  DatasetExperiment,
+  DatasetExperimentItem,
   DatasetItem,
   DatasetType,
   Maybe,
@@ -24,7 +30,8 @@ import {
   Prompt,
   Score,
   Step,
-  User
+  User,
+  Utils
 } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -101,14 +108,14 @@ const threadFields = `
 /**
  * Serializes the step object with a suffix ID to each key.
  *
- * @param step - The step object to serialize.
+ * @param object - The step object to serialize.
  * @param id - The numeric identifier to append to each key in the serialized object.
  * @returns A new object with serialized key-value pairs where each key is suffixed with the provided id.
  */
-function serialize(step: Step, id: number) {
+function serialize(object: Utils, id: number) {
   const result: any = {};
 
-  for (const [key, value] of Object.entries(step.serialize())) {
+  for (const [key, value] of Object.entries(object.serialize())) {
     result[`${key}_${id}`] = value;
   }
 
@@ -118,14 +125,25 @@ function serialize(step: Step, id: number) {
 /**
  * Constructs a variables object for GraphQL queries by serializing each step with a unique suffix.
  *
- * @param steps - An array of `Step` objects to be serialized and added to the variables object.
+ * @param objects - An array of `Step` objects to be serialized and added to the variables object.
  * @returns An object containing serialized steps with keys suffixed by their index in the input array.
  */
-function variablesBuilder(steps: Step[]) {
+function variablesBuilder(objects: Utils[]) {
   let variables: any = {};
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i];
-    variables = { ...variables, ...serialize(step, i) };
+  for (let i = 0; i < objects.length; i++) {
+    variables = { ...variables, ...serialize(objects[i], i) };
+  }
+  return variables;
+}
+
+function generationsVariablesBuilder(
+  datasetId: string,
+  generationIds: string[]
+) {
+  const variables: any = { datasetId };
+  for (let i = 0; i < generationIds.length; i++) {
+    const generationId = generationIds[i];
+    variables[`generationId_${i}`] = generationId;
   }
   return variables;
 }
@@ -192,7 +210,7 @@ function ingestStepsArgsBuilder(steps: Step[]) {
         ok
         message
       }
-`;
+    `;
   }
   return generated;
 }
@@ -207,6 +225,99 @@ function ingestStepsQueryBuilder(steps: Step[]) {
   return `
     mutation AddStep(${ingestStepsFieldsBuilder(steps)}) {
       ${ingestStepsArgsBuilder(steps)}
+    }
+    `;
+}
+
+function createScoresFieldsBuilder(scores: Score[]) {
+  let generated = '';
+  for (let id = 0; id < scores.length; id++) {
+    generated += `$name_${id}: String!
+        $type_${id}: ScoreType!
+        $value_${id}: Float!
+        $stepId_${id}: String
+        $generationId_${id}: String
+        $datasetExperimentItemId_${id}: String
+        $scorer_${id}: String
+        $comment_${id}: String
+        $tags_${id}: [String!]
+        `;
+  }
+  return generated;
+}
+
+function createScoresArgsBuilder(scores: Score[]) {
+  let generated = '';
+  for (let id = 0; id < scores.length; id++) {
+    generated += `
+      score${id}: createScore(
+        name: $name_${id}
+        type: $type_${id}
+        value: $value_${id}
+        stepId: $stepId_${id}
+        generationId: $generationId_${id}
+        datasetExperimentItemId: $datasetExperimentItemId_${id}
+        scorer: $scorer_${id}
+        comment: $comment_${id}
+        tags: $tags_${id}
+      ) {
+        id
+        name
+        type
+        value
+        comment
+        scorer
+      }
+    `;
+  }
+  return generated;
+}
+
+function createScoresQueryBuilder(scores: Score[]) {
+  return `
+    mutation CreateScores(${createScoresFieldsBuilder(scores)}) {
+      ${createScoresArgsBuilder(scores)}
+    }
+    `;
+}
+
+function addGenerationsToDatasetFieldsBuilder(generationIds: string[]) {
+  let generated = '$datasetId: String!';
+  for (let id = 0; id < generationIds.length; id++) {
+    generated += `
+        $generationId_${id}: String!
+        `;
+  }
+  return generated;
+}
+
+function addGenerationsToDatasetArgsBuilder(generationIds: string[]) {
+  let generated = '';
+  for (let id = 0; id < generationIds.length; id++) {
+    generated += `
+      datasetItem${id}: addGenerationToDataset(
+        datasetId: $datasetId
+        generationId: $generationId_${id}
+      ) {
+        id
+        createdAt
+        datasetId
+        metadata
+        input
+        expectedOutput
+        intermediarySteps
+      }
+    `;
+  }
+  return generated;
+}
+
+function addGenerationsToDatasetQueryBuilder(generationIds: string[]) {
+  return `
+    mutation AddGenerationsToDataset(${addGenerationsToDatasetFieldsBuilder(
+      generationIds
+    )}) {
+      ${addGenerationsToDatasetArgsBuilder(generationIds)}
     }
     `;
 }
@@ -303,7 +414,7 @@ export class API {
       return response.data;
     } catch (e) {
       if (e instanceof AxiosError) {
-        throw new Error(JSON.stringify(e.response?.data.errors));
+        throw new Error(JSON.stringify(e.response?.data));
       } else {
         throw e;
       }
@@ -491,7 +602,7 @@ export class API {
     before?: Maybe<string>;
     filters?: GenerationsFilter[];
     orderBy?: GenerationsOrderBy;
-  }): Promise<PaginatedResponse<Generation>> {
+  }): Promise<PaginatedResponse<PersistedGeneration>> {
     const query = `
     query GetGenerations(
       $after: ID,
@@ -590,7 +701,7 @@ export class API {
     };
 
     const response = await this.makeGqlCall(mutation, variables);
-    return response.data.createGeneration as Generation;
+    return response.data.createGeneration as PersistedGeneration;
   }
 
   // Thread
@@ -1044,6 +1155,21 @@ export class API {
   }
 
   /**
+   * Creates multiple scores in the database using the provided array of scores.
+   * Each score in the array is transformed into a GraphQL mutation call.
+   *
+   * @param scores - An array of `Score` objects to be created.
+   * @returns A promise that resolves to an array of `Score` instances populated with the created scores' data.
+   */
+  async createScores(scores: Score[]): Promise<Score[]> {
+    const query = createScoresQueryBuilder(scores);
+    const variables = variablesBuilder(scores);
+
+    const result = await this.makeGqlCall(query, variables);
+    return Object.values(result.data).map((x: any) => new Score(x));
+  }
+
+  /**
    * Creates a new score in the database using the provided parameters.
    *
    * @param variables - The score details to be used in the creation process. This includes:
@@ -1066,9 +1192,9 @@ export class API {
       $stepId: String,
       $generationId: String,
       $datasetExperimentItemId: String,
+      $scorer: String,
       $comment: String,
       $tags: [String!],
-
   ) {
       createScore(
           name: $name,
@@ -1077,6 +1203,7 @@ export class API {
           stepId: $stepId,
           generationId: $generationId,
           datasetExperimentItemId: $datasetExperimentItemId,
+          scorer: $scorer,
           comment: $comment,
           tags: $tags,
       ) {
@@ -1087,6 +1214,7 @@ export class API {
           stepId,
           generationId,
           datasetExperimentItemId,
+          scorer,
           comment,
           tags,
       }
@@ -1196,13 +1324,16 @@ export class API {
   }
 
   /**
-   * Retrieves a dataset by its unique identifier.
+   * Retrieves a dataset based on provided ID or name.
    *
-   * @param id - The unique identifier of the dataset to retrieve. This parameter is required.
-   * @returns An instance of `Dataset` populated with the dataset's data, or `null` if no dataset is found.
+   * @param variables - An object containing optional `id` and `name` properties to specify which dataset to retrieve.
+   * @returns A `Dataset` instance populated with the retrieved dataset's data, or `null` if no data is found.
    */
-  public async getDataset(id: string) {
-    const result = await this.makeApiCall('/export/dataset', { id });
+  public async getDataset(variables: {
+    id?: string;
+    name?: string;
+  }): Promise<Dataset | null> {
+    const result = await this.makeApiCall('/export/dataset', variables);
 
     if (!result.data) {
       return null;
@@ -1426,6 +1557,79 @@ export class API {
     return new DatasetItem(result.data.addGenerationToDataset);
   }
 
+  public async addGenerationsToDataset(
+    datasetId: string,
+    generationIds: string[]
+  ): Promise<DatasetItem[]> {
+    const query = addGenerationsToDatasetQueryBuilder(generationIds);
+    const variables = generationsVariablesBuilder(datasetId, generationIds);
+
+    const result = await this.makeGqlCall(query, variables);
+    return Object.values(result.data).map((x: any) => new DatasetItem(x));
+  }
+
+  public async createExperiment(datasetExperiment: {
+    name: string;
+    datasetId: string;
+    promptId?: string;
+    params?: Record<string, any> | Array<Record<string, any>>;
+  }) {
+    const query = `
+      mutation CreateDatasetExperiment($name: String!, $datasetId: String! $promptId: String, $params: Json!) {
+        createDatasetExperiment(name: $name, datasetId: $datasetId, promptId: $promptId, params: $params) {
+          id
+        }
+      }
+    `;
+    const datasetExperimentInput = {
+      name: datasetExperiment.name,
+      datasetId: datasetExperiment.datasetId,
+      promptId: datasetExperiment.promptId,
+      params: datasetExperiment.params
+    };
+    const result = await this.makeGqlCall(query, datasetExperimentInput);
+
+    return new DatasetExperiment(this, result.data.createDatasetExperiment);
+  }
+
+  public async createExperimentItem({
+    datasetExperimentId,
+    datasetItemId,
+    input,
+    output,
+    scores
+  }: DatasetExperimentItem) {
+    const query = `
+      mutation CreateDatasetExperimentItem($datasetExperimentId: String!, $datasetItemId: String!, $input: Json, $output: Json) {
+        createDatasetExperimentItem(datasetExperimentId: $datasetExperimentId, datasetItemId: $datasetItemId, input: $input, output: $output) {
+          id
+          input
+          output
+        }
+      }
+    `;
+
+    const result = await this.makeGqlCall(query, {
+      datasetExperimentId,
+      datasetItemId,
+      input,
+      output
+    });
+
+    const createdScores = await this.createScores(
+      scores.map((score) => {
+        score.datasetExperimentItemId =
+          result.data.createDatasetExperimentItem.id;
+        return score;
+      })
+    );
+
+    return new DatasetExperimentItem({
+      ...result.data.createDatasetExperimentItem,
+      createdScores
+    });
+  }
+
   // Prompt
   /**
    * Create a new prompt lineage.
@@ -1501,7 +1705,6 @@ export class API {
     }`;
 
     const lineage = await this.createPromptLineage(name);
-
     const result = await this.makeGqlCall(mutation, {
       lineageId: lineage.id,
       templateMessages,
@@ -1510,7 +1713,7 @@ export class API {
 
     const promptData = result.data.createPromptVersion;
     promptData.provider = promptData.settings?.provider;
-    promptData.name = promptData.lineage?.name;
+    promptData.name = name;
     delete promptData.lineage;
     if (promptData.settings) {
       delete promptData.settings.provider;
