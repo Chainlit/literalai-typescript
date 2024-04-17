@@ -10,58 +10,6 @@
 
 #### Methods
 
-##### makeGqlCall()
-
-> **`private`** **makeGqlCall**(`query`, `variables`): `Promise`\<`any`\>
-
-Executes a GraphQL call using the provided query and variables.
-
-###### Parameters
-
-▪ **query**: `string`
-
-The GraphQL query string to be executed.
-
-▪ **variables**: `any`
-
-The variables object for the GraphQL query.
-
-###### Returns
-
-`Promise`\<`any`\>
-
-The data part of the response from the GraphQL endpoint.
-
-###### Throws
-
-Will throw an error if the GraphQL call returns errors or if the request fails.
-
-##### makeApiCall()
-
-> **`private`** **makeApiCall**(`subpath`, `body`): `Promise`\<`any`\>
-
-Executes a REST API call to the specified subpath with the provided body.
-
-###### Parameters
-
-▪ **subpath**: `string`
-
-The subpath of the REST endpoint to which the request is made.
-
-▪ **body**: `any`
-
-The body of the POST request.
-
-###### Returns
-
-`Promise`\<`any`\>
-
-The data part of the response from the REST endpoint.
-
-###### Throws
-
-Will throw an error if the request fails or if the response contains errors.
-
 ##### sendSteps()
 
 > **sendSteps**(`steps`): `Promise`\<`any`\>
@@ -169,7 +117,7 @@ Throws an error if neither `content` nor `path` is provided, or if the server re
 
 ##### getGenerations()
 
-> **getGenerations**(`variables`): `Promise`\<`PaginatedResponse`\<`Generation`\>\>
+> **getGenerations**(`variables`): `Promise`\<`PaginatedResponse`\<`PersistedGeneration`\>\>
 
 Retrieves a paginated list of Generations based on the provided filters and sorting order.
 
@@ -196,13 +144,13 @@ The variables to filter and sort the Generations. It includes:
 
 ###### Returns
 
-`Promise`\<`PaginatedResponse`\<`Generation`\>\>
+`Promise`\<`PaginatedResponse`\<`PersistedGeneration`\>\>
 
 A `Promise` that resolves to a `PaginatedResponse<Generation>` object containing the filtered and sorted Generations.
 
 ##### createGeneration()
 
-> **createGeneration**(`generation`): `Promise`\<`Generation`\>
+> **createGeneration**(`generation`): `Promise`\<`PersistedGeneration`\>
 
 Creates a new generation entity and sends it to the platform.
 
@@ -214,7 +162,7 @@ The `Generation` object to be created and sent to the platform.
 
 ###### Returns
 
-`Promise`\<`Generation`\>
+`Promise`\<`PersistedGeneration`\>
 
 A Promise resolving to the newly created `Generation` object.
 
@@ -508,6 +456,25 @@ Optional. The order in which to sort the scores.
 
 A `Promise` that resolves to a paginated response of scores, excluding certain utility fields.
 
+##### createScores()
+
+> **createScores**(`scores`): `Promise`\<`Score`[]\>
+
+Creates multiple scores in the database using the provided array of scores.
+Each score in the array is transformed into a GraphQL mutation call.
+
+###### Parameters
+
+▪ **scores**: `Score`[]
+
+An array of `Score` objects to be created.
+
+###### Returns
+
+`Promise`\<`Score`[]\>
+
+A promise that resolves to an array of `Score` instances populated with the created scores' data.
+
 ##### createScore()
 
 > **createScore**(`variables`): `Promise`\<`Score`\>
@@ -610,21 +577,25 @@ A new Dataset instance populated with the created dataset's data.
 
 ##### getDataset()
 
-> **getDataset**(`id`): `Promise`\<`null` \| `Dataset`\>
+> **getDataset**(`variables`): `Promise`\<`null` \| `Dataset`\>
 
-Retrieves a dataset by its unique identifier.
+Retrieves a dataset based on provided ID or name.
 
 ###### Parameters
 
-▪ **id**: `string`
+▪ **variables**: `object`
 
-The unique identifier of the dataset to retrieve. This parameter is required.
+An object containing optional `id` and `name` properties to specify which dataset to retrieve.
+
+▪ **variables.id?**: `string`
+
+▪ **variables.name?**: `string`
 
 ###### Returns
 
 `Promise`\<`null` \| `Dataset`\>
 
-An instance of `Dataset` populated with the dataset's data, or `null` if no dataset is found.
+A `Dataset` instance populated with the retrieved dataset's data, or `null` if no data is found.
 
 ##### updateDataset()
 
@@ -799,6 +770,52 @@ Additional metadata for the generation as a JSON object. This parameter is optio
 `Promise`\<`DatasetItem`\>
 
 A `DatasetItem` instance populated with the data of the newly added generation.
+
+##### addGenerationsToDataset()
+
+> **addGenerationsToDataset**(`datasetId`, `generationIds`): `Promise`\<`DatasetItem`[]\>
+
+###### Parameters
+
+▪ **datasetId**: `string`
+
+▪ **generationIds**: `string`[]
+
+###### Returns
+
+`Promise`\<`DatasetItem`[]\>
+
+##### createExperiment()
+
+> **createExperiment**(`datasetExperiment`): `Promise`\<`DatasetExperiment`\>
+
+###### Parameters
+
+▪ **datasetExperiment**: `object`
+
+▪ **datasetExperiment.name**: `string`
+
+▪ **datasetExperiment.datasetId**: `string`
+
+▪ **datasetExperiment.promptId?**: `string`
+
+▪ **datasetExperiment.params?**: `Record`\<`string`, `any`\> \| `Record`\<`string`, `any`\>[]
+
+###### Returns
+
+`Promise`\<`DatasetExperiment`\>
+
+##### createExperimentItem()
+
+> **createExperimentItem**(`__namedParameters`): `Promise`\<`DatasetExperimentItem`\>
+
+###### Parameters
+
+▪ **\_\_namedParameters**: `DatasetExperimentItem`
+
+###### Returns
+
+`Promise`\<`DatasetExperimentItem`\>
 
 ##### createPromptLineage()
 

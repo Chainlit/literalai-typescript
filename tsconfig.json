@@ -18,7 +18,8 @@
     "readme": "none",
     "outputFileStrategy": "modules",
     "hideInPageTOC": true,
-    "githubPages": false
+    "githubPages": false,
+    "excludePrivate": true,
   },
   "exclude": ["eval-promptfoo/*"]
 }
