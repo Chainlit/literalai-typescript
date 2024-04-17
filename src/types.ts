@@ -410,6 +410,25 @@ export class Dataset extends DatasetFields {
   }
 
   /**
+   * Creates a new experiment associated with the dataset.
+   * @param experiment - The experiment details including name, optional prompt ID, and parameters.
+   * @returns A new instance of DatasetExperiment containing the created experiment.
+   */
+  async createExperiment(experiment: {
+    name: string;
+    promptId?: string;
+    params?: Record<string, any> | Array<Record<string, any>>;
+  }) {
+    const datasetExperiment = await this.api.createExperiment({
+      name: experiment.name,
+      datasetId: this.id,
+      promptId: experiment.promptId,
+      params: experiment.params
+    });
+    return new DatasetExperiment(this.api, datasetExperiment);
+  }
+
+  /**
    * Adds a step to the dataset.
    * @param stepId - The ID of the step to add.
    * @param metadata - Optional metadata for the step.

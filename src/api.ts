@@ -368,7 +368,7 @@ export class API {
    * @returns The data part of the response from the GraphQL endpoint.
    * @throws Will throw an error if the GraphQL call returns errors or if the request fails.
    */
-  private async makeGqlCall(query: string, variables: any): Promise<any> {
+  private async makeGqlCall(query: string, variables: any) {
     try {
       const response = await axios({
         url: this.graphqlEndpoint,
@@ -402,7 +402,7 @@ export class API {
    * @returns The data part of the response from the REST endpoint.
    * @throws Will throw an error if the request fails or if the response contains errors.
    */
-  private async makeApiCall(subpath: string, body: any): Promise<any> {
+  private async makeApiCall(subpath: string, body: any) {
     try {
       const response = await axios({
         url: `${this.restEndpoint}${subpath}`,
@@ -429,7 +429,7 @@ export class API {
    * @param steps - An array of Step objects to be sent.
    * @returns The response from the GraphQL call.
    */
-  async sendSteps(steps: Step[]): Promise<any> {
+  async sendSteps(steps: Step[]) {
     const query = ingestStepsQueryBuilder(steps);
     const variables = variablesBuilder(steps);
 
@@ -866,6 +866,7 @@ export class API {
     return response.data.deleteThread.id;
   }
 
+  // User
   /**
    * Retrieves a list of users with optional filters.
    *
@@ -1070,6 +1071,7 @@ export class API {
     return result.data.deleteParticipant.id;
   }
 
+  // Score
   /**
    * Get all scores connected to the platform.
    *
@@ -1329,10 +1331,7 @@ export class API {
    * @param variables - An object containing optional `id` and `name` properties to specify which dataset to retrieve.
    * @returns A `Dataset` instance populated with the retrieved dataset's data, or `null` if no data is found.
    */
-  public async getDataset(variables: {
-    id?: string;
-    name?: string;
-  }): Promise<Dataset | null> {
+  public async getDataset(variables: { id?: string; name?: string }) {
     const result = await this.makeApiCall('/export/dataset', variables);
 
     if (!result.data) {
