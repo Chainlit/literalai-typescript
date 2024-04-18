@@ -10,5 +10,16 @@
     "strict": true /* Enable all strict type-checking options. */,
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
+  "typedocOptions": {
+    "plugin": "typedoc-plugin-markdown",
+    "entryPoints": ["./src/api.ts"], /*, "./src/index.ts" */
+    "disableSources": true,
+    "sort": "source-order",
+    "readme": "none",
+    "outputFileStrategy": "modules",
+    "hideInPageTOC": true,
+    "githubPages": false,
+    "excludePrivate": true,
+  },
   "exclude": ["eval-promptfoo/*"]
 }

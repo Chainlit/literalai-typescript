@@ -24,7 +24,16 @@ export type PaginatedResponse<T> = {
   pageInfo: PageInfo;
 };
 
+/**
+ * Represents a utility class with serialization capabilities.
+ */
 export class Utils {
+  /**
+   * Serializes the properties of the current instance into a dictionary, excluding the 'api' property.
+   * It handles nested objects that also implement a serialize method.
+   *
+   * @returns A dictionary representing the serialized properties of the object.
+   */
   serialize(): any {
     const dict: any = {};
     Object.keys(this as any).forEach((key) => {
@@ -59,6 +68,10 @@ export class Utils {
 
 export type ScoreType = 'HUMAN' | 'AI';
 
+/**
+ * Represents a score entity with properties to track various aspects of scoring.
+ * It extends the `Utils` class for serialization capabilities.
+ */
 export class Score extends Utils {
   id?: Maybe<string>;
   stepId?: Maybe<string>;
@@ -77,6 +90,10 @@ export class Score extends Utils {
   }
 }
 
+/**
+ * Represents an attachment with optional metadata, MIME type, and other properties.
+ * It extends the `Utils` class for serialization capabilities.
+ */
 export class Attachment extends Utils {
   id?: Maybe<string>;
   metadata?: Maybe<Record<string, any>>;
@@ -94,6 +111,10 @@ export class Attachment extends Utils {
   }
 }
 
+/**
+ * Defines the structure for thread fields, inheriting utilities for serialization.
+ * This class encapsulates common properties used to describe a thread in various environments.
+ */
 class ThreadFields extends Utils {
   id!: string;
   participantId?: Maybe<string>;
@@ -108,8 +129,18 @@ export type CleanThreadFields = OmitUtils<ThreadFields>;
 export type ThreadConstructor = Omit<CleanThreadFields, 'id'> &
   Partial<Pick<CleanThreadFields, 'id'>>;
 
+/**
+ * Represents a thread in the system, extending the properties and methods from `ThreadFields`.
+ * This class manages thread-specific operations such as creation and updates via the API.
+ */
 export class Thread extends ThreadFields {
   api: API;
+
+  /**
+   * Constructs a new Thread instance.
+   * @param api - The API instance to interact with backend services.
+   * @param data - Optional initial data for the thread, with an auto-generated ID if not provided.
+   */
   constructor(api: API, data?: ThreadConstructor) {
     super();
     this.api = api;
@@ -121,6 +152,11 @@ export class Thread extends ThreadFields {
     Object.assign(this, data);
   }
 
+  /**
+   * Creates a new step associated with this thread.
+   * @param data - The data for the new step, excluding the thread ID.
+   * @returns A new Step instance linked to this thread.
+   */
   step(data: Omit<StepConstructor, 'threadId'>) {
     return new Step(this.api, {
       ...data,
@@ -128,6 +164,10 @@ export class Thread extends ThreadFields {
     });
   }
 
+  /**
+   * Upserts the thread data to the backend, creating or updating as necessary.
+   * @returns The updated Thread instance.
+   */
   async upsert() {
     if (this.api.disabled) {
       return this;
@@ -177,35 +217,59 @@ class StepFields extends Utils {
 
 export type StepConstructor = OmitUtils<StepFields>;
 
+/**
+ * Represents a step in a process or workflow, extending the fields and methods from StepFields.
+ */
 export class Step extends StepFields {
   api: API;
+
+  /**
+   * Constructs a new Step instance.
+   * @param api The API instance to be used for sending and managing steps.
+   * @param data The initial data for the step, excluding utility properties.
+   */
   constructor(api: API, data: StepConstructor) {
     super();
     this.api = api;
     Object.assign(this, data);
+
+    // Automatically generate an ID if not provided.
     if (!this.id) {
       this.id = uuidv4();
     }
+
+    // Set the creation and start time to the current time if not provided.
     if (!this.createdAt) {
       this.createdAt = new Date().toISOString();
     }
     if (!this.startTime) {
       this.startTime = new Date().toISOString();
     }
+
+    // If the step is a message, set the end time to the start time.
     if (this.isMessage()) {
       this.endTime = this.startTime;
     }
   }
 
+  /**
+   * Serializes the step instance, converting complex objects to strings as necessary.
+   * @returns A serialized representation of the step.
+   */
   serialize() {
     const serialized = super.serialize();
 
+    // Convert error objects to JSON string if present.
     if (typeof serialized.error === 'object' && serialized.error !== null) {
       serialized.error = JSON.stringify(serialized.error);
     }
     return serialized;
   }
 
+  /**
+   * Determines if the step is a type of message.
+   * @returns True if the step is a user, assistant, or system message.
+   */
   isMessage() {
     return (
       this.type === 'user_message' ||
@@ -214,6 +278,11 @@ export class Step extends StepFields {
     );
   }
 
+  /**
+   * Creates a new step instance linked to the current step as a parent.
+   * @param data The data for the new step, excluding the threadId which is inherited.
+   * @returns A new Step instance.
+   */
   step(data: Omit<StepConstructor, 'threadId'>) {
     return new Step(this.api, {
       ...data,
@@ -222,6 +291,10 @@ export class Step extends StepFields {
     });
   }
 
+  /**
+   * Sends the step to the API, handling disabled state and setting the end time if not already set.
+   * @returns The current Step instance after potentially sending to the API.
+   */
   async send() {
     if (this.api.disabled) {
       return this;
@@ -235,6 +308,9 @@ export class Step extends StepFields {
   }
 }
 
+/**
+ * Represents a user with optional metadata and identifier.
+ */
 export class User extends Utils {
   id?: Maybe<string>;
   identifier!: string;
@@ -263,6 +339,11 @@ export type DatasetConstructor = OmitUtils<DatasetFields>;
 export class Dataset extends DatasetFields {
   api: API;
 
+  /**
+   * Constructs a new Dataset instance.
+   * @param api - The API instance to interact with backend services.
+   * @param data - The initial data for the dataset.
+   */
   constructor(api: API, data: DatasetConstructor) {
     super();
     this.api = api;
@@ -275,6 +356,11 @@ export class Dataset extends DatasetFields {
     }
   }
 
+  /**
+   * Updates the dataset with new data.
+   * @param dataset - The dataset data to update.
+   * @returns The updated dataset instance.
+   */
   async update(dataset: {
     name?: Maybe<string>;
     description?: Maybe<string>;
@@ -286,10 +372,19 @@ export class Dataset extends DatasetFields {
     this.metadata = update_res.metadata;
   }
 
+  /**
+   * Deletes the dataset.
+   * @returns A promise that resolves when the dataset is deleted.
+   */
   async delete() {
     return this.api.deleteDataset(this.id);
   }
 
+  /**
+   * Creates a new item in the dataset.
+   * @param datasetItem - The new item to be added to the dataset.
+   * @returns The newly created dataset item.
+   */
   async createItem(datasetItem: {
     input: Record<string, any>;
     expectedOutput?: Maybe<Record<string, any>>;
@@ -301,6 +396,11 @@ export class Dataset extends DatasetFields {
     return item;
   }
 
+  /**
+   * Deletes an item from the dataset.
+   * @param id - The ID of the item to delete.
+   * @returns The deleted dataset item.
+   */
   async deleteItem(id: string) {
     const deletedItem = await this.api.deleteDatasetItem(id);
     if (this.items) {
@@ -309,6 +409,11 @@ export class Dataset extends DatasetFields {
     return deletedItem;
   }
 
+  /**
+   * Creates a new experiment associated with the dataset.
+   * @param experiment - The experiment details including name, optional prompt ID, and parameters.
+   * @returns A new instance of DatasetExperiment containing the created experiment.
+   */
   async createExperiment(experiment: {
     name: string;
     promptId?: string;
@@ -323,6 +428,13 @@ export class Dataset extends DatasetFields {
     return new DatasetExperiment(this.api, datasetExperiment);
   }
 
+  /**
+   * Adds a step to the dataset.
+   * @param stepId - The ID of the step to add.
+   * @param metadata - Optional metadata for the step.
+   * @returns The added dataset item.
+   * @throws Error if the dataset type is 'generation'.
+   */
   public async addStep(
     stepId: string,
     metadata?: Maybe<Record<string, unknown>>
@@ -335,6 +447,12 @@ export class Dataset extends DatasetFields {
     return item;
   }
 
+  /**
+   * Adds a generation to the dataset.
+   * @param generationId - The ID of the generation to add.
+   * @param metadata - Optional metadata for the generation.
+   * @returns The added dataset item.
+   */
   public async addGeneration(
     generationId: string,
     metadata?: Maybe<Record<string, unknown>>
@@ -470,6 +588,11 @@ export type PromptConstructor = OmitUtils<PromptFields>;
 export class Prompt extends PromptFields {
   api: API;
 
+  /**
+   * Constructs a new Prompt instance.
+   * @param api - The API instance to interact with backend services.
+   * @param data - The initial data for the prompt.
+   */
   constructor(api: API, data: PromptConstructor) {
     super();
     this.api = api;
@@ -479,6 +602,11 @@ export class Prompt extends PromptFields {
     }
   }
 
+  /**
+   * Formats the prompt's template messages with optional variables.
+   * @param variables - Optional variables to replace in the template.
+   * @returns An array of formatted chat completion message parameters.
+   */
   format(variables?: Record<string, any>): ChatCompletionMessageParam[] {
     const variablesWithDefault = {
       ...(this.variablesDefaultValues || {}),
@@ -522,6 +650,10 @@ export class Prompt extends PromptFields {
     );
   }
 
+  /**
+   * Converts the prompt's template messages into a Langchain chat prompt template.
+   * @returns A custom chat prompt template configured with the prompt's data.
+   */
   toLangchainChatPromptTemplate() {
     const lcMessages: [string, string][] = this.templateMessages.map((m) => [
       m.role,

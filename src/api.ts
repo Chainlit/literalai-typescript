@@ -105,6 +105,13 @@ const threadFields = `
         ${stepFields}
     }`;
 
+/**
+ * Serializes the step object with a suffix ID to each key.
+ *
+ * @param object - The step object to serialize.
+ * @param id - The numeric identifier to append to each key in the serialized object.
+ * @returns A new object with serialized key-value pairs where each key is suffixed with the provided id.
+ */
 function serialize(object: Utils, id: number) {
   const result: any = {};
 
@@ -115,6 +122,12 @@ function serialize(object: Utils, id: number) {
   return result;
 }
 
+/**
+ * Constructs a variables object for GraphQL queries by serializing each step with a unique suffix.
+ *
+ * @param objects - An array of `Step` objects to be serialized and added to the variables object.
+ * @returns An object containing serialized steps with keys suffixed by their index in the input array.
+ */
 function variablesBuilder(objects: Utils[]) {
   let variables: any = {};
   for (let i = 0; i < objects.length; i++) {
@@ -135,6 +148,13 @@ function generationsVariablesBuilder(
   return variables;
 }
 
+/**
+ * Builds a string for GraphQL field definitions for ingesting multiple steps.
+ * Each step's fields are suffixed with its index to create unique variable names.
+ *
+ * @param steps - An array of `Step` objects. Each `Step` object represents a step to be ingested.
+ * @returns A string containing GraphQL field definitions for all provided steps.
+ */
 function ingestStepsFieldsBuilder(steps: Step[]) {
   let generated = '';
   for (let id = 0; id < steps.length; id++) {
@@ -158,6 +178,14 @@ function ingestStepsFieldsBuilder(steps: Step[]) {
   return generated;
 }
 
+/**
+ * Constructs the arguments for a GraphQL mutation to ingest multiple steps.
+ * Each step is transformed into a call to the `ingestStep` mutation with parameters
+ * suffixed by the step's index to ensure uniqueness.
+ *
+ * @param steps - An array of `Step` objects. Each `Step` object represents a step to be ingested.
+ * @returns A string containing the GraphQL mutation arguments for all provided steps.
+ */
 function ingestStepsArgsBuilder(steps: Step[]) {
   let generated = '';
   for (let id = 0; id < steps.length; id++) {
@@ -187,6 +215,12 @@ function ingestStepsArgsBuilder(steps: Step[]) {
   return generated;
 }
 
+/**
+ * Constructs a complete GraphQL mutation query for adding multiple steps.
+ *
+ * @param steps - An array of `Step` objects to be ingested. This parameter is required.
+ * @returns A string representing the complete GraphQL mutation for adding steps.
+ */
 function ingestStepsQueryBuilder(steps: Step[]) {
   return `
     mutation AddStep(${ingestStepsFieldsBuilder(steps)}) {
@@ -289,12 +323,18 @@ function addGenerationsToDatasetQueryBuilder(generationIds: string[]) {
 }
 
 export class API {
+  /** @ignore */
   private apiKey: string;
+  /** @ignore */
   private url: string;
+  /** @ignore */
   private graphqlEndpoint: string;
+  /** @ignore */
   private restEndpoint: string;
+  /** @ignore */
   public disabled: boolean;
 
+  /** @ignore */
   constructor(apiKey: string, url: string, disabled?: boolean) {
     this.apiKey = apiKey;
     this.url = url;
@@ -310,6 +350,7 @@ export class API {
     }
   }
 
+  /** @ignore */
   private get headers() {
     return {
       'Content-Type': 'application/json',
@@ -319,6 +360,14 @@ export class API {
     };
   }
 
+  /**
+   * Executes a GraphQL call using the provided query and variables.
+   *
+   * @param query - The GraphQL query string to be executed.
+   * @param variables - The variables object for the GraphQL query.
+   * @returns The data part of the response from the GraphQL endpoint.
+   * @throws Will throw an error if the GraphQL call returns errors or if the request fails.
+   */
   private async makeGqlCall(query: string, variables: any) {
     try {
       const response = await axios({
@@ -345,10 +394,18 @@ export class API {
     }
   }
 
+  /**
+   * Executes a REST API call to the specified subpath with the provided body.
+   *
+   * @param subpath - The subpath of the REST endpoint to which the request is made.
+   * @param body - The body of the POST request.
+   * @returns The data part of the response from the REST endpoint.
+   * @throws Will throw an error if the request fails or if the response contains errors.
+   */
   private async makeApiCall(subpath: string, body: any) {
     try {
       const response = await axios({
-        url: this.restEndpoint + subpath,
+        url: `${this.restEndpoint}${subpath}`,
         method: 'post',
         headers: this.headers,
         data: body
@@ -363,7 +420,15 @@ export class API {
       }
     }
   }
-  // Step
+
+  /**
+   * Sends a collection of steps to the GraphQL endpoint.
+   *
+   * This method constructs a GraphQL query using the provided steps, then executes the query.
+   *
+   * @param steps - An array of Step objects to be sent.
+   * @returns The response from the GraphQL call.
+   */
   async sendSteps(steps: Step[]) {
     const query = ingestStepsQueryBuilder(steps);
     const variables = variablesBuilder(steps);
@@ -371,6 +436,15 @@ export class API {
     return this.makeGqlCall(query, variables);
   }
 
+  /**
+   * Retrieves a step by its ID.
+   *
+   * This method constructs a GraphQL query to fetch a step by its unique identifier.
+   * It then executes the query and returns the step if found.
+   *
+   * @param id - The unique identifier of the step to retrieve.
+   * @returns A `Promise` that resolves to the step if found, or `null` if not found.
+   */
   async getStep(id: string): Promise<Maybe<Step>> {
     const query = `
       query GetStep($id: String!) {
@@ -389,6 +463,15 @@ export class API {
     return step;
   }
 
+  /**
+   * Deletes a Step from the platform by its unique identifier.
+   *
+   * This method constructs a GraphQL mutation to delete a step by its unique identifier.
+   * It then executes the mutation and returns the ID of the deleted step.
+   *
+   * @param id - The unique identifier of the step to delete.
+   * @returns A `Promise` that resolves to the ID of the deleted step.
+   */
   async deleteStep(id: string): Promise<string> {
     const query = `
     mutation DeleteStep($id: String!) {
@@ -406,6 +489,19 @@ export class API {
   }
 
   // Upload
+  /**
+   * Uploads a file to a specified thread. This method supports uploading either through direct content or via a file path.
+   * It first signs the upload through a pre-configured endpoint and then proceeds to upload the file using the signed URL.
+   *
+   * @param params - The parameters for uploading a file, including:
+   * @param params.content - The content of the file to upload. Optional if `path` is provided.
+   * @param params.path - The path to the file to upload. Optional if `content` is provided.
+   * @param params.id - The unique identifier for the file. If not provided, a UUID will be generated.
+   * @param params.threadId - The unique identifier of the thread to which the file is being uploaded.
+   * @param params.mime - The MIME type of the file. Defaults to 'application/octet-stream' if not provided.
+   * @returns An object containing the `objectKey` of the uploaded file and the signed `url`, or `null` values if the upload fails.
+   * @throws {Error} Throws an error if neither `content` nor `path` is provided, or if the server response is invalid.
+   */
   async uploadFile({
     content,
     path,
@@ -489,7 +585,17 @@ export class API {
   }
 
   // Generation
-
+  /**
+   * Retrieves a paginated list of Generations based on the provided filters and sorting order.
+   *
+   * @param variables - The variables to filter and sort the Generations. It includes:
+   * - `first`: The number of items to return.
+   * - `after`: The cursor to fetch items after.
+   * - `before`: The cursor to fetch items before.
+   * - `filters`: The filters applied to the Generations.
+   * - `orderBy`: The order in which the Generations are sorted.
+   * @returns A `Promise` that resolves to a `PaginatedResponse<Generation>` object containing the filtered and sorted Generations.
+   */
   async getGenerations(variables: {
     first?: Maybe<number>;
     after?: Maybe<string>;
@@ -574,6 +680,12 @@ export class API {
     return response;
   }
 
+  /**
+   * Creates a new generation entity and sends it to the platform.
+   *
+   * @param generation - The `Generation` object to be created and sent to the platform.
+   * @returns A Promise resolving to the newly created `Generation` object.
+   */
   async createGeneration(generation: Generation) {
     const mutation = `
     mutation CreateGeneration($generation: GenerationPayloadInput!) {
@@ -593,6 +705,17 @@ export class API {
   }
 
   // Thread
+  /**
+   * Upserts a Thread with new information.
+   *
+   * @param threadId - The unique identifier of the thread. (Required)
+   * @param name - The name of the thread. (Optional)
+   * @param metadata - Additional metadata for the thread as a key-value pair object. (Optional)
+   * @param participantId - The unique identifier of the participant. (Optional)
+   * @param environment - The environment where the thread is being upserted. (Optional)
+   * @param tags - An array of tags associated with the thread. (Optional)
+   * @returns The upserted thread object.
+   */
   async upsertThread(
     threadId: string,
     name?: Maybe<string>,
@@ -636,6 +759,17 @@ export class API {
     return response.data.upsertThread;
   }
 
+  /**
+   * Retrieves a paginated list of threads (conversations) based on the provided criteria.
+   *
+   * @param variables - The parameters to filter and paginate the threads.
+   * @param variables.first - The number of threads to retrieve after the cursor. (Optional)
+   * @param variables.after - The cursor to start retrieving threads after. (Optional)
+   * @param variables.before - The cursor to start retrieving threads before. (Optional)
+   * @param variables.filters - The filters to apply on the threads retrieval. (Optional)
+   * @param variables.orderBy - The order in which to retrieve the threads. (Optional)
+   * @returns A promise that resolves to a paginated response of threads.
+   */
   async getThreads(variables: {
     first?: Maybe<number>;
     after?: Maybe<string>;
@@ -690,6 +824,12 @@ export class API {
     return response;
   }
 
+  /**
+   * Retrieves information from a single Thread.
+   *
+   * @param id - The unique identifier of the thread. This parameter is required.
+   * @returns The detailed information of the specified thread.
+   */
   async getThread(id: string) {
     const query = `
     query GetThread($id: String!) {
@@ -705,6 +845,12 @@ export class API {
     return response.data.threadDetail;
   }
 
+  /**
+   * Deletes a single Thread by its unique identifier.
+   *
+   * @param id - The unique identifier of the thread to be deleted. This parameter is required.
+   * @returns The ID of the deleted thread.
+   */
   async deleteThread(id: string) {
     const query = `
     mutation DeleteThread($threadId: String!) {
@@ -721,6 +867,16 @@ export class API {
   }
 
   // User
+  /**
+   * Retrieves a list of users with optional filters.
+   *
+   * @param variables - The parameters used to filter and paginate the user list.
+   * @param variables.first - Optional. The number of items to return.
+   * @param variables.after - Optional. The cursor after which to start fetching data.
+   * @param variables.before - Optional. The cursor before which to start fetching data.
+   * @param variables.filters - Optional. Array of filters to apply to the user query.
+   * @returns A `PaginatedResponse` containing a list of users without utility types.
+   */
   async getUsers(variables: {
     first?: Maybe<number>;
     after?: Maybe<string>;
@@ -778,6 +934,13 @@ export class API {
     return response;
   }
 
+  /**
+   * Creates a new user and sends it to the platform.
+   *
+   * @param identifier The unique identifier for the user. This parameter is required.
+   * @param metadata Optional metadata for the user. This parameter is optional.
+   * @returns A promise that resolves with the newly created User object.
+   */
   public async createUser(
     identifier: string,
     metadata?: Maybe<Record<string, any>>
@@ -798,6 +961,14 @@ export class API {
     return new User({ ...res.data.createParticipant });
   }
 
+  /**
+   * Updates an existing user's details in the platform.
+   *
+   * @param id The unique identifier of the user to update. This parameter is required.
+   * @param identifier A new identifier for the user. This parameter is optional.
+   * @param metadata Additional metadata for the user. This parameter is optional.
+   * @returns A promise that resolves with the updated User object.
+   */
   public async updateUser(
     id: string,
     identifier?: string,
@@ -826,6 +997,13 @@ export class API {
     return new User({ ...res.data.updateParticipant });
   }
 
+  /**
+   * Retrieves an existing user by their identifier or creates a new one if they do not exist.
+   *
+   * @param identifier The unique identifier for the user. This parameter is required.
+   * @param metadata Additional metadata for the user. This parameter is optional.
+   * @returns The ID of the existing or newly created user.
+   */
   public async getOrCreateUser(
     identifier: string,
     metadata?: Maybe<Record<string, any>>
@@ -846,6 +1024,12 @@ export class API {
     }
   }
 
+  /**
+   * Retrieves a user by their unique identifier.
+   *
+   * @param identifier The unique identifier for the user. This parameter is required.
+   * @returns A `Promise` that resolves to a `User` object if found, otherwise `undefined`.
+   */
   public async getUser(identifier: string): Promise<Maybe<User>> {
     const query = `
     query GetUser($id: String, $identifier: String) {
@@ -865,6 +1049,12 @@ export class API {
     }
   }
 
+  /**
+   * Deletes a single user by their unique identifier.
+   *
+   * @param id The unique identifier of the user to be deleted. This parameter is required.
+   * @returns A `Promise` that resolves to the ID of the deleted user.
+   */
   async deleteUser(id: string): Promise<string> {
     const query = `
     mutation DeleteUser($id: String!) {
@@ -882,7 +1072,17 @@ export class API {
   }
 
   // Score
-
+  /**
+   * Get all scores connected to the platform.
+   *
+   * @param variables - The parameters for querying scores.
+   * @param variables.first - Optional. The number of scores to retrieve.
+   * @param variables.after - Optional. The cursor after which to start fetching scores.
+   * @param variables.before - Optional. The cursor before which to start fetching scores.
+   * @param variables.filters - Optional. Filters to apply to the score query.
+   * @param variables.orderBy - Optional. The order in which to sort the scores.
+   * @returns A `Promise` that resolves to a paginated response of scores, excluding certain utility fields.
+   */
   async getScores(variables: {
     first?: Maybe<number>;
     after?: Maybe<string>;
@@ -956,6 +1156,13 @@ export class API {
     return response;
   }
 
+  /**
+   * Creates multiple scores in the database using the provided array of scores.
+   * Each score in the array is transformed into a GraphQL mutation call.
+   *
+   * @param scores - An array of `Score` objects to be created.
+   * @returns A promise that resolves to an array of `Score` instances populated with the created scores' data.
+   */
   async createScores(scores: Score[]): Promise<Score[]> {
     const query = createScoresQueryBuilder(scores);
     const variables = variablesBuilder(scores);
@@ -964,6 +1171,20 @@ export class API {
     return Object.values(result.data).map((x: any) => new Score(x));
   }
 
+  /**
+   * Creates a new score in the database using the provided parameters.
+   *
+   * @param variables - The score details to be used in the creation process. This includes:
+   * @param variables.name - The name of the score. (required)
+   * @param variables.type - The type of the score, based on the `ScoreType` enum. (required)
+   * @param variables.value - The numeric value of the score. (required)
+   * @param variables.stepId - The identifier for the step associated with the score. (optional)
+   * @param variables.generationId - The identifier for the generation associated with the score. (optional)
+   * @param variables.datasetExperimentItemId - The identifier for the dataset experiment item associated with the score. (optional)
+   * @param variables.comment - Any comment associated with the score. (optional)
+   * @param variables.tags - An array of tags associated with the score. (required)
+   * @returns A new `Score` instance populated with the created score's data.
+   */
   async createScore(variables: OmitUtils<Score>) {
     const query = `
     mutation CreateScore(
@@ -1006,6 +1227,15 @@ export class API {
     return new Score(result.data.createScore);
   }
 
+  /**
+   * Updates an existing score in the database.
+   *
+   * @param id - The unique identifier of the score to update. (required)
+   * @param updateParams - The parameters to update in the score. (required)
+   * @param updateParams.comment - A new or updated comment for the score. (optional)
+   * @param updateParams.value - The new value to set for the score. (required)
+   * @returns A `Score` instance representing the updated score.
+   */
   async updateScore(
     id: string,
     updateParams: {
@@ -1041,6 +1271,12 @@ export class API {
     return new Score(result.data.updateScore);
   }
 
+  /**
+   * Deletes a single score from the database.
+   *
+   * @param id - The unique identifier of the score to delete. (required)
+   * @returns The ID of the deleted score.
+   */
   async deleteScore(id: string) {
     const query = `
     mutation DeleteScore($id: String!) {
@@ -1056,6 +1292,16 @@ export class API {
   }
 
   // Dataset
+  /**
+   * Creates a new dataset in the database.
+   *
+   * @param dataset - The dataset details to be created.
+   * @param dataset.name - The name of the dataset. (required)
+   * @param dataset.description - The description of the dataset. (optional)
+   * @param dataset.metadata - Additional metadata for the dataset as a key-value pair object. (optional)
+   * @param dataset.type - The type of the dataset, defined by the DatasetType enum. (optional)
+   * @returns A new Dataset instance populated with the created dataset's data.
+   */
   public async createDataset(dataset: {
     name: string;
     description?: Maybe<string>;
@@ -1079,6 +1325,12 @@ export class API {
     return new Dataset(this, result.data.createDataset);
   }
 
+  /**
+   * Retrieves a dataset based on provided ID or name.
+   *
+   * @param variables - An object containing optional `id` and `name` properties to specify which dataset to retrieve.
+   * @returns A `Dataset` instance populated with the retrieved dataset's data, or `null` if no data is found.
+   */
   public async getDataset(variables: { id?: string; name?: string }) {
     const result = await this.makeApiCall('/export/dataset', variables);
 
@@ -1089,6 +1341,16 @@ export class API {
     return new Dataset(this, result.data);
   }
 
+  /**
+   * Updates a dataset with new information.
+   *
+   * @param id - The unique identifier of the dataset to update. This parameter is required.
+   * @param dataset - An object containing the new dataset information.
+   * @param dataset.name - The new name of the dataset. (optional)
+   * @param dataset.description - The new description of the dataset. (optional)
+   * @param dataset.metadata - Additional metadata for the dataset as a key-value pair object. (optional)
+   * @returns A new `Dataset` instance populated with the updated dataset's data.
+   */
   public async updateDataset(
     id: string,
     dataset: {
@@ -1114,6 +1376,12 @@ export class API {
     return new Dataset(this, result.data.updateDataset);
   }
 
+  /**
+   * Deletes a single dataset by its unique identifier.
+   *
+   * @param id - The unique identifier of the dataset to delete. This parameter is required.
+   * @returns A new `Dataset` instance populated with the deleted dataset's data.
+   */
   public async deleteDataset(id: string) {
     const query = `
       mutation DeleteDataset($id: String!) {
@@ -1132,6 +1400,16 @@ export class API {
     return new Dataset(this, result.data.deleteDataset);
   }
 
+  /**
+   * Creates a new item in a dataset.
+   *
+   * @param datasetId - The unique identifier of the dataset. This parameter is required.
+   * @param datasetItem - The data for the new dataset item. This parameter is required.
+   * @param datasetItem.input - The input data for the dataset item. This field is required.
+   * @param datasetItem.expectedOutput - The expected output data for the dataset item. This field is optional.
+   * @param datasetItem.metadata - Additional metadata for the dataset item. This field is optional.
+   * @returns A new `DatasetItem` instance populated with the created dataset item's data.
+   */
   public async createDatasetItem(
     datasetId: string,
     datasetItem: {
@@ -1158,6 +1436,12 @@ export class API {
     return new DatasetItem(result.data.createDatasetItem);
   }
 
+  /**
+   * Retrieves a single item from a dataset by its unique identifier.
+   *
+   * @param id - The unique identifier of the dataset item. This parameter is required.
+   * @returns A `DatasetItem` instance populated with the retrieved dataset item's data.
+   */
   public async getDatasetItem(id: string) {
     const query = `
       query GetDatasetItem($id: String!) {
@@ -1177,6 +1461,12 @@ export class API {
     return new DatasetItem(result.data.datasetItem);
   }
 
+  /**
+   * Deletes a single item from a dataset by its unique identifier.
+   *
+   * @param id - The unique identifier of the dataset item to be deleted. This parameter is required.
+   * @returns A `DatasetItem` instance populated with the data of the deleted dataset item.
+   */
   public async deleteDatasetItem(id: string) {
     const query = `
       mutation DeleteDatasetItem($id: String!) {
@@ -1196,6 +1486,14 @@ export class API {
     return new DatasetItem(result.data.deleteDatasetItem);
   }
 
+  /**
+   * Adds a single step item to a dataset.
+   *
+   * @param datasetId - The unique identifier of the dataset. This parameter is required.
+   * @param stepId - The unique identifier of the step to be added. This parameter is required.
+   * @param metadata - Additional metadata for the step as a JSON object. This parameter is optional.
+   * @returns A `DatasetItem` instance populated with the data of the newly added step.
+   */
   public async addStepToDataset(
     datasetId: string,
     stepId: string,
@@ -1223,6 +1521,14 @@ export class API {
     return new DatasetItem(result.data.addStepToDataset);
   }
 
+  /**
+   * Adds a generation item to a dataset.
+   *
+   * @param datasetId - The unique identifier of the dataset. This parameter is required.
+   * @param generationId - The unique identifier of the generation to be added. This parameter is required.
+   * @param metadata - Additional metadata for the generation as a JSON object. This parameter is optional.
+   * @returns A `DatasetItem` instance populated with the data of the newly added generation.
+   */
   public async addGenerationToDataset(
     datasetId: string,
     generationId: string,
@@ -1324,6 +1630,13 @@ export class API {
   }
 
   // Prompt
+  /**
+   * Create a new prompt lineage.
+   *
+   * @param name - The name of the prompt lineage. This parameter is required.
+   * @param description - A description for the prompt lineage. This parameter is optional.
+   * @returns The newly created prompt lineage object, or null if creation failed.
+   */
   public async createPromptLineage(name: string, description?: string) {
     const mutation = `mutation createPromptLineage(
       $name: String!
@@ -1350,6 +1663,14 @@ export class API {
     return result.data.createPromptLineage;
   }
 
+  /**
+   * Create a new prompt.
+   *
+   * @param name - The name of the prompt lineage. This parameter is required.
+   * @param templateMessages - An array of template messages defining the prompt. This parameter is required.
+   * @param settings - Optional settings for the prompt creation, provided as a record of string keys to any type of values.
+   * @returns A new Prompt instance containing the created prompt data.
+   */
   public async createPrompt(
     name: string,
     templateMessages: IGenerationMessage[],
@@ -1400,6 +1721,13 @@ export class API {
     return new Prompt(this, promptData);
   }
 
+  /**
+   * Retrieves a prompt by its name and optionally by its version.
+   *
+   * @param name - The name of the prompt to retrieve.
+   * @param version - The version number of the prompt (optional).
+   * @returns An instance of `Prompt` containing the prompt data, or `null` if not found.
+   */
   public async getPrompt(name: string, version?: number) {
     const query = `
     query GetPrompt($name: String!, $version: Int) {
