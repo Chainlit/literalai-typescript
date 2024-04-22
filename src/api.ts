@@ -30,6 +30,7 @@ import {
   Prompt,
   Score,
   Step,
+  StepType,
   User,
   Utils
 } from './types';
@@ -776,6 +777,7 @@ export class API {
     before?: Maybe<string>;
     filters?: ThreadsFilter[];
     orderBy?: ThreadsOrderBy;
+    stepTypesToKeep?: StepType[];
   }): Promise<PaginatedResponse<CleanThreadFields>> {
     const query = `
     query GetThreads(
@@ -787,6 +789,7 @@ export class API {
         $first: Int,
         $last: Int,
         $projectId: String,
+        $stepTypesToKeep: [StepType!],
         ) {
         threads(
             after: $after,
@@ -797,6 +800,7 @@ export class API {
             first: $first,
             last: $last,
             projectId: $projectId,
+            stepTypesToKeep: $stepTypesToKeep,
             ) {
             pageInfo {
                 startCursor
