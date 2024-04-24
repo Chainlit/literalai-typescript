@@ -1668,17 +1668,31 @@ export class API {
   }
 
   /**
-   * Create a new prompt.
-   *
-   * @param name - The name of the prompt lineage. This parameter is required.
-   * @param templateMessages - An array of template messages defining the prompt. This parameter is required.
-   * @param settings - Optional settings for the prompt creation, provided as a record of string keys to any type of values.
-   * @returns A new Prompt instance containing the created prompt data.
+   * @deprecated Please use getOrCreatePrompt instead.
    */
   public async createPrompt(
     name: string,
     templateMessages: IGenerationMessage[],
     settings?: Maybe<Record<string, any>>
+  ) {
+    return this.getOrCreatePrompt(name, templateMessages, settings);
+  }
+
+  /**
+   * A Prompt is fully defined by its name, template_messages and settings.
+   * If a prompt already exists for the given arguments, it is returned.
+   * Otherwise, a new prompt is created.
+   *
+   * @param name The name of the prompt to retrieve or create.
+   * @param templateMessages A list of template messages for the prompt.
+   * @param settings Optional settings for the prompt.
+   * @returns The prompt that was retrieved or created.
+   */
+  public async getOrCreatePrompt(
+    name: string,
+    templateMessages: IGenerationMessage[],
+    settings?: Maybe<Record<string, any>>,
+    tools?: Maybe<Record<string, any>>
   ) {
     const mutation = `mutation createPromptVersion(
       $lineageId: String!
@@ -1711,7 +1725,8 @@ export class API {
     const result = await this.makeGqlCall(mutation, {
       lineageId: lineage.id,
       templateMessages,
-      settings
+      settings,
+      tools
     });
 
     const promptData = result.data.createPromptVersion;
@@ -1726,6 +1741,36 @@ export class API {
   }
 
   /**
+   * Retrieves a prompt by its id.
+   *
+   * @param id ID of the prompt to retrieve.
+   * @returns The prompt with given ID.
+   */
+  public async getPromptById(id: string) {
+    const query = `
+    query GetPrompt($id: String!) {
+      promptVersion(id: $id) {
+        id
+        createdAt
+        updatedAt
+        type
+        templateMessages
+        tools
+        settings
+        variables
+        variablesDefaultValues
+        version
+        lineage {
+          name
+        }
+      }
+    }
+    `;
+
+    return this.getPromptWithQuery(query, { id });
+  }
+
+  /**
    * Retrieves a prompt by its name and optionally by its version.
    *
    * @param name - The name of the prompt to retrieve.
@@ -1736,27 +1781,31 @@ export class API {
     const query = `
     query GetPrompt($name: String!, $version: Int) {
       promptVersion(name: $name, version: $version) {
-          id
-          createdAt
-          updatedAt
-          type
-          templateMessages
-          tools
-          settings
-          variables
-          variablesDefaultValues
-          version
-          lineage {
-              name
-          }
+        id
+        createdAt
+        updatedAt
+        type
+        templateMessages
+        tools
+        settings
+        variables
+        variablesDefaultValues
+        version
+        lineage {
+          name
+        }
       }
-  }
+    }
     `;
 
-    const result = await this.makeGqlCall(query, {
-      name,
-      version
-    });
+    return this.getPromptWithQuery(query, { name, version });
+  }
+
+  public async getPromptWithQuery(
+    query: string,
+    variables: Record<string, any>
+  ) {
+    const result = await this.makeGqlCall(query, variables);
 
     if (!result.data || !result.data.promptVersion) {
       return null;
