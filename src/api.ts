@@ -1679,7 +1679,8 @@ export class API {
   }
 
   /**
-   * A Prompt is fully defined by its name, template_messages and settings.
+   * A Prompt is fully defined by its name, template_messages, settings
+   * and tools.
    * If a prompt already exists for the given arguments, it is returned.
    * Otherwise, a new prompt is created.
    *
@@ -1819,6 +1820,6 @@ export class API {
       delete promptData.settings.provider;
     }
 
-    return await new Prompt(this, promptData);
+    return new Prompt(this, promptData);
   }
 }
