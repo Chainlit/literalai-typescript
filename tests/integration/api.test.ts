@@ -535,6 +535,16 @@ describe('End to end tests for the SDK', function () {
       expect(prompt?.version).toBe(0);
     });
 
+    it('should get a prompt by id', async () => {
+      const prompt = await client.api.getPrompt('Default');
+
+      const fetchedPrompt = await client.api.getPromptById(prompt!.id);
+
+      expect(fetchedPrompt).not.toBeNull();
+      expect(fetchedPrompt?.name).toBe('Default');
+      expect(fetchedPrompt?.version).toBe(0);
+    });
+
     it('should format a prompt with default values', async () => {
       const prompt = await client.api.getPrompt('Default');
 

@@ -1767,7 +1767,7 @@ export class API {
     }
     `;
 
-    return this.getPromptWithQuery(query, { id });
+    return await this.getPromptWithQuery(query, { id });
   }
 
   /**
@@ -1798,7 +1798,7 @@ export class API {
     }
     `;
 
-    return this.getPromptWithQuery(query, { name, version });
+    return await this.getPromptWithQuery(query, { name, version });
   }
 
   public async getPromptWithQuery(
@@ -1819,6 +1819,6 @@ export class API {
       delete promptData.settings.provider;
     }
 
-    return new Prompt(this, promptData);
+    return await new Prompt(this, promptData);
   }
 }
