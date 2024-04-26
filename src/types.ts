@@ -603,11 +603,13 @@ export class Prompt extends PromptFields {
   }
 
   /**
-   * Formats the prompt's template messages with optional variables.
-   * @param variables - Optional variables to replace in the template.
-   * @returns An array of formatted chat completion message parameters.
+   * Formats the prompt's template messages with the given variables.
+   * @param variables - Optional variables to resolve in the template messages.
+   * @returns An array of formatted chat completion messages.
    */
-  format(variables?: Record<string, any>): ChatCompletionMessageParam[] {
+  formatMessages(
+    variables?: Record<string, any>
+  ): ChatCompletionMessageParam[] {
     const variablesWithDefault = {
       ...(this.variablesDefaultValues || {}),
       ...variables
@@ -648,6 +650,13 @@ export class Prompt extends PromptFields {
         return formattedMessage;
       }
     );
+  }
+
+  /**
+   * @deprecated Please use `formatMessages` instead.
+   */
+  format(variables?: Record<string, any>): ChatCompletionMessageParam[] {
+    return this.formatMessages(variables);
   }
 
   /**
