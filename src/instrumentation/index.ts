@@ -1,10 +1,18 @@
 import { LiteralClient, Step, Thread } from '..';
 import { LiteralCallbackHandler } from './langchain';
-import instrumentOpenAI, { OpenAIOutput } from './openai';
+import instrumentOpenAI, {
+  InstrumentOpenAIOptions,
+  OpenAIOutput
+} from './openai';
+
+export type { InstrumentOpenAIOptions } from './openai';
 
 export default (client: LiteralClient) => ({
-  openai: (output: OpenAIOutput, parent?: Step | Thread) =>
-    instrumentOpenAI(client, output, parent),
+  openai: (
+    output: OpenAIOutput,
+    parent?: Step | Thread,
+    options?: InstrumentOpenAIOptions
+  ) => instrumentOpenAI(client, output, parent, options),
   langchain: {
     literalCallback: (threadId?: string) => {
       try {
