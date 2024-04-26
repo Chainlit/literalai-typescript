@@ -6,6 +6,8 @@ import { Step, StepConstructor, Thread, ThreadConstructor } from './types';
 export * from './types';
 export * from './generation';
 
+export type * from './instrumentation';
+
 export class LiteralClient {
   api: API;
   openai: ReturnType<typeof openai>;

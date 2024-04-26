@@ -11,6 +11,7 @@ import {
   CompletionGeneration,
   IGenerationMessage,
   LiteralClient,
+  Maybe,
   Step,
   Thread
 } from '..';
@@ -284,10 +285,16 @@ export type OpenAIOutput =
   | Stream<ChatCompletion>
   | Stream<ChatCompletionChunk>;
 
+export interface InstrumentOpenAIOptions {
+  metadata?: Maybe<Record<string, any>>;
+  tags?: Maybe<string[]>;
+}
+
 const instrumentOpenAI = async (
   client: LiteralClient,
   output: OpenAIOutput,
-  parent?: Step | Thread
+  parent?: Step | Thread,
+  options: InstrumentOpenAIOptions = {}
 ) => {
   //@ts-expect-error - This is a hacky way to get the id from the stream
   const outputId = output.id;
@@ -333,7 +340,9 @@ const instrumentOpenAI = async (
           generation,
           output: messageCompletion,
           startTime: new Date(start).toISOString(),
-          endTime: new Date(start + metrics.duration).toISOString()
+          endTime: new Date(start + metrics.duration).toISOString(),
+          tags: options.tags,
+          metadata: options.metadata
         });
         await step.send();
       } else {
@@ -359,7 +368,9 @@ const instrumentOpenAI = async (
           generation,
           output: { content: completion },
           startTime: new Date(start).toISOString(),
-          endTime: new Date(start + metrics.duration).toISOString()
+          endTime: new Date(start + metrics.duration).toISOString(),
+          tags: options.tags,
+          metadata: options.metadata
         });
         await step.send();
       } else {
@@ -397,7 +408,9 @@ const instrumentOpenAI = async (
           generation,
           output: messageCompletion,
           startTime: new Date(start).toISOString(),
-          endTime: new Date().toISOString()
+          endTime: new Date().toISOString(),
+          tags: options.tags,
+          metadata: options.metadata
         });
         await step.send();
       } else {
@@ -421,7 +434,9 @@ const instrumentOpenAI = async (
           generation,
           output: { content: completion },
           startTime: new Date(start).toISOString(),
-          endTime: new Date().toISOString()
+          endTime: new Date().toISOString(),
+          tags: options.tags,
+          metadata: options.metadata
         });
         await step.send();
       } else {
