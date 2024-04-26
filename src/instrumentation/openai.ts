@@ -286,7 +286,6 @@ export type OpenAIOutput =
   | Stream<ChatCompletionChunk>;
 
 export interface InstrumentOpenAIOptions {
-  metadata?: Maybe<Record<string, any>>;
   tags?: Maybe<string[]>;
 }
 
@@ -302,7 +301,8 @@ const instrumentOpenAI = async (
   const baseGeneration = {
     provider: 'openai',
     model: inputs.model,
-    settings: getSettings(inputs)
+    settings: getSettings(inputs),
+    tags: options.tags
   };
 
   if (output instanceof Stream) {
@@ -340,9 +340,7 @@ const instrumentOpenAI = async (
           generation,
           output: messageCompletion,
           startTime: new Date(start).toISOString(),
-          endTime: new Date(start + metrics.duration).toISOString(),
-          tags: options.tags,
-          metadata: options.metadata
+          endTime: new Date(start + metrics.duration).toISOString()
         });
         await step.send();
       } else {
@@ -368,9 +366,7 @@ const instrumentOpenAI = async (
           generation,
           output: { content: completion },
           startTime: new Date(start).toISOString(),
-          endTime: new Date(start + metrics.duration).toISOString(),
-          tags: options.tags,
-          metadata: options.metadata
+          endTime: new Date(start + metrics.duration).toISOString()
         });
         await step.send();
       } else {
@@ -408,9 +404,7 @@ const instrumentOpenAI = async (
           generation,
           output: messageCompletion,
           startTime: new Date(start).toISOString(),
-          endTime: new Date().toISOString(),
-          tags: options.tags,
-          metadata: options.metadata
+          endTime: new Date().toISOString()
         });
         await step.send();
       } else {
@@ -434,9 +428,7 @@ const instrumentOpenAI = async (
           generation,
           output: { content: completion },
           startTime: new Date(start).toISOString(),
-          endTime: new Date().toISOString(),
-          tags: options.tags,
-          metadata: options.metadata
+          endTime: new Date().toISOString()
         });
         await step.send();
       } else {
