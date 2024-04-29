@@ -709,6 +709,28 @@ export class API {
   /**
    * Upserts a Thread with new information.
    *
+   * @param options - The parameters to upsert a thread.
+   * @param options.threadId - The unique identifier of the thread. (Required)
+   * @param options.name - The name of the thread. (Optional)
+   * @param options.metadata - Additional metadata for the thread as a key-value pair object. (Optional)
+   * @param options.participantId - The unique identifier of the participant. (Optional)
+   * @param options.environment - The environment where the thread is being upserted. (Optional)
+   * @param options.tags - An array of tags associated with the thread. (Optional)
+   * @returns The upserted thread object.
+   */
+  async upsertThread(options: {
+    threadId: string;
+    name?: Maybe<string>;
+    metadata?: Maybe<Record<string, any>>;
+    participantId?: Maybe<string>;
+    environment?: Maybe<string>;
+    tags?: Maybe<string[]>;
+  }): Promise<CleanThreadFields>;
+
+  /**
+   * Upserts a Thread with new information.
+   * @deprecated Use one single object attribute instead of multiple parameters.
+   *
    * @param threadId - The unique identifier of the thread. (Required)
    * @param name - The name of the thread. (Optional)
    * @param metadata - Additional metadata for the thread as a key-value pair object. (Optional)
@@ -724,7 +746,26 @@ export class API {
     participantId?: Maybe<string>,
     environment?: Maybe<string>,
     tags?: Maybe<string[]>
-  ) {
+  ): Promise<CleanThreadFields>;
+
+  async upsertThread(
+    threadIdOrOptions: any,
+    name?: Maybe<string>,
+    metadata?: Maybe<Record<string, any>>,
+    participantId?: Maybe<string>,
+    environment?: Maybe<string>,
+    tags?: Maybe<string[]>
+  ): Promise<CleanThreadFields> {
+    let threadId = threadIdOrOptions;
+    if (typeof threadIdOrOptions === 'object') {
+      threadId = threadIdOrOptions.threadId;
+      name = threadIdOrOptions.name;
+      metadata = threadIdOrOptions.metadata;
+      participantId = threadIdOrOptions.participantId;
+      environment = threadIdOrOptions.environment;
+      tags = threadIdOrOptions.tags;
+    }
+
     const query = `
     mutation UpsertThread(
       $threadId: String!,

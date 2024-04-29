@@ -172,14 +172,14 @@ export class Thread extends ThreadFields {
     if (this.api.disabled) {
       return this;
     }
-    await this.api.upsertThread(
-      this.id,
-      this.name,
-      this.metadata,
-      this.participantId,
-      this.environment,
-      this.tags
-    );
+    await this.api.upsertThread({
+      threadId: this.id,
+      name: this.name,
+      metadata: this.metadata,
+      participantId: this.participantId,
+      environment: this.environment,
+      tags: this.tags
+    });
     return this;
   }
 }

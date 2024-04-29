@@ -168,7 +168,51 @@ A Promise resolving to the newly created `Generation` object.
 
 ##### upsertThread()
 
-> **upsertThread**(`threadId`, `name`?, `metadata`?, `participantId`?, `environment`?, `tags`?): `Promise`\<`any`\>
+###### upsertThread(options)
+
+> **upsertThread**(`options`): `Promise`\<`CleanThreadFields`\>
+
+Upserts a Thread with new information.
+
+###### Parameters
+
+▪ **options**: `object`
+
+The parameters to upsert a thread.
+
+▪ **options.threadId**: `string`
+
+The unique identifier of the thread. (Required)
+
+▪ **options.name?**: `Maybe`\<`string`\>
+
+The name of the thread. (Optional)
+
+▪ **options.metadata?**: `Maybe`\<`Record`\<`string`, `any`\>\>
+
+Additional metadata for the thread as a key-value pair object. (Optional)
+
+▪ **options.participantId?**: `Maybe`\<`string`\>
+
+The unique identifier of the participant. (Optional)
+
+▪ **options.environment?**: `Maybe`\<`string`\>
+
+The environment where the thread is being upserted. (Optional)
+
+▪ **options.tags?**: `Maybe`\<`string`[]\>
+
+An array of tags associated with the thread. (Optional)
+
+###### Returns
+
+`Promise`\<`CleanThreadFields`\>
+
+The upserted thread object.
+
+###### upsertThread(threadId, name, metadata, participantId, environment, tags)
+
+> **upsertThread**(`threadId`, `name`?, `metadata`?, `participantId`?, `environment`?, `tags`?): `Promise`\<`CleanThreadFields`\>
 
 Upserts a Thread with new information.
 
@@ -200,9 +244,13 @@ An array of tags associated with the thread. (Optional)
 
 ###### Returns
 
-`Promise`\<`any`\>
+`Promise`\<`CleanThreadFields`\>
 
 The upserted thread object.
+
+###### Deprecated
+
+Use one single object attribute instead of multiple parameters.
 
 ##### getThreads()
 
@@ -235,6 +283,8 @@ The filters to apply on the threads retrieval. (Optional)
 ▪ **variables.orderBy?**: `ThreadsOrderBy`
 
 The order in which to retrieve the threads. (Optional)
+
+▪ **variables.stepTypesToKeep?**: `StepType`[]
 
 ###### Returns
 
