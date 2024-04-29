@@ -893,70 +893,27 @@ The newly created prompt lineage object, or null if creation failed.
 
 > **createPrompt**(`name`, `templateMessages`, `settings`?): `Promise`\<`Prompt`\>
 
-###### Parameters
-
-▪ **name**: `string`
-
-▪ **templateMessages**: `IGenerationMessage`[]
-
-▪ **settings?**: `Maybe`\<`Record`\<`string`, `any`\>\>
-
-###### Returns
-
-`Promise`\<`Prompt`\>
-
-###### Deprecated
-
-Please use getOrCreatePrompt instead.
-
-##### getOrCreatePrompt()
-
-> **getOrCreatePrompt**(`name`, `templateMessages`, `settings`?, `tools`?): `Promise`\<`Prompt`\>
-
-A Prompt is fully defined by its name, template_messages, settings
-and tools.
-If a prompt already exists for the given arguments, it is returned.
-Otherwise, a new prompt is created.
+Create a new prompt.
 
 ###### Parameters
 
 ▪ **name**: `string`
 
-The name of the prompt to retrieve or create.
+The name of the prompt lineage. This parameter is required.
 
 ▪ **templateMessages**: `IGenerationMessage`[]
 
-A list of template messages for the prompt.
+An array of template messages defining the prompt. This parameter is required.
 
 ▪ **settings?**: `Maybe`\<`Record`\<`string`, `any`\>\>
 
-Optional settings for the prompt.
-
-▪ **tools?**: `Maybe`\<`Record`\<`string`, `any`\>\>
+Optional settings for the prompt creation, provided as a record of string keys to any type of values.
 
 ###### Returns
 
 `Promise`\<`Prompt`\>
 
-The prompt that was retrieved or created.
-
-##### getPromptById()
-
-> **getPromptById**(`id`): `Promise`\<`null` \| `Prompt`\>
-
-Retrieves a prompt by its id.
-
-###### Parameters
-
-▪ **id**: `string`
-
-ID of the prompt to retrieve.
-
-###### Returns
-
-`Promise`\<`null` \| `Prompt`\>
-
-The prompt with given ID.
+A new Prompt instance containing the created prompt data.
 
 ##### getPrompt()
 
@@ -979,20 +936,6 @@ The version number of the prompt (optional).
 `Promise`\<`null` \| `Prompt`\>
 
 An instance of `Prompt` containing the prompt data, or `null` if not found.
-
-##### getPromptWithQuery()
-
-> **getPromptWithQuery**(`query`, `variables`): `Promise`\<`null` \| `Prompt`\>
-
-###### Parameters
-
-▪ **query**: `string`
-
-▪ **variables**: `Record`\<`string`, `any`\>
-
-###### Returns
-
-`Promise`\<`null` \| `Prompt`\>
 
 ***
 
