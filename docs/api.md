@@ -168,7 +168,51 @@ A Promise resolving to the newly created `Generation` object.
 
 ##### upsertThread()
 
-> **upsertThread**(`threadId`, `name`?, `metadata`?, `participantId`?, `environment`?, `tags`?): `Promise`\<`any`\>
+###### upsertThread(options)
+
+> **upsertThread**(`options`): `Promise`\<`CleanThreadFields`\>
+
+Upserts a Thread with new information.
+
+###### Parameters
+
+▪ **options**: `object`
+
+The parameters to upsert a thread.
+
+▪ **options.threadId**: `string`
+
+The unique identifier of the thread. (Required)
+
+▪ **options.name?**: `Maybe`\<`string`\>
+
+The name of the thread. (Optional)
+
+▪ **options.metadata?**: `Maybe`\<`Record`\<`string`, `any`\>\>
+
+Additional metadata for the thread as a key-value pair object. (Optional)
+
+▪ **options.participantId?**: `Maybe`\<`string`\>
+
+The unique identifier of the participant. (Optional)
+
+▪ **options.environment?**: `Maybe`\<`string`\>
+
+The environment where the thread is being upserted. (Optional)
+
+▪ **options.tags?**: `Maybe`\<`string`[]\>
+
+An array of tags associated with the thread. (Optional)
+
+###### Returns
+
+`Promise`\<`CleanThreadFields`\>
+
+The upserted thread object.
+
+###### upsertThread(threadId, name, metadata, participantId, environment, tags)
+
+> **upsertThread**(`threadId`, `name`?, `metadata`?, `participantId`?, `environment`?, `tags`?): `Promise`\<`CleanThreadFields`\>
 
 Upserts a Thread with new information.
 
@@ -200,9 +244,13 @@ An array of tags associated with the thread. (Optional)
 
 ###### Returns
 
-`Promise`\<`any`\>
+`Promise`\<`CleanThreadFields`\>
 
 The upserted thread object.
+
+###### Deprecated
+
+Use one single object attribute instead of multiple parameters.
 
 ##### getThreads()
 
@@ -235,6 +283,8 @@ The filters to apply on the threads retrieval. (Optional)
 ▪ **variables.orderBy?**: `ThreadsOrderBy`
 
 The order in which to retrieve the threads. (Optional)
+
+▪ **variables.stepTypesToKeep?**: `StepType`[]
 
 ###### Returns
 
@@ -843,27 +893,70 @@ The newly created prompt lineage object, or null if creation failed.
 
 > **createPrompt**(`name`, `templateMessages`, `settings`?): `Promise`\<`Prompt`\>
 
-Create a new prompt.
-
 ###### Parameters
 
 ▪ **name**: `string`
 
-The name of the prompt lineage. This parameter is required.
-
 ▪ **templateMessages**: `IGenerationMessage`[]
 
-An array of template messages defining the prompt. This parameter is required.
-
 ▪ **settings?**: `Maybe`\<`Record`\<`string`, `any`\>\>
-
-Optional settings for the prompt creation, provided as a record of string keys to any type of values.
 
 ###### Returns
 
 `Promise`\<`Prompt`\>
 
-A new Prompt instance containing the created prompt data.
+###### Deprecated
+
+Please use getOrCreatePrompt instead.
+
+##### getOrCreatePrompt()
+
+> **getOrCreatePrompt**(`name`, `templateMessages`, `settings`?, `tools`?): `Promise`\<`Prompt`\>
+
+A Prompt is fully defined by its name, template_messages, settings
+and tools.
+If a prompt already exists for the given arguments, it is returned.
+Otherwise, a new prompt is created.
+
+###### Parameters
+
+▪ **name**: `string`
+
+The name of the prompt to retrieve or create.
+
+▪ **templateMessages**: `IGenerationMessage`[]
+
+A list of template messages for the prompt.
+
+▪ **settings?**: `Maybe`\<`Record`\<`string`, `any`\>\>
+
+Optional settings for the prompt.
+
+▪ **tools?**: `Maybe`\<`Record`\<`string`, `any`\>\>
+
+###### Returns
+
+`Promise`\<`Prompt`\>
+
+The prompt that was retrieved or created.
+
+##### getPromptById()
+
+> **getPromptById**(`id`): `Promise`\<`null` \| `Prompt`\>
+
+Retrieves a prompt by its id.
+
+###### Parameters
+
+▪ **id**: `string`
+
+ID of the prompt to retrieve.
+
+###### Returns
+
+`Promise`\<`null` \| `Prompt`\>
+
+The prompt with given ID.
 
 ##### getPrompt()
 
@@ -886,6 +979,20 @@ The version number of the prompt (optional).
 `Promise`\<`null` \| `Prompt`\>
 
 An instance of `Prompt` containing the prompt data, or `null` if not found.
+
+##### getPromptWithQuery()
+
+> **getPromptWithQuery**(`query`, `variables`): `Promise`\<`null` \| `Prompt`\>
+
+###### Parameters
+
+▪ **query**: `string`
+
+▪ **variables**: `Record`\<`string`, `any`\>
+
+###### Returns
+
+`Promise`\<`null` \| `Prompt`\>
 
 ***
 

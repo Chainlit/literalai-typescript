@@ -229,17 +229,17 @@ class OpenAIAssistantSyncer {
     }
     const assistant = await this.openai.beta.assistants.retrieve(assistantId);
 
-    await this.client.api.upsertThread(
-      litThreadId,
+    await this.client.api.upsertThread({
+      threadId: litThreadId,
       name,
-      {
+      metadata: {
         assistantId,
         threadId,
         assistantName: assistant.name,
         ...threadMetadata
       },
-      userId
-    );
+      participantId: userId
+    });
 
     const messagePromises = messages.data.map((m) =>
       this.processMessage(threadId, assistant, m)

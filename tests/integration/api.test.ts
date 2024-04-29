@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -69,7 +70,35 @@ describe('End to end tests for the SDK', function () {
     expect(generations.data[0].id).toBe(generation.id);
   });
 
-  it('should test thread', async function () {
+  it('should test thread with a single argument', async function () {
+    const thread = await client.api.upsertThread({
+      threadId: uuidv4(),
+      name: 'name',
+      metadata: { foo: 'bar' },
+      tags: ['hello']
+    });
+
+    expect(thread.id).not.toBeNull();
+    expect(thread.metadata).toStrictEqual({ foo: 'bar' });
+
+    const fetchedThread = await client.api.getThread(thread.id);
+    expect(fetchedThread.id).toBe(thread.id);
+
+    const updatedThread = await client.api.upsertThread({
+      threadId: thread.id,
+      name: 'test',
+      metadata: { foo: 'baz' },
+      tags: ['hello:world']
+    });
+    expect(updatedThread.tags).toStrictEqual(['hello:world']);
+
+    await client.api.deleteThread(thread.id);
+
+    const deletedThread = await client.api.getThread(thread.id);
+    expect(deletedThread).toBeNull();
+  });
+
+  it('should test thread (deprecated)', async function () {
     const thread = await client.api.upsertThread(
       uuidv4(),
       'name',
@@ -102,14 +131,12 @@ describe('End to end tests for the SDK', function () {
   });
 
   it('should test export thread', async function () {
-    const thread = await client.api.upsertThread(
-      uuidv4(),
-      'test',
-      { foo: 'bar' },
-      undefined,
-      undefined,
-      ['hello']
-    );
+    const thread = await client.api.upsertThread({
+      threadId: uuidv4(),
+      name: 'test',
+      metadata: { foo: 'bar' },
+      tags: ['hello']
+    });
 
     expect(thread.id).not.toBeNull();
     expect(thread.metadata).toStrictEqual({ foo: 'bar' });
