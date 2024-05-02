@@ -4,6 +4,7 @@ import instrumentOpenAI, {
   InstrumentOpenAIOptions,
   OpenAIOutput
 } from './openai';
+import { VercelLanguageModel, instrumentVercelSDKModel } from './vercel-sdk';
 
 export type { InstrumentOpenAIOptions } from './openai';
 
@@ -25,5 +26,9 @@ export default (client: LiteralClient) => ({
         );
       }
     }
+  },
+  vercel: {
+    instrumentModel: <TModel extends VercelLanguageModel>(model: TModel) =>
+      instrumentVercelSDKModel(client, model)
   }
 });
