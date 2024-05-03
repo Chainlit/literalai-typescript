@@ -103,32 +103,10 @@ export const instrumentVercelSDKModel = <TModel extends LanguageModel>(
     const startTime = Date.now();
     const result = await baseGenerate.call(model, options);
 
-    const metrics = computeMetricsSync(result, startTime);
+    // Non blocking treatments
+    (async () => {
+      const metrics = computeMetricsSync(result, startTime);
 
-    const generation = new ChatGeneration({
-      provider: model.provider,
-      model: model.modelId,
-      settings: extractSettings(options),
-      messages: extractMessages(options),
-      ...metrics
-    });
-
-    // Not awaited on purpose
-    client.api.createGeneration(generation);
-
-    return result;
-  };
-
-  const baseStream = model.doStream;
-  model.doStream = async (options) => {
-    const startTime = Date.now();
-    const result = await baseStream.call(model, options);
-
-    const [streamForAnalysis, streamForUser] = result.stream.tee();
-    result.stream = streamForUser;
-
-    // Not awaited on purpose
-    computeMetricsStream(streamForAnalysis, startTime).then(async (metrics) => {
       const generation = new ChatGeneration({
         provider: model.provider,
         model: model.modelId,
@@ -138,7 +116,34 @@ export const instrumentVercelSDKModel = <TModel extends LanguageModel>(
       });
 
       await client.api.createGeneration(generation);
-    });
+    })();
+
+    return result;
+  };
+
+  const baseStream = model.doStream;
+  model.doStream = async (options) => {
+    const startTime = Date.now();
+    const result = await baseStream.call(model, options);
+
+    // Fork the stream to compute metrics
+    const [streamForAnalysis, streamForUser] = result.stream.tee();
+    result.stream = streamForUser;
+
+    // Non blocking treatments
+    (async () => {
+      const metrics = await computeMetricsStream(streamForAnalysis, startTime);
+
+      const generation = new ChatGeneration({
+        provider: model.provider,
+        model: model.modelId,
+        settings: extractSettings(options),
+        messages: extractMessages(options),
+        ...metrics
+      });
+
+      await client.api.createGeneration(generation);
+    })();
 
     return result;
   };
