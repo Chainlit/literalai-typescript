@@ -21,9 +21,7 @@ describe('Vercel SDK Instrumentation', () => {
   describe.skip('With OpenAI', () => {
     let model: ReturnType<typeof openai>;
     beforeEach(() => {
-      model = client.instrumentation.vercel.instrumentModel(
-        openai('gpt-3.5-turbo')
-      );
+      model = openai('gpt-3.5-turbo');
     });
 
     afterEach(() => jest.restoreAllMocks());
@@ -31,7 +29,10 @@ describe('Vercel SDK Instrumentation', () => {
     it('should work a simple generation', async () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 
-      const result = await generateText({
+      const generateTextWithLiteralAI =
+        client.instrumentation.vercel.instrument(generateText);
+
+      const result = await generateTextWithLiteralAI({
         model,
         prompt: 'Write a vegetarian lasagna recipe for 4 people.'
       });
@@ -62,7 +63,10 @@ describe('Vercel SDK Instrumentation', () => {
     it('should work for streamed text', async () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 
-      const result = await streamText({
+      const streamTextWithLiteralAI =
+        client.instrumentation.vercel.instrument(streamText);
+
+      const result = await streamTextWithLiteralAI({
         model,
         prompt: 'Write a strawberry tiramisu recipe for 4 people.'
       });
@@ -94,6 +98,49 @@ describe('Vercel SDK Instrumentation', () => {
           duration: expect.any(Number)
         })
       );
+    });
+
+    it('should observe on a given thread', async () => {
+      const spy = jest.spyOn(client.api, 'sendSteps');
+
+      const thread = await client.thread({ name: 'VercelSDK Test' }).upsert();
+
+      const generateTextWithLiteralAI =
+        client.instrumentation.vercel.instrument(generateText);
+
+      const result = await generateTextWithLiteralAI({
+        model,
+        prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+        literalAiParent: thread
+      });
+
+      expect(result.text).toBeTruthy();
+
+      // Sending message is done asynchronously
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(spy).toHaveBeenCalledWith([
+        expect.objectContaining({
+          type: 'llm',
+          name: 'gpt-3.5-turbo',
+          threadId: thread.id,
+          generation: expect.any(Object),
+          input: {
+            content: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    text: 'Write a vegetarian lasagna recipe for 4 people.',
+                    type: 'text'
+                  }
+                ]
+              }
+            ]
+          },
+          output: { role: 'assistant', content: result.text }
+        })
+      ]);
     });
   });
 });

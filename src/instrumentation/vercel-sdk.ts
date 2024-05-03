@@ -1,32 +1,71 @@
 import type {
-  LanguageModelV1CallOptions,
-  LanguageModelV1StreamPart
-} from '@ai-sdk/provider';
-import { LanguageModel } from 'ai';
+  CoreTool,
+  LanguageModel,
+  ObjectStreamPartInput,
+  TextStreamPart,
+  generateObject,
+  generateText,
+  streamObject,
+  streamText
+} from 'ai';
 
 import {
   ChatGeneration,
   Generation,
   IGenerationMessage,
   ILLMSettings,
-  LiteralClient
+  LiteralClient,
+  Step,
+  Thread
 } from '..';
 
 export type VercelLanguageModel = LanguageModel;
 
-const extractSettings = (options: LanguageModelV1CallOptions): ILLMSettings => {
-  const { prompt, mode, abortSignal, ...settings } = options;
+type Options<T extends (...args: any[]) => any> = Parameters<T>[0];
+type Result<T extends (...args: any[]) => any> = Awaited<ReturnType<T>>;
+
+type GenerateFn = typeof generateObject | typeof generateText;
+type StreamFn = typeof streamObject | typeof streamText;
+type AllVercelFn = GenerateFn | StreamFn;
+
+type OriginalStreamPart = string | ObjectStreamPartInput | TextStreamPart<any>;
+
+const extractMessages = (
+  options: Options<AllVercelFn>
+): IGenerationMessage[] => {
+  const messages: IGenerationMessage[] = [];
+
+  if (options.system) {
+    messages.push({
+      role: 'system',
+      content: options.system
+    });
+  }
+
+  if (options.prompt) {
+    messages.push({
+      role: 'user',
+      content: [{ type: 'text', text: options.prompt }]
+    });
+  }
+
+  if (options.messages) {
+    messages.push(...(options.messages as any));
+  }
+
+  return messages;
+};
+
+const extractSettings = (options: Options<AllVercelFn>): ILLMSettings => {
+  const settings = { ...options } as any;
+  delete settings.model;
+  delete settings.prompt;
+  delete settings.abortSignal;
   return settings;
 };
 
-const extractMessages = (
-  options: LanguageModelV1CallOptions
-): IGenerationMessage[] => {
-  return options.prompt as IGenerationMessage[];
-};
-
 const computeMetricsSync = (
-  result: Awaited<ReturnType<LanguageModel['doGenerate']>>,
+  result: Result<GenerateFn>,
   startTime: number
 ): Partial<Generation> => {
   const outputTokenCount = result.usage.completionTokens;
@@ -38,19 +77,20 @@ const computeMetricsSync = (
       ? outputTokenCount / (duration / 1000)
       : undefined;
 
+  const completion =
+    'text' in result ? result.text : JSON.stringify(result.object);
+
   return {
     duration,
     tokenThroughputInSeconds,
     outputTokenCount,
     inputTokenCount,
-    messageCompletion: result.text
-      ? { role: 'assistant', content: result.text }
-      : undefined
+    messageCompletion: { role: 'assistant', content: completion }
   };
 };
 
 const computeMetricsStream = async (
-  stream: ReadableStream<LanguageModelV1StreamPart>,
+  stream: ReadableStream<OriginalStreamPart>,
   startTime: number
 ): Promise<Partial<Generation>> => {
   const messageCompletion: IGenerationMessage = {
@@ -60,16 +100,20 @@ const computeMetricsStream = async (
 
   let outputTokenCount = 0;
   let ttFirstToken: number | undefined = undefined;
-  for await (const chunk of stream as unknown as AsyncIterable<LanguageModelV1StreamPart>) {
-    switch (chunk.type) {
-      case 'text-delta': {
-        messageCompletion.content += chunk.textDelta;
-        break;
-      }
-      case 'tool-call':
-      case 'tool-call-delta': {
-        // TODO: Handle
-        break;
+  for await (const chunk of stream as unknown as AsyncIterable<OriginalStreamPart>) {
+    if (typeof chunk === 'string') {
+      messageCompletion.content += chunk;
+    } else {
+      switch (chunk.type) {
+        case 'text-delta': {
+          messageCompletion.content += chunk.textDelta;
+          break;
+        }
+        case 'tool-call':
+        case 'tool-result': {
+          // TODO: Handle
+          break;
+        }
       }
     }
 
@@ -94,59 +138,112 @@ const computeMetricsStream = async (
   };
 };
 
-export const instrumentVercelSDKModel = <TModel extends LanguageModel>(
-  client: LiteralClient,
-  model: TModel
-): TModel => {
-  const baseGenerate = model.doGenerate;
-  model.doGenerate = async (options) => {
-    const startTime = Date.now();
-    const result = await baseGenerate.call(model, options);
+type ExtendedFunction<T extends (...args: any[]) => any> = (
+  options: Parameters<T>[0] & {
+    literalAiParent?: Step | Thread;
+  }
+) => ReturnType<T>;
 
-    // Non blocking treatments
-    (async () => {
-      const metrics = computeMetricsSync(result, startTime);
+export const makeInstrumentVercelSDK = (client: LiteralClient) => {
+  function instrumentVercelSDK<T>(
+    fn: typeof streamObject<T>
+  ): ExtendedFunction<typeof streamObject<T>>;
+  function instrumentVercelSDK<
+    TOOLS extends Record<string, CoreTool<any, any>>
+  >(fn: typeof streamText<TOOLS>): ExtendedFunction<typeof streamText<TOOLS>>;
+  function instrumentVercelSDK<T>(
+    fn: typeof generateObject<T>
+  ): ExtendedFunction<typeof generateObject<T>>;
+  function instrumentVercelSDK<
+    TOOLS extends Record<string, CoreTool<any, any>>
+  >(
+    fn: typeof generateText<TOOLS>
+  ): ExtendedFunction<typeof generateText<TOOLS>>;
+  function instrumentVercelSDK<TFunction extends AllVercelFn>(fn: TFunction) {
+    type TOptions = Options<TFunction>;
+    type TResult = Result<TFunction>;
 
-      const generation = new ChatGeneration({
-        provider: model.provider,
-        model: model.modelId,
-        settings: extractSettings(options),
-        messages: extractMessages(options),
-        ...metrics
-      });
+    return async (
+      options: TOptions & { literalAiParent?: Step | Thread }
+    ): Promise<TResult> => {
+      const { literalAiParent: parent, ...originalOptions } = options;
+      const startTime = Date.now();
+      const result: TResult = await (fn as any)(originalOptions);
 
-      await client.api.createGeneration(generation);
-    })();
+      // Fork the stream to compute metrics
+      let stream: ReadableStream<OriginalStreamPart>;
+      if ('originalStream' in result) {
+        const [streamForAnalysis, streamForUser] = (
+          result as any
+        ).originalStream.tee();
+        (result as any).originalStream = streamForUser;
+        stream = streamForAnalysis;
+      }
 
-    return result;
-  };
+      // Non blocking treatments
+      (async () => {
+        if ('fullStream' in result) {
+          // streamObject or streamText
+          const metrics = await computeMetricsStream(stream!, startTime);
 
-  const baseStream = model.doStream;
-  model.doStream = async (options) => {
-    const startTime = Date.now();
-    const result = await baseStream.call(model, options);
+          const generation = new ChatGeneration({
+            provider: options.model.provider,
+            model: options.model.modelId,
+            settings: extractSettings(options),
+            messages: extractMessages(options),
+            ...metrics
+          });
 
-    // Fork the stream to compute metrics
-    const [streamForAnalysis, streamForUser] = result.stream.tee();
-    result.stream = streamForUser;
+          if (parent) {
+            const step = parent.step({
+              name: generation.model || 'openai',
+              type: 'llm',
+              input: { content: generation.messages },
+              generation,
+              output: generation.messageCompletion,
+              startTime: new Date(startTime).toISOString(),
+              endTime: new Date(
+                startTime + (metrics.duration ?? 0) * 1000
+              ).toISOString()
+            });
+            await step.send();
+          } else {
+            await client.api.createGeneration(generation);
+          }
+        } else {
+          // generateObject or generateText
+          const metrics = computeMetricsSync(result, startTime);
 
-    // Non blocking treatments
-    (async () => {
-      const metrics = await computeMetricsStream(streamForAnalysis, startTime);
+          const generation = new ChatGeneration({
+            provider: options.model.provider,
+            model: options.model.modelId,
+            settings: extractSettings(options),
+            messages: extractMessages(options),
+            ...metrics
+          });
 
-      const generation = new ChatGeneration({
-        provider: model.provider,
-        model: model.modelId,
-        settings: extractSettings(options),
-        messages: extractMessages(options),
-        ...metrics
-      });
+          if (parent) {
+            const step = parent.step({
+              name: generation.model || 'openai',
+              type: 'llm',
+              input: { content: generation.messages },
+              generation,
+              output: generation.messageCompletion,
+              startTime: new Date(startTime).toISOString(),
+              endTime: new Date(
+                startTime + (metrics.duration ?? 0) * 1000
+              ).toISOString()
+            });
+            await step.send();
+          } else {
+            await client.api.createGeneration(generation);
+          }
+        }
+      })();
 
-      await client.api.createGeneration(generation);
-    })();
+      return result;
+    };
+  }
 
-    return result;
-  };
-
-  return model;
+  return instrumentVercelSDK;
 };
