@@ -1619,7 +1619,7 @@ export class API {
     params?: Record<string, any> | Array<Record<string, any>>;
   }) {
     const query = `
-      mutation CreateDatasetExperiment($name: String!, $datasetId: String! $promptId: String, $params: Json!) {
+      mutation CreateDatasetExperiment($name: String!, $datasetId: String! $promptId: String, $params: Json) {
         createDatasetExperiment(name: $name, datasetId: $datasetId, promptId: $promptId, params: $params) {
           id
         }

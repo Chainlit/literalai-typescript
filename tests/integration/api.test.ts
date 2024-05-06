@@ -423,6 +423,21 @@ describe('End to end tests for the SDK', function () {
     });
   });
 
+  describe('dataset experiment api', () => {
+    it('should create a dataset experiment', async () => {
+      const dataset = await client.api.createDataset({
+        name: `test_${uuidv4()}`
+      });
+      const experiment = await client.api.createExperiment({
+        name: `test_${uuidv4()}`,
+        datasetId: dataset.id
+      });
+
+      expect(experiment.id).not.toBeNull();
+      dataset.delete();
+    });
+  });
+
   describe('dataset item api', () => {
     let dataset: Dataset;
     let generationDataset: Dataset;
