@@ -24,6 +24,7 @@
     "package.json"
   ],
   "devDependencies": {
+    "@ai-sdk/openai": "^0.0.9",
     "@jest/types": "^29.6.3",
     "@trivago/prettier-plugin-sort-imports": "^4.2.0",
     "@types/jest": "^29.5.11",
@@ -32,6 +33,7 @@
     "@types/uuid": "^9.0.7",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "ai": "^3.1.0",
     "dotenv": "^16.3.1",
     "eslint": "^8.48.0",
     "husky": "^8.0.3",
@@ -52,6 +54,8 @@
     "uuid": "^9.0.1"
   },
   "peerDependencies": {
+    "@ai-sdk/openai": "^0.0.9",
+    "ai": "^3.1.0",
     "langchain": "^0.1.14",
     "openai": "^4.26.0"
   }
