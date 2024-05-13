@@ -441,7 +441,7 @@ export class API {
   }
 
   /**
-   * Retrieves a paginated list of steps (conversations) based on the provided criteria.
+   * Retrieves a paginated list of steps (runs) based on the provided criteria.
    *
    * @param variables - The parameters to filter and paginate the steps.
    * @param variables.first - The number of steps to retrieve after the cursor. (Optional)
