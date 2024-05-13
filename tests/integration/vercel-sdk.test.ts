@@ -183,14 +183,49 @@ describe('Vercel SDK Instrumentation', () => {
         expect.objectContaining({
           provider: 'openai.chat',
           model: 'gpt-3.5-turbo',
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'celsiusToFahrenheit',
+                description: 'Converts celsius to fahrenheit',
+                parameters: {
+                  $schema: 'http://json-schema.org/draft-07/schema#',
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    value: {
+                      type: 'number',
+                      description: 'The value in celsius'
+                    }
+                  },
+                  required: ['value']
+                }
+              }
+            }
+          ],
           messages: [
             { role: 'system', content: 'You are a friendly assistant!' },
-            { role: 'user', content: 'Convert 20°C to Fahrenheit' }
+            { role: 'user', content: 'Convert 20°C to Fahrenheit' },
+            {
+              role: 'assistant',
+              content: null,
+              tool_calls: [
+                {
+                  id: toolResults[0].toolCallId,
+                  type: 'function',
+                  function: {
+                    arguments: { value: 20 },
+                    name: 'celsiusToFahrenheit'
+                  }
+                }
+              ]
+            }
           ],
           messageCompletion: {
-            role: 'assistant',
-            content: '',
-            tool_calls: toolResults
+            role: 'tool',
+            tool_call_id: toolResults[0].toolCallId,
+            content: String(toolResults[0].result)
           },
           duration: expect.any(Number)
         })
@@ -248,14 +283,49 @@ describe('Vercel SDK Instrumentation', () => {
         expect.objectContaining({
           provider: 'openai.chat',
           model: 'gpt-3.5-turbo',
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'celsiusToFahrenheit',
+                description: 'Converts celsius to fahrenheit',
+                parameters: {
+                  $schema: 'http://json-schema.org/draft-07/schema#',
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    value: {
+                      type: 'number',
+                      description: 'The value in celsius'
+                    }
+                  },
+                  required: ['value']
+                }
+              }
+            }
+          ],
           messages: [
             { role: 'system', content: 'You are a friendly assistant!' },
-            { role: 'user', content: 'Convert 20°C to Fahrenheit' }
+            { role: 'user', content: 'Convert 20°C to Fahrenheit' },
+            {
+              role: 'assistant',
+              content: null,
+              tool_calls: [
+                {
+                  id: toolResult!.toolCallId,
+                  type: 'function',
+                  function: {
+                    arguments: { value: 20 },
+                    name: 'celsiusToFahrenheit'
+                  }
+                }
+              ]
+            }
           ],
           messageCompletion: {
-            role: 'assistant',
-            content: '',
-            tool_calls: [toolResult]
+            role: 'tool',
+            tool_call_id: toolResult!.toolCallId,
+            content: String(toolResult!.result)
           },
           duration: expect.any(Number)
         })

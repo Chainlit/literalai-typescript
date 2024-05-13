@@ -22,11 +22,12 @@ export interface IImageUrlContent {
 export interface IGenerationMessage {
   uuid?: string;
   templated?: boolean;
-  content: string | (ITextContent | IImageUrlContent)[];
+  content: string | (ITextContent | IImageUrlContent)[] | null;
   role: GenerationMessageRole;
   name?: string;
   function_call?: Record<string, any>;
   tool_calls?: Record<string, any>[];
+  tool_call_id?: string;
 }
 
 export type GenerationType = 'COMPLETION' | 'CHAT';
