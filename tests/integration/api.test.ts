@@ -237,8 +237,17 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
+    if (!step.id) {
+      throw new Error('Step id is null');
+    }
+
     const steps = await client.api.getSteps({
       filters: [
+        {
+          field: 'id',
+          operator: 'eq',
+          value: step.id
+        },
         {
           field: 'tags',
           operator: 'in',
