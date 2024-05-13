@@ -8,6 +8,7 @@ import type {
   streamObject,
   streamText
 } from 'ai';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import {
   ChatGeneration,
@@ -61,6 +62,17 @@ const extractSettings = (options: Options<AllVercelFn>): ILLMSettings => {
   delete settings.model;
   delete settings.prompt;
   delete settings.abortSignal;
+  if ('tools' in settings) {
+    settings.tools = Object.fromEntries(
+      Object.entries<CoreTool>(settings.tools).map(([key, tool]) => [
+        key,
+        {
+          description: tool.description,
+          parameters: zodToJsonSchema(tool.parameters)
+        }
+      ])
+    );
+  }
   return settings;
 };
 
@@ -80,12 +92,20 @@ const computeMetricsSync = (
   const completion =
     'text' in result ? result.text : JSON.stringify(result.object);
 
+  const messageCompletion: IGenerationMessage = {
+    role: 'assistant',
+    content: completion
+  };
+  if ('toolCalls' in result) {
+    messageCompletion.tool_calls = result.toolResults;
+  }
+
   return {
     duration,
     tokenThroughputInSeconds,
     outputTokenCount,
     inputTokenCount,
-    messageCompletion: { role: 'assistant', content: completion }
+    messageCompletion
   };
 };
 
@@ -111,7 +131,17 @@ const computeMetricsStream = async (
         }
         case 'tool-call':
         case 'tool-result': {
-          // TODO: Handle
+          messageCompletion.tool_calls = messageCompletion.tool_calls ?? [];
+          const index = messageCompletion.tool_calls.findIndex(
+            (call) => call.toolCallId === chunk.toolCallId
+          );
+          if (index === -1) {
+            // Insert tool call
+            messageCompletion.tool_calls.push(chunk);
+          } else {
+            // Replace the tool call with the result
+            messageCompletion.tool_calls[index] = chunk;
+          }
           break;
         }
       }
