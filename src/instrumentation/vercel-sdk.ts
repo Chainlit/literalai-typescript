@@ -8,12 +8,14 @@ import type {
   streamObject,
   streamText
 } from 'ai';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import {
   ChatGeneration,
   Generation,
   IGenerationMessage,
   ILLMSettings,
+  ITool,
   LiteralClient,
   Step,
   Thread
@@ -61,13 +63,37 @@ const extractSettings = (options: Options<AllVercelFn>): ILLMSettings => {
   delete settings.model;
   delete settings.prompt;
   delete settings.abortSignal;
+  if ('tools' in settings) {
+    settings.tools = Object.fromEntries(
+      Object.entries<CoreTool>(settings.tools).map(([key, tool]) => [
+        key,
+        {
+          description: tool.description,
+          parameters: zodToJsonSchema(tool.parameters)
+        }
+      ])
+    );
+  }
   return settings;
 };
 
+const extractTools = (options: Options<AllVercelFn>): ITool[] | undefined => {
+  if (!('tools' in options) || !options.tools) return undefined;
+  return Object.entries(options.tools).map(([key, tool]) => ({
+    type: 'function',
+    function: {
+      name: key,
+      description: tool.description!,
+      parameters: zodToJsonSchema(tool.parameters) as any
+    }
+  }));
+};
+
 const computeMetricsSync = (
+  options: Options<GenerateFn>,
   result: Result<GenerateFn>,
   startTime: number
-): Partial<Generation> => {
+): Partial<ChatGeneration> => {
   const outputTokenCount = result.usage.completionTokens;
   const inputTokenCount = result.usage.promptTokens;
 
@@ -80,20 +106,56 @@ const computeMetricsSync = (
   const completion =
     'text' in result ? result.text : JSON.stringify(result.object);
 
+  const messages = extractMessages(options);
+
+  if (completion) {
+    messages.push({
+      role: 'assistant',
+      content: completion
+    });
+  }
+  if ('toolCalls' in result && result.toolCalls.length) {
+    messages.push({
+      role: 'assistant',
+      content: null,
+      tool_calls: result.toolCalls.map((call) => ({
+        id: call.toolCallId,
+        type: 'function',
+        function: {
+          name: call.toolName,
+          arguments: call.args
+        }
+      }))
+    });
+    for (const toolResult of result.toolResults as any[]) {
+      messages.push({
+        role: 'tool',
+        tool_call_id: toolResult.toolCallId,
+        content: String(toolResult.result)
+      });
+    }
+  }
+
+  const messageCompletion = messages.pop();
+
   return {
     duration,
     tokenThroughputInSeconds,
     outputTokenCount,
     inputTokenCount,
-    messageCompletion: { role: 'assistant', content: completion }
+    messages,
+    messageCompletion
   };
 };
 
 const computeMetricsStream = async (
+  options: Options<StreamFn>,
   stream: ReadableStream<OriginalStreamPart>,
   startTime: number
 ): Promise<Partial<Generation>> => {
-  const messageCompletion: IGenerationMessage = {
+  const messages = extractMessages(options);
+
+  const textMessage: IGenerationMessage = {
     role: 'assistant',
     content: ''
   };
@@ -102,16 +164,36 @@ const computeMetricsStream = async (
   let ttFirstToken: number | undefined = undefined;
   for await (const chunk of stream as unknown as AsyncIterable<OriginalStreamPart>) {
     if (typeof chunk === 'string') {
-      messageCompletion.content += chunk;
+      textMessage.content += chunk;
     } else {
       switch (chunk.type) {
         case 'text-delta': {
-          messageCompletion.content += chunk.textDelta;
+          textMessage.content += chunk.textDelta;
           break;
         }
-        case 'tool-call':
+        case 'tool-call': {
+          messages.push({
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: chunk.toolCallId,
+                type: 'function',
+                function: {
+                  name: chunk.toolName,
+                  arguments: chunk.args
+                }
+              }
+            ]
+          });
+          break;
+        }
         case 'tool-result': {
-          // TODO: Handle
+          messages.push({
+            role: 'tool',
+            tool_call_id: chunk.toolCallId,
+            content: String(chunk.result)
+          });
           break;
         }
       }
@@ -129,11 +211,15 @@ const computeMetricsStream = async (
       ? outputTokenCount / (duration / 1000)
       : undefined;
 
+  if (textMessage.content) messages.push(textMessage);
+  const messageCompletion = messages.pop();
+
   return {
     duration,
     tokenThroughputInSeconds,
     outputTokenCount,
     ttFirstToken,
+    messages,
     messageCompletion
   };
 };
@@ -184,13 +270,17 @@ export const makeInstrumentVercelSDK = (client: LiteralClient) => {
       (async () => {
         if ('fullStream' in result) {
           // streamObject or streamText
-          const metrics = await computeMetricsStream(stream!, startTime);
+          const metrics = await computeMetricsStream(
+            options,
+            stream!,
+            startTime
+          );
 
           const generation = new ChatGeneration({
             provider: options.model.provider,
             model: options.model.modelId,
             settings: extractSettings(options),
-            messages: extractMessages(options),
+            tools: extractTools(options),
             ...metrics
           });
 
@@ -212,13 +302,13 @@ export const makeInstrumentVercelSDK = (client: LiteralClient) => {
           }
         } else {
           // generateObject or generateText
-          const metrics = computeMetricsSync(result, startTime);
+          const metrics = computeMetricsSync(options, result, startTime);
 
           const generation = new ChatGeneration({
             provider: options.model.provider,
             model: options.model.modelId,
             settings: extractSettings(options),
-            messages: extractMessages(options),
+            tools: extractTools(options),
             ...metrics
           });
 
