@@ -9,6 +9,8 @@ import {
   ParticipantsFilter,
   ScoresFilter,
   ScoresOrderBy,
+  StepsFilter,
+  StepsOrderBy,
   ThreadsFilter,
   ThreadsOrderBy
 } from './filter';
@@ -30,6 +32,7 @@ import {
   Prompt,
   Score,
   Step,
+  StepConstructor,
   StepType,
   User,
   Utils
@@ -438,6 +441,71 @@ export class API {
   }
 
   /**
+   * Retrieves a paginated list of steps (runs) based on the provided criteria.
+   *
+   * @param variables - The parameters to filter and paginate the steps.
+   * @param variables.first - The number of steps to retrieve after the cursor. (Optional)
+   * @param variables.after - The cursor to start retrieving steps after. (Optional)
+   * @param variables.before - The cursor to start retrieving steps before. (Optional)
+   * @param variables.filters - The filters to apply on the steps retrieval. (Optional)
+   * @param variables.orderBy - The order in which to retrieve the steps. (Optional)
+   * @returns A promise that resolves to a paginated response of steps.
+   */
+  async getSteps(variables: {
+    first?: Maybe<number>;
+    after?: Maybe<string>;
+    before?: Maybe<string>;
+    filters?: StepsFilter[];
+    orderBy?: StepsOrderBy;
+  }): Promise<PaginatedResponse<OmitUtils<StepConstructor>>> {
+    const query = `
+      query GetSteps(
+        $after: ID,
+        $before: ID,
+        $cursorAnchor: DateTime,
+        $filters: [stepsInputType!],
+        $orderBy: StepsOrderByInput,
+        $first: Int,
+        $last: Int,
+        $projectId: String,
+        ) {
+        steps(
+            after: $after,
+            before: $before,
+            cursorAnchor: $cursorAnchor,
+            filters: $filters,
+            orderBy: $orderBy,
+            first: $first,
+            last: $last,
+            projectId: $projectId,
+            ) {
+            pageInfo {
+                startCursor
+                endCursor
+                hasNextPage
+                hasPreviousPage
+            }
+            totalCount
+            edges {
+                cursor
+                node {
+                  ${stepFields}
+                }
+            }
+        }
+    }`;
+
+    const result = await this.makeGqlCall(query, variables);
+
+    const response = result.data.steps;
+
+    response.data = response.edges.map((x: any) => x.node);
+    delete response.edges;
+
+    return response;
+  }
+
+  /**
    * Retrieves a step by its ID.
    *
    * This method constructs a GraphQL query to fetch a step by its unique identifier.
@@ -448,12 +516,12 @@ export class API {
    */
   async getStep(id: string): Promise<Maybe<Step>> {
     const query = `
-      query GetStep($id: String!) {
-        step(id: $id) {
-          ${stepFields}
+        query GetStep($id: String!) {
+          step(id: $id) {
+            ${stepFields}
+          }
         }
-      }
-    `;
+      `;
 
     const variables = { id };
 

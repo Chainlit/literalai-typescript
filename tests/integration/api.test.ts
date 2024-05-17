@@ -227,6 +227,40 @@ describe('End to end tests for the SDK', function () {
     expect(deletedStep).toBeNull();
   });
 
+  it('should test steps', async function () {
+    const thread = await client.thread({ id: uuidv4() });
+    const step = await thread
+      .step({
+        name: 'test',
+        type: 'run',
+        tags: ['to_score']
+      })
+      .send();
+
+    if (!step.id) {
+      throw new Error('Step id is null');
+    }
+
+    const steps = await client.api.getSteps({
+      filters: [
+        {
+          field: 'id',
+          operator: 'eq',
+          value: step.id
+        },
+        {
+          field: 'tags',
+          operator: 'in',
+          value: ['to_score']
+        }
+      ]
+    });
+    expect(steps.data.length).toBe(1);
+    expect(steps.data[0].id).toBe(step.id);
+
+    await client.api.deleteThread(thread.id);
+  });
+
   it('should test score', async function () {
     const thread = await client.thread({ id: uuidv4() });
     const step = await thread

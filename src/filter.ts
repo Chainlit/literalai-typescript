@@ -48,6 +48,22 @@ type OrderBy<Cols extends string> = {
   direction: 'ASC' | 'DESC';
 };
 
+export type StepsFilter =
+  | Filter<'id', 'string'>
+  | Filter<'name', 'string', true>
+  | Filter<'input', 'json', true>
+  | Filter<'output', 'json', true>
+  | Filter<'participantIdentifiers', 'stringList', true>
+  | Filter<'startTime', 'datetime', true>
+  | Filter<'endTime', 'datetime', true>
+  | Filter<'metadata', 'json', true>
+  | Filter<'parentId', 'string', true>
+  | Filter<'threadId', 'string'>
+  | Filter<'error', 'string', true>
+  | Filter<'tags', 'stringList', true>;
+
+export type StepsOrderBy = OrderBy<'createdAt'>;
+
 export type ThreadsFilter =
   | Filter<'id', 'string'>
   | Filter<'createdAt', 'datetime'>
