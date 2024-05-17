@@ -42,27 +42,25 @@ const thread = await client.thread({ id: uuidv4(), participantId }).upsert();
 ```ts
 // Create the first step
 const step = await thread
-  .step({ name: userIdentifier, type: 'user_message', output: 'Hello' })
+  .step({
+    name: userIdentifier,
+    type: 'user_message',
+    output: { text: 'Hello' },
+  })
   .send();
+
 
 // Create a child llm step
 const step = step.step({
   name: 'gpt-4',
   type: 'llm',
-  input: 'Hello'
+  input: { text: 'Hello' }
 });
 
 const stream = await openai.chat.completions.create({
   model: 'gpt-4',
   stream: true,
   messages: [{ role: 'user', content: 'Say this is a test' }]
-});
-
-// Create a child llm step
-const step = step.step({
-  name: 'gpt-4',
-  type: 'llm',
-  input: 'Hello'
 });
 
 // Instrument the openai response
@@ -107,7 +105,7 @@ const score = await client.api.createScore({
   stepId: finalStep.id!,
   name: 'user-feedback',
   value: 1,
-  type: 'Human',
+  type: 'HUMAN',
   comment: 'Great!'
 });
 ```
