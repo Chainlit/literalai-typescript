@@ -74,6 +74,9 @@ const extractSettings = (options: Options<AllVercelFn>): ILLMSettings => {
       ])
     );
   }
+  if ('schema' in settings) {
+    settings.schema = zodToJsonSchema(settings.schema);
+  }
   return settings;
 };
 
