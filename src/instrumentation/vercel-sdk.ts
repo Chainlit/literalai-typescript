@@ -74,6 +74,9 @@ const extractSettings = (options: Options<AllVercelFn>): ILLMSettings => {
       ])
     );
   }
+  if ('schema' in settings) {
+    settings.schema = zodToJsonSchema(settings.schema);
+  }
   return settings;
 };
 
@@ -224,27 +227,31 @@ const computeMetricsStream = async (
   };
 };
 
-type ExtendedFunction<T extends (...args: any[]) => any> = (
-  options: Parameters<T>[0] & {
-    literalAiParent?: Step | Thread;
-  }
-) => ReturnType<T>;
+type VercelExtraOptions = {
+  literalAiParent?: Step | Thread;
+};
 
-export const makeInstrumentVercelSDK = (client: LiteralClient) => {
-  function instrumentVercelSDK<T>(
-    fn: typeof streamObject<T>
-  ): ExtendedFunction<typeof streamObject<T>>;
-  function instrumentVercelSDK<
-    TOOLS extends Record<string, CoreTool<any, any>>
-  >(fn: typeof streamText<TOOLS>): ExtendedFunction<typeof streamText<TOOLS>>;
-  function instrumentVercelSDK<T>(
-    fn: typeof generateObject<T>
-  ): ExtendedFunction<typeof generateObject<T>>;
-  function instrumentVercelSDK<
-    TOOLS extends Record<string, CoreTool<any, any>>
-  >(
-    fn: typeof generateText<TOOLS>
-  ): ExtendedFunction<typeof generateText<TOOLS>>;
+export type InstrumentationVercelMethod = {
+  (fn: typeof streamObject): <T>(
+    options: Parameters<typeof streamObject<T>>[0] & VercelExtraOptions
+  ) => ReturnType<typeof streamObject<T>>;
+
+  (fn: typeof streamText): <TOOLS extends Record<string, CoreTool<any, any>>>(
+    options: Parameters<typeof streamText<TOOLS>>[0] & VercelExtraOptions
+  ) => ReturnType<typeof streamText<TOOLS>>;
+
+  (fn: typeof generateObject): <T>(
+    options: Parameters<typeof generateObject<T>>[0] & VercelExtraOptions
+  ) => ReturnType<typeof generateObject<T>>;
+
+  (fn: typeof generateText): <TOOLS extends Record<string, CoreTool<any, any>>>(
+    options: Parameters<typeof generateText<TOOLS>>[0] & VercelExtraOptions
+  ) => ReturnType<typeof generateText<TOOLS>>;
+};
+
+export const makeInstrumentVercelSDK = (
+  client: LiteralClient
+): InstrumentationVercelMethod => {
   function instrumentVercelSDK<TFunction extends AllVercelFn>(fn: TFunction) {
     type TOptions = Options<TFunction>;
     type TResult = Result<TFunction>;

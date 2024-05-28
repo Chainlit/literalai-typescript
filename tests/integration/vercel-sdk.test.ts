@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { generateText, streamText } from 'ai';
+import { generateObject, generateText, streamObject, streamText } from 'ai';
 import { z } from 'zod';
 
 import { LiteralClient } from '../../src';
@@ -20,21 +20,16 @@ describe('Vercel SDK Instrumentation', () => {
 
   // Skip for the CI
   describe.skip('With OpenAI', () => {
-    let model: ReturnType<typeof openai>;
-    beforeEach(() => {
-      model = openai('gpt-3.5-turbo');
-    });
-
     afterEach(() => jest.restoreAllMocks());
 
-    it('should work a simple generation', async () => {
+    it('should work a simple text generation', async () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 
       const generateTextWithLiteralAI =
         client.instrumentation.vercel.instrument(generateText);
 
       const result = await generateTextWithLiteralAI({
-        model,
+        model: openai('gpt-3.5-turbo'),
         prompt: 'Write a vegetarian lasagna recipe for 4 people.'
       });
 
@@ -68,7 +63,7 @@ describe('Vercel SDK Instrumentation', () => {
         client.instrumentation.vercel.instrument(streamText);
 
       const result = await streamTextWithLiteralAI({
-        model,
+        model: openai('gpt-3.5-turbo'),
         prompt: 'Write a strawberry tiramisu recipe for 4 people.'
       });
 
@@ -101,6 +96,112 @@ describe('Vercel SDK Instrumentation', () => {
       );
     });
 
+    it('should work on structured generation', async () => {
+      const spy = jest.spyOn(client.api, 'createGeneration');
+
+      const generateObjectWithLiteralAI =
+        client.instrumentation.vercel.instrument(generateObject);
+
+      const result = await generateObjectWithLiteralAI({
+        model: openai('gpt-4'),
+        schema: z.object({
+          recipe: z.object({
+            name: z.string(),
+            ingredients: z.array(
+              z.object({
+                name: z.string(),
+                amount: z.string()
+              })
+            ),
+            steps: z.array(z.string())
+          })
+        }),
+        prompt: 'Generate a carrot cake recipe.'
+      });
+
+      console.log({ result });
+
+      expect(result.object).toBeTruthy();
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: 'openai.chat',
+          model: 'gpt-4',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Generate a carrot cake recipe.'
+                }
+              ]
+            }
+          ],
+          messageCompletion: {
+            role: 'assistant',
+            content: JSON.stringify(result.object)
+          },
+          duration: expect.any(Number)
+        })
+      );
+    });
+
+    it('should work for streamed structured generation', async () => {
+      const spy = jest.spyOn(client.api, 'createGeneration');
+
+      const streamObjectWithLiteralAI =
+        client.instrumentation.vercel.instrument(streamObject);
+
+      const result = await streamObjectWithLiteralAI({
+        model: openai('gpt-4'),
+        schema: z.object({
+          recipe: z.object({
+            name: z.string(),
+            ingredients: z.array(
+              z.object({
+                name: z.string(),
+                amount: z.string()
+              })
+            ),
+            steps: z.array(z.string())
+          })
+        }),
+        prompt: 'Generate a cheese cake recipe.'
+      });
+
+      let lastObject;
+      // use partialObjectStream as an async iterable:
+      for await (const part of result.partialObjectStream) {
+        lastObject = part;
+      }
+
+      expect(lastObject).toBeTruthy();
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: 'openai.chat',
+          model: 'gpt-4',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Generate a cheese cake recipe.'
+                }
+              ]
+            }
+          ],
+          messageCompletion: {
+            role: 'assistant',
+            content: expect.any(String)
+          },
+          duration: expect.any(Number)
+        })
+      );
+    });
+
     it('should observe on a given thread', async () => {
       const spy = jest.spyOn(client.api, 'sendSteps');
 
@@ -110,7 +211,7 @@ describe('Vercel SDK Instrumentation', () => {
         client.instrumentation.vercel.instrument(generateText);
 
       const result = await generateTextWithLiteralAI({
-        model,
+        model: openai('gpt-3.5-turbo'),
         prompt: 'Write a vegetarian lasagna recipe for 4 people.',
         literalAiParent: thread
       });
@@ -151,7 +252,7 @@ describe('Vercel SDK Instrumentation', () => {
         client.instrumentation.vercel.instrument(generateText);
 
       const { text, toolResults } = await generateTextWithLiteralAI({
-        model,
+        model: openai('gpt-3.5-turbo'),
         system: 'You are a friendly assistant!',
         messages: [{ role: 'user', content: 'Convert 20°C to Fahrenheit' }],
         tools: {
@@ -239,7 +340,7 @@ describe('Vercel SDK Instrumentation', () => {
         client.instrumentation.vercel.instrument(streamText);
 
       const result = await streamTextWithLiteralAI({
-        model,
+        model: openai('gpt-3.5-turbo'),
         system: 'You are a friendly assistant!',
         messages: [{ role: 'user', content: 'Convert 20°C to Fahrenheit' }],
         tools: {
