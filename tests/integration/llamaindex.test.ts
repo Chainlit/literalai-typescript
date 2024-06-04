@@ -1,5 +1,14 @@
 import 'dotenv/config';
-import { CallbackManager, Settings, SimpleChatEngine } from 'llamaindex';
+import fs from 'fs/promises';
+import {
+  CallbackManager,
+  ContextChatEngine,
+  Document,
+  Settings,
+  SimpleChatEngine,
+  VectorStoreIndex
+} from 'llamaindex';
+import { resolve } from 'path';
 
 import { LiteralClient } from '../../src';
 
@@ -129,6 +138,78 @@ describe('Llama Index Instrumentation', () => {
           output: {
             role: 'assistant',
             content: response
+          }
+        })
+      ]);
+    });
+
+    it('should handle a RAG use case', async () => {
+      const spy = jest.spyOn(client.api, 'sendSteps');
+
+      client.instrumentation.llamaIndex.instrument();
+
+      const documentContent = await fs.readFile(
+        resolve(__dirname, 'document.txt'),
+        'utf-8'
+      );
+      const document = new Document({ text: documentContent });
+
+      const index = await VectorStoreIndex.fromDocuments([document]);
+      const retriever = index.asRetriever();
+      const engine = new ContextChatEngine({ retriever });
+
+      const thread = await client.thread({ name: 'LlamaIndex Test' }).upsert();
+
+      const { response } = await client.instrumentation.llamaIndex.withThread(
+        thread,
+        () => engine.chat({ message: 'What country is it about?' })
+      );
+
+      expect(response).toBeTruthy();
+
+      // Sending message is done asynchronously
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(spy).toHaveBeenCalledWith([
+        expect.objectContaining({
+          type: 'retrieval',
+          name: 'retrieval',
+          input: {
+            query: 'What country is it about?'
+          },
+          output: {
+            nodes: [
+              {
+                node: expect.objectContaining({
+                  type: 'TEXT',
+                  text: expect.any(String)
+                }),
+                score: expect.any(Number)
+              }
+            ]
+          }
+        })
+      ]);
+      expect(spy).toHaveBeenCalledWith([
+        expect.objectContaining({
+          name: 'gpt-3.5-turbo-0125',
+          type: 'llm',
+          input: {
+            content: [
+              {
+                role: 'system',
+                content: [{ type: 'text', text: expect.any(String) }]
+              },
+              {
+                role: 'user',
+                content: 'What country is it about?'
+              }
+            ]
+          },
+          generation: expect.any(Object),
+          output: {
+            role: 'assistant',
+            content: expect.any(String)
           }
         })
       ]);

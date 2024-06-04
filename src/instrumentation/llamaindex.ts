@@ -63,6 +63,7 @@ export const instrumentLlamaIndex = (client: LiteralClient) => {
       tokenCount: 0
     });
   });
+
   callbackManager.on('llm-stream', (event) => {
     const { id: callId, chunk } = event.detail.payload;
     const call = currentLlmCalls.get(callId);
@@ -122,5 +123,43 @@ export const instrumentLlamaIndex = (client: LiteralClient) => {
     }
 
     currentLlmCalls.delete(callId);
+  });
+
+  type RetrievalCall = {
+    query: string;
+    startTime: number;
+  };
+
+  const currentRetrievalCalls = new Map<string, RetrievalCall>();
+
+  callbackManager.on('retrieve-start', (event) => {
+    const query = JSON.stringify(event.detail.payload.query);
+    currentRetrievalCalls.set(query, {
+      query,
+      startTime: Date.now()
+    });
+  });
+
+  callbackManager.on('retrieve-end', async (event) => {
+    const parent = threadAsyncLocalStorage.getStore();
+    if (!parent) return;
+
+    const query = JSON.stringify(event.detail.payload.query);
+    const call = currentRetrievalCalls.get(query);
+
+    const duration = call ? (Date.now() - call.startTime) / 1000 : undefined;
+
+    const step = parent.step({
+      name: 'retrieval',
+      type: 'retrieval',
+      input: { query: event.detail.payload.query },
+      output: { nodes: event.detail.payload.nodes },
+      startTime: call ? new Date(call.startTime).toISOString() : undefined,
+      endTime: (call
+        ? new Date(call.startTime + duration! * 1000)
+        : new Date()
+      ).toISOString()
+    });
+    await step.send();
   });
 };
