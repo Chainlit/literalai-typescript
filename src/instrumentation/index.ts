@@ -1,5 +1,6 @@
 import { LiteralClient, Step, Thread } from '..';
 import { LiteralCallbackHandler } from './langchain';
+import { instrumentLlamaIndex, withThread } from './llamaindex';
 import instrumentOpenAI, {
   InstrumentOpenAIOptions,
   OpenAIOutput
@@ -29,5 +30,9 @@ export default (client: LiteralClient) => ({
   },
   vercel: {
     instrument: makeInstrumentVercelSDK(client)
+  },
+  llamaIndex: {
+    instrument: () => instrumentLlamaIndex(client),
+    withThread
   }
 });
