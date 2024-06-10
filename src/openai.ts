@@ -1,8 +1,8 @@
-import OpenAI from 'openai';
-import { Assistant } from 'openai/resources/beta/assistants/assistants';
-import { Message } from 'openai/resources/beta/threads/messages/messages';
-import { Run } from 'openai/resources/beta/threads/runs/runs';
-import {
+import type OpenAI from 'openai';
+import type { Assistant } from 'openai/resources/beta/assistants';
+import type { Message } from 'openai/resources/beta/threads/messages';
+import type { Run } from 'openai/resources/beta/threads/runs/runs';
+import type {
   RunStep,
   ToolCallsStepDetails
 } from 'openai/resources/beta/threads/runs/steps';
@@ -108,6 +108,7 @@ class OpenAIAssistantSyncer {
       : null;
     const toolCall = (runStep.step_details as ToolCallsStepDetails)
       .tool_calls[0];
+    // @ts-expect-error "retrieval" is not in the type
     const type = toolCall.type === 'retrieval' ? 'retrieval' : 'tool';
     let input = {};
     let output = {};
@@ -128,7 +129,7 @@ class OpenAIAssistantSyncer {
     } else if ('retrieval' in toolCall) {
       name = 'Retrieval';
       input = toolCall.retrieval || {};
-    } else if ('arguments' in toolCall) {
+    } else if ('function' in toolCall) {
       name = toolCall.function.name;
       input = JSON.parse(toolCall.function.arguments);
       output = { content: toolCall.function.output };
