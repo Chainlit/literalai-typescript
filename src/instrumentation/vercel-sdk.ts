@@ -1,7 +1,7 @@
 import type {
   CoreTool,
   LanguageModel,
-  ObjectStreamPartInput,
+  ObjectStreamPart,
   TextStreamPart,
   generateObject,
   generateText,
@@ -30,7 +30,7 @@ type GenerateFn = typeof generateObject | typeof generateText;
 type StreamFn = typeof streamObject | typeof streamText;
 type AllVercelFn = GenerateFn | StreamFn;
 
-type OriginalStreamPart = string | ObjectStreamPartInput | TextStreamPart<any>;
+type OriginalStreamPart = string | ObjectStreamPart<any> | TextStreamPart<any>;
 
 const extractMessages = (
   options: Options<AllVercelFn>

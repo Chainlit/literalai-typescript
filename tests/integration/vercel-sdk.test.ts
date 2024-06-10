@@ -1,5 +1,6 @@
 import { openai } from '@ai-sdk/openai';
 import { generateObject, generateText, streamObject, streamText } from 'ai';
+import 'dotenv/config';
 import { z } from 'zod';
 
 import { LiteralClient } from '../../src';
@@ -118,8 +119,6 @@ describe('Vercel SDK Instrumentation', () => {
         }),
         prompt: 'Generate a carrot cake recipe.'
       });
-
-      console.log({ result });
 
       expect(result.object).toBeTruthy();
 
