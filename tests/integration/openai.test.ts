@@ -94,4 +94,37 @@ describe.skip('OpenAI Instrumentation', () => {
       })
     );
   });
+
+  it('should monitor image generation', async () => {
+    const spy = jest.spyOn(client.api, 'sendSteps');
+
+    const openai = new OpenAI();
+
+    const response = await openai.images.generate({
+      prompt: 'A painting of a rose in the style of Picasso.',
+      model: 'dall-e-2',
+      size: '256x256',
+      n: 1
+    });
+
+    await client.instrumentation.openai(response);
+
+    expect(response.data[0].url).toBeTruthy();
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'dall-e-2',
+          type: 'run',
+          input: {
+            model: 'dall-e-2',
+            prompt: 'A painting of a rose in the style of Picasso.',
+            size: '256x256',
+            n: 1
+          },
+          output: response
+        })
+      ])
+    );
+  });
 });
