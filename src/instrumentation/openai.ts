@@ -1,8 +1,9 @@
 import OpenAI from 'openai';
-import {
+import type {
   ChatCompletion,
   ChatCompletionChunk,
-  Completion
+  Completion,
+  ImagesResponse
 } from 'openai/resources';
 import { Stream } from 'openai/streaming';
 
@@ -13,6 +14,7 @@ import {
   LiteralClient,
   Maybe,
   Step,
+  StepConstructor,
   Thread
 } from '..';
 
@@ -92,6 +94,10 @@ const originalCompletionsCreate = OpenAI.Completions.prototype.create;
 OpenAI.Completions.prototype.create = wrapFunction(
   originalCompletionsCreate
 ) as any;
+
+// Patching the completions.create function
+const originalImagesGenerate = OpenAI.Images.prototype.generate;
+OpenAI.Images.prototype.generate = wrapFunction(originalImagesGenerate) as any;
 
 function processChatDelta(
   newDelta: ChatCompletionChunk.Choice.Delta,
@@ -283,7 +289,8 @@ export type OpenAIOutput =
   | Stream<Completion>
   | ChatCompletion
   | Stream<ChatCompletion>
-  | Stream<ChatCompletionChunk>;
+  | Stream<ChatCompletionChunk>
+  | ImagesResponse;
 
 export interface InstrumentOpenAIOptions {
   tags?: Maybe<string[]>;
@@ -305,7 +312,24 @@ const instrumentOpenAI = async (
     tags: options.tags
   };
 
-  if (output instanceof Stream) {
+  if ('data' in output) {
+    // Image Generation
+
+    const stepData: StepConstructor = {
+      name: inputs.model || 'openai',
+      type: 'llm',
+      input: inputs,
+      output: output,
+      startTime: new Date(start).toISOString(),
+      endTime: new Date().toISOString(),
+      tags: options.tags
+    };
+
+    const step = parent
+      ? parent.step(stepData)
+      : client.step({ ...stepData, type: 'run' });
+    await step.send();
+  } else if (output instanceof Stream) {
     if (!stream) {
       throw new Error('Stream not found');
     }
