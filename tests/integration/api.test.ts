@@ -546,8 +546,8 @@ describe('End to end tests for the SDK', function () {
 
       await step
         .step({
-          name: 'agent',
-          type: 'run',
+          name: 'gpt-4o',
+          type: 'llm',
           input: { content: 'hello' },
           output: { content: 'hello!' }
         })
