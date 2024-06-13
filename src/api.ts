@@ -773,7 +773,7 @@ export class API {
     const stepGeneration = response.data.createGeneration;
     return {
       id: stepGeneration.id,
-      promptType: stepGeneration.promptType
+      type: stepGeneration.promptType
     } as PersistedGeneration;
   }
 
