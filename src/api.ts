@@ -760,7 +760,7 @@ export class API {
     mutation CreateGeneration($generation: GenerationPayloadInput!) {
       createGeneration(generation: $generation) {
           id,
-          promptType
+          type 
       }
   }
     `;
@@ -770,11 +770,7 @@ export class API {
     };
 
     const response = await this.makeGqlCall(mutation, variables);
-    const stepGeneration = response.data.createGeneration;
-    return {
-      id: stepGeneration.id,
-      type: stepGeneration.promptType
-    } as PersistedGeneration;
+    return response.data.createGeneration as PersistedGeneration;
   }
 
   // Thread
