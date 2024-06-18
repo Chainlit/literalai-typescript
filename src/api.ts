@@ -760,7 +760,7 @@ export class API {
     mutation CreateGeneration($generation: GenerationPayloadInput!) {
       createGeneration(generation: $generation) {
           id,
-          type 
+          type
       }
   }
     `;
