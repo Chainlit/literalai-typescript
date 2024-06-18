@@ -375,6 +375,15 @@ describe('End to end tests for the SDK', function () {
   });
 
   describe('dataset api', () => {
+    it('should list datasets', async () => {
+      const list = await client.api.getDatasets();
+      expect(list).toBeInstanceOf(Array);
+      expect(list[0]).toEqual({
+        id: expect.any(String),
+        name: expect.any(String)
+      });
+    });
+
     it('should create a dataset', async () => {
       const datasetName = `test_${uuidv4()}`;
       const dataset = await client.api.createDataset({

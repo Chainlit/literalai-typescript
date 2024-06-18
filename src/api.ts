@@ -1405,6 +1405,44 @@ export class API {
   }
 
   // Dataset
+
+  /**
+   * List all datasets in the platform.
+   *
+   * @returns The names and ids of all datasets.
+   */
+  public async getDatasets(): Promise<{ id: string; name: string }[]> {
+    const query = `query GetDatasets ($after: ID) {
+      datasets(
+        after: $after
+        first: 100
+      ) {
+        edges {
+          node {
+            id
+            name
+          }
+        }
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+      }
+    }`;
+
+    const items: { id: string; name: string }[] = [];
+
+    let cursor = null;
+    do {
+      const result = await this.makeGqlCall(query, { after: cursor });
+      const { pageInfo, edges } = result.data.datasets;
+      cursor = pageInfo.hasNextPage ? pageInfo.endCursor : null;
+      items.push(...edges.map((edge: any) => edge.node));
+    } while (cursor);
+
+    return items;
+  }
+
   /**
    * Creates a new dataset in the database.
    *
