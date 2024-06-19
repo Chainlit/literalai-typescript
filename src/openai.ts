@@ -108,6 +108,7 @@ class OpenAIAssistantSyncer {
       : null;
     const toolCall = (runStep.step_details as ToolCallsStepDetails)
       .tool_calls[0];
+
     // @ts-expect-error "retrieval" is not in the type
     const type = toolCall.type === 'retrieval' ? 'retrieval' : 'tool';
     let input = {};
