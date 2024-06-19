@@ -546,7 +546,7 @@ describe('End to end tests for the SDK', function () {
 
       await step
         .step({
-          name: 'gpt-4',
+          name: 'gpt-4o',
           type: 'llm',
           input: { content: 'hello' },
           output: { content: 'hello!' }
@@ -598,7 +598,7 @@ describe('End to end tests for the SDK', function () {
       expect(datasetItem.createdAt).not.toBeNull();
       expect(datasetItem.input).not.toBeNull();
       expect(datasetItem.expectedOutput).not.toBeNull();
-      expect(datasetItem.metadata.type).toBe('CHAT');
+      expect(datasetItem.metadata.promptType).toBe('CHAT');
     });
   });
 
