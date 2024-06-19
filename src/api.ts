@@ -426,6 +426,16 @@ export class API {
   }
 
   /**
+   * Get the project id associated with the API key.
+   *
+   * @returns the project id
+   */
+  async getProjectId(): Promise<string> {
+    const response = await this.makeApiCall('/my-project', {});
+    return response['projectId'];
+  }
+
+  /**
    * Sends a collection of steps to the GraphQL endpoint.
    *
    * This method constructs a GraphQL query using the provided steps, then executes the query.

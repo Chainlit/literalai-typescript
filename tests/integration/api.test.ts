@@ -374,6 +374,11 @@ describe('End to end tests for the SDK', function () {
     await client.api.deleteThread(thread.id);
   });
 
+  it('should get project id', async () => {
+    const projectId = await client.api.getProjectId();
+    expect(projectId).toEqual(expect.any(String));
+  });
+
   describe('dataset api', () => {
     it('should create a dataset', async () => {
       const datasetName = `test_${uuidv4()}`;
