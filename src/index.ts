@@ -2,9 +2,16 @@ import { API } from './api';
 import instrumentation from './instrumentation';
 import openai from './openai';
 import { Step, StepConstructor, Thread, ThreadConstructor } from './types';
+import {
+  StepWrapperOptions,
+  ThreadWrapperOptions,
+  wrapInStep,
+  wrapInThread
+} from './wrappers';
 
 export * from './types';
 export * from './generation';
+export type * from './wrappers';
 
 export type * from './instrumentation';
 
@@ -38,5 +45,19 @@ export class LiteralClient {
   run(data: Omit<StepConstructor, 'type'>) {
     const runData = { ...data, type: 'run' as const };
     return new Step(this.api, runData);
+  }
+
+  wrapInStep<TArgs extends unknown[], TReturn>(
+    fn: (...args: TArgs) => Promise<TReturn>,
+    options: StepWrapperOptions
+  ) {
+    return wrapInStep(this, fn, options);
+  }
+
+  wrapInThread<TArgs extends unknown[], TReturn>(
+    fn: (...args: TArgs) => Promise<TReturn>,
+    options: ThreadWrapperOptions<TArgs>
+  ) {
+    return wrapInThread(this, fn, options);
   }
 }
