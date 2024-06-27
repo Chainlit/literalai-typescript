@@ -1,6 +1,18 @@
 import { LiteralClient } from '../src';
 
 describe('Literal Ai Config', () => {
+  let savedEnv: Record<string, string | undefined>;
+
+  beforeAll(() => {
+    savedEnv = { ...process.env };
+    delete process.env.LITERAL_API_URL;
+    delete process.env.LITERAL_API_KEY;
+  });
+
+  afterAll(() => {
+    process.env = { ...savedEnv };
+  });
+
   it('should not throw when disabled', () => {
     let client: LiteralClient | undefined;
     expect(() => {
