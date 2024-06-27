@@ -18,7 +18,7 @@ describe('Wrapper', () => {
     client = new LiteralClient(apiKey, url);
   });
 
-  it.only('should handle simple use case', async () => {
+  it('should handle simple use case', async () => {
     const retrieve = client.wrapInStep(
       async (_query: string) => {
         await sleep(1000);
@@ -68,5 +68,20 @@ describe('Wrapper', () => {
 
     const result = await main('France');
     expect(result).toBe('Paris is a city in Europe');
+  });
+
+  it('should handle nest steps', async () => {
+    // TODO: Implement
+    fail('Not implemented');
+  });
+
+  it('should handle steps outside of a thread', async () => {
+    // TODO: Implement
+    fail('Not implemented');
+  });
+
+  it('should handle failing step', async () => {
+    // TODO: Implement
+    fail('Not implemented');
   });
 });
