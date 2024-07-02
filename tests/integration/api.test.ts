@@ -82,7 +82,7 @@ describe('End to end tests for the SDK', function () {
     expect(thread.metadata).toStrictEqual({ foo: 'bar' });
 
     const fetchedThread = await client.api.getThread(thread.id);
-    expect(fetchedThread.id).toBe(thread.id);
+    expect(fetchedThread?.id).toBe(thread.id);
 
     const updatedThread = await client.api.upsertThread({
       threadId: thread.id,
@@ -112,7 +112,7 @@ describe('End to end tests for the SDK', function () {
     expect(thread.metadata).toStrictEqual({ foo: 'bar' });
 
     const fetchedThread = await client.api.getThread(thread.id);
-    expect(fetchedThread.id).toBe(thread.id);
+    expect(fetchedThread?.id).toBe(thread.id);
 
     const updatedThread = await client.api.upsertThread(
       thread.id,
