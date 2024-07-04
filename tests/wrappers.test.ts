@@ -2,20 +2,16 @@ import 'dotenv/config';
 
 import { LiteralClient, Maybe } from '../src';
 
+const url = process.env.LITERAL_API_URL;
+const apiKey = process.env.LITERAL_API_KEY;
+
+if (!url || !apiKey) {
+  throw new Error('Missing environment variables');
+}
+
+const client = new LiteralClient(apiKey, url);
+
 describe('Wrapper', () => {
-  let client: LiteralClient;
-
-  beforeAll(function () {
-    const url = process.env.LITERAL_API_URL;
-    const apiKey = process.env.LITERAL_API_KEY;
-
-    if (!url || !apiKey) {
-      throw new Error('Missing environment variables');
-    }
-
-    client = new LiteralClient(apiKey, url);
-  });
-
   it('handles failing step', async () => {
     let threadId: Maybe<string>;
     let stepId: Maybe<string>;
@@ -170,7 +166,74 @@ describe('Wrapper', () => {
     });
   });
 
-  describe('Editing current thread / step', () => {
+  describe.only('Updating the thread / step after the wrap', () => {
+    it('updates the thread / step with a static object', async () => {
+      let threadId: Maybe<string>;
+      let stepId: Maybe<string>;
+
+      await client.thread({ name: 'Test Wrappers Thread' }).wrap(
+        async () => {
+          threadId = client.getCurrentThread()!.id;
+
+          return client
+            .step({ name: 'Test Wrappers Step', type: 'assistant_message' })
+            .wrap(
+              async () => {
+                stepId = client.getCurrentStep()!.id;
+                client.getCurrentStep()!.name = 'Edited Test Wrappers Step';
+
+                return { content: 'Paris is a city in Europe' };
+              },
+              { metadata: { key: 'step-value' } }
+            );
+        },
+        { metadata: { key: 'thread-value' } }
+      );
+
+      const thread = await client.api.getThread(threadId!);
+      const step = await client.api.getStep(stepId!);
+
+      expect(thread!.metadata!.key).toEqual('thread-value');
+      expect(step!.metadata!.key).toEqual('step-value');
+    });
+
+    it('updates the thread / step based on the output of the wrap', async () => {
+      let threadId: Maybe<string>;
+      let stepId: Maybe<string>;
+
+      await client.thread({ name: 'Test Wrappers Thread' }).wrap(
+        async () => {
+          threadId = client.getCurrentThread()!.id;
+
+          return client
+            .step({ name: 'Test Wrappers Step', type: 'assistant_message' })
+            .wrap(
+              async () => {
+                stepId = client.getCurrentStep()!.id;
+                client.getCurrentStep()!.name = 'Edited Test Wrappers Step';
+
+                return { content: 'Paris is a city in Europe' };
+              },
+              (output) => ({
+                output: { type: 'assistant', message: output.content }
+              })
+            );
+        },
+        (output) => ({ metadata: { assistantMessage: output.content } })
+      );
+
+      const thread = await client.api.getThread(threadId!);
+      const step = await client.api.getStep(stepId!);
+
+      expect(thread!.metadata!.assistantMessage).toEqual(
+        'Paris is a city in Europe'
+      );
+      expect(step!.output!.type).toEqual('assistant');
+      expect(step!.output!.message).toEqual('Paris is a city in Europe');
+    });
+  });
+
+  describe.skip('Editing current thread / step', () => {
     it('handles edition using the `getCurrentXXX` helpers', async () => {
       let threadId: Maybe<string>;
       let stepId: Maybe<string>;

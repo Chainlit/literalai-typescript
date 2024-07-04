@@ -38,7 +38,7 @@ export class Utils {
   serialize(): any {
     const dict: any = {};
     Object.keys(this as any).forEach((key) => {
-      if (key === 'api') {
+      if (['api', 'client'].includes(key)) {
         return;
       }
       if ((this as any)[key] !== undefined) {
@@ -221,8 +221,48 @@ export class Thread extends ThreadFields {
 
     return output;
   }
-}
 
+  decorate<Class extends { new (...args: any[]): object }>(
+    constructor: Class,
+    ..._args: unknown[]
+  ) {
+    const client = this.client;
+    /* eslint-disable-next-line @typescript-eslint/no-this-alias*/
+    const thread = this;
+
+    return class extends constructor {
+      constructor(...args: any[]) {
+        super(...args);
+
+        Reflect.ownKeys(constructor.prototype).forEach((key) => {
+          const descriptor = Object.getOwnPropertyDescriptor(
+            constructor.prototype,
+            key
+          );
+
+          if (
+            !descriptor ||
+            typeof descriptor.value !== 'function' ||
+            key === 'constructor'
+          ) {
+            return;
+          }
+
+          Object.defineProperty(this, key, {
+            ...descriptor,
+            value: (...methodArgs: unknown[]) =>
+              client.store.run(
+                { currentThread: thread, currentStep: null },
+                () => descriptor.value.apply(this, methodArgs)
+              )
+          });
+        });
+
+        thread.upsert();
+      }
+    };
+  }
+}
 export type StepType =
   | 'assistant_message'
   | 'embedding'
@@ -361,9 +401,9 @@ export class Step extends StepFields {
   async wrap<Output>(
     cb: (step: Step) => Output | Promise<Output>,
     updateStep?:
-      | StepConstructor
-      | ((output: Output) => StepConstructor)
-      | ((output: Output) => Promise<StepConstructor>)
+      | Partial<StepConstructor>
+      | ((output: Output) => Partial<StepConstructor>)
+      | ((output: Output) => Promise<Partial<StepConstructor>>)
   ) {
     const startTime = new Date();
     this.startTime = startTime.toISOString();
@@ -385,7 +425,7 @@ export class Step extends StepFields {
       Object.assign(this, updatedStep);
     }
 
-    await this.send();
+    this.send();
 
     return output;
   }

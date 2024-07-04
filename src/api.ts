@@ -348,7 +348,7 @@ export class API {
     url: string,
     disabled?: boolean
   ) {
-    this.client = new LiteralClient(apiKey, url, disabled);
+    this.client = client;
     this.apiKey = apiKey;
     this.url = url;
     this.graphqlEndpoint = `${url}/api/graphql`;
