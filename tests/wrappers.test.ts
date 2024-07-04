@@ -1,0 +1,226 @@
+import 'dotenv/config';
+
+import { LiteralClient, Maybe } from '../src';
+
+describe('Wrapper', () => {
+  let client: LiteralClient;
+
+  beforeAll(function () {
+    const url = process.env.LITERAL_API_URL;
+    const apiKey = process.env.LITERAL_API_KEY;
+
+    if (!url || !apiKey) {
+      throw new Error('Missing environment variables');
+    }
+
+    client = new LiteralClient(apiKey, url);
+  });
+
+  it('handles failing step', async () => {
+    let threadId: Maybe<string>;
+    let stepId: Maybe<string>;
+
+    try {
+      await client.thread({ name: 'Test Wrappers Thread' }).wrap(async () => {
+        threadId = client.getCurrentThread()!.id;
+
+        return client
+          .step({ name: 'Test Wrappers Step', type: 'assistant_message' })
+          .wrap(async () => {
+            stepId = client.getCurrentStep()!.id;
+
+            throw new Error('Something bad happened');
+          });
+      });
+    } catch (error) {
+      expect((error as Error).message).toBe('Something bad happened');
+    }
+
+    const thread = await client.api.getThread(threadId!);
+    const step = await client.api.getStep(stepId!);
+
+    expect(thread).toBeNull();
+    expect(step).toBeNull();
+  });
+
+  describe('Wrapping', () => {
+    it('handles simple use case', async () => {
+      let threadId: Maybe<string>;
+      let stepId: Maybe<string>;
+
+      const result = await client
+        .thread({ name: 'Test Wrappers Thread' })
+        .wrap(async () => {
+          threadId = client.getCurrentThread()!.id;
+
+          return client
+            .step({ name: 'Test Wrappers Step', type: 'assistant_message' })
+            .wrap(async () => {
+              stepId = client.getCurrentStep()!.id;
+
+              return 'Paris is a city in Europe';
+            });
+        });
+
+      const thread = await client.api.getThread(threadId!);
+      const step = await client.api.getStep(stepId!);
+
+      expect(result).toBe('Paris is a city in Europe');
+
+      expect(thread!.name).toEqual('Test Wrappers Thread');
+
+      expect(step!.name).toEqual('Test Wrappers Step');
+      expect(step!.threadId).toEqual(thread!.id);
+      expect(step!.parentId).toBeNull();
+      expect(step!.output).toEqual({ output: 'Paris is a city in Europe' });
+    });
+
+    it('handles nested steps', async () => {
+      let threadId: Maybe<string>;
+      let runId: Maybe<string>;
+      let retrieveStepId: Maybe<string>;
+      let completionStepId: Maybe<string>;
+
+      const retrievedDocuments = [
+        { score: 0.8, text: 'France is a country in Europe' },
+        { score: 0.7, text: 'Paris is the capital of France' }
+      ];
+
+      const retrieve = async (_query: string) =>
+        client.step({ name: 'Retrieve', type: 'retrieval' }).wrap(async () => {
+          retrieveStepId = client.getCurrentStep()!.id;
+
+          return retrievedDocuments;
+        });
+
+      const completion = async (_query: string, _augmentations: string[]) =>
+        client.step({ name: 'Completion', type: 'llm' }).wrap(async () => {
+          completionStepId = client.getCurrentStep()!.id;
+
+          return { content: 'Paris is a city in Europe' };
+        });
+
+      const query = 'France';
+
+      const result = await client
+        .thread({ name: 'Test Wrappers Thread' })
+        .wrap(async () => {
+          threadId = client.getCurrentThread()!.id;
+
+          return client.run({ name: 'Test Wrappers Run' }).wrap(async () => {
+            runId = client.getCurrentStep()!.id;
+
+            const results = await retrieve(query);
+            const augmentations = results.map((result) => result.text);
+            const completionText = await completion(query, augmentations);
+            return completionText.content;
+          });
+        });
+
+      const thread = await client.api.getThread(threadId!);
+      const run = await client.api.getStep(runId!);
+      const retrieveStep = await client.api.getStep(retrieveStepId!);
+      const completionStep = await client.api.getStep(completionStepId!);
+
+      expect(result).toBe('Paris is a city in Europe');
+
+      expect(run!.threadId).toEqual(thread!.id);
+      expect(run!.parentId).toBeNull();
+      expect(run!.output).toEqual({ output: 'Paris is a city in Europe' });
+
+      expect(retrieveStep!.threadId).toEqual(thread!.id);
+      expect(retrieveStep!.parentId).toEqual(run!.id);
+      expect(retrieveStep!.output).toEqual({ output: retrievedDocuments });
+
+      expect(completionStep!.threadId).toEqual(thread!.id);
+      expect(completionStep!.parentId).toEqual(run!.id);
+      expect(completionStep!.output).toEqual({
+        output: { content: 'Paris is a city in Europe' }
+      });
+    });
+
+    it('handles steps outside of a thread', async () => {
+      let runId: Maybe<string>;
+      let stepId: Maybe<string>;
+
+      const result = await client
+        .run({ name: 'Test Wrappers Run' })
+        .wrap(async () => {
+          runId = client.getCurrentStep()!.id;
+
+          return client
+            .step({ name: 'Test Wrappers Step', type: 'assistant_message' })
+            .wrap(async () => {
+              stepId = client.getCurrentStep()!.id;
+
+              return 'Paris is a city in Europe';
+            });
+        });
+
+      const run = await client.api.getStep(runId!);
+      const step = await client.api.getStep(stepId!);
+
+      expect(result).toBe('Paris is a city in Europe');
+
+      expect(run!.name).toEqual('Test Wrappers Run');
+
+      expect(step!.name).toEqual('Test Wrappers Step');
+      expect(step!.threadId).toBeNull();
+      expect(step!.parentId).toEqual(run!.id);
+    });
+  });
+
+  describe('Editing current thread / step', () => {
+    it('handles edition using the `getCurrentXXX` helpers', async () => {
+      let threadId: Maybe<string>;
+      let stepId: Maybe<string>;
+
+      await client.thread({ name: 'Test Wrappers Thread' }).wrap(async () => {
+        threadId = client.getCurrentThread()!.id;
+        client.getCurrentThread()!.name = 'Edited Test Wrappers Thread';
+
+        return client
+          .step({ name: 'Test Wrappers Step', type: 'assistant_message' })
+          .wrap(async () => {
+            stepId = client.getCurrentStep()!.id;
+            client.getCurrentStep()!.name = 'Edited Test Wrappers Step';
+
+            return 'Paris is a city in Europe';
+          });
+      });
+
+      const thread = await client.api.getThread(threadId!);
+      const step = await client.api.getStep(stepId!);
+
+      expect(thread!.name).toEqual('Edited Test Wrappers Thread');
+      expect(step!.name).toEqual('Edited Test Wrappers Step');
+    });
+
+    it('handles edition using the variable provided to the callback', async () => {
+      let threadId: Maybe<string>;
+      let stepId: Maybe<string>;
+
+      await client
+        .thread({ name: 'Test Wrappers Thread' })
+        .wrap(async (thread) => {
+          threadId = thread.id;
+          thread.name = 'Edited Test Wrappers Thread';
+
+          return client
+            .step({ name: 'Test Wrappers Step', type: 'assistant_message' })
+            .wrap(async (step) => {
+              stepId = step.id;
+              step.name = 'Edited Test Wrappers Step';
+
+              return 'Paris is a city in Europe';
+            });
+        });
+
+      const thread = await client.api.getThread(threadId!);
+      const step = await client.api.getStep(stepId!);
+
+      expect(thread!.name).toEqual('Edited Test Wrappers Thread');
+      expect(step!.name).toEqual('Edited Test Wrappers Step');
+    });
+  });
+});

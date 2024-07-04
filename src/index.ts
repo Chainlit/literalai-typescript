@@ -1,24 +1,33 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import { API } from './api';
 import instrumentation from './instrumentation';
 import openai from './openai';
-import { Step, StepConstructor, Thread, ThreadConstructor } from './types';
 import {
-  StepWrapperOptions,
-  ThreadWrapperOptions,
-  wrapInStep,
-  wrapInThread
-} from './wrappers';
+  Maybe,
+  Step,
+  StepConstructor,
+  Thread,
+  ThreadConstructor
+} from './types';
 
 export * from './types';
 export * from './generation';
-export type * from './wrappers';
 
 export type * from './instrumentation';
+
+type Store = {
+  currentThread: Thread | null;
+  currentStep: Step | null;
+};
+
+const storage = new AsyncLocalStorage<Store>();
 
 export class LiteralClient {
   api: API;
   openai: ReturnType<typeof openai>;
   instrumentation: ReturnType<typeof instrumentation>;
+  store: AsyncLocalStorage<Store> = storage;
 
   constructor(apiKey?: string, apiUrl?: string, disabled?: boolean) {
     if (!apiKey) {
@@ -35,29 +44,22 @@ export class LiteralClient {
   }
 
   thread(data?: ThreadConstructor) {
-    return new Thread(this.api, data);
+    return new Thread(this, data);
   }
 
   step(data: StepConstructor) {
-    return new Step(this.api, data);
+    return new Step(this, data);
   }
 
   run(data: Omit<StepConstructor, 'type'>) {
-    const runData = { ...data, type: 'run' as const };
-    return new Step(this.api, runData);
+    return this.step({ ...data, type: 'run' });
   }
 
-  wrapInStep<TArgs extends unknown[], TReturn>(
-    fn: (...args: TArgs) => Promise<TReturn>,
-    options: StepWrapperOptions
-  ) {
-    return wrapInStep(this, fn, options);
+  getCurrentThread(): Maybe<Thread> {
+    return storage.getStore()?.currentThread ?? null;
   }
 
-  wrapInThread<TArgs extends unknown[], TReturn>(
-    fn: (...args: TArgs) => Promise<TReturn>,
-    options: ThreadWrapperOptions<TArgs>
-  ) {
-    return wrapInThread(this, fn, options);
+  getCurrentStep(): Maybe<Step> {
+    return storage.getStore()?.currentStep ?? null;
   }
 }
