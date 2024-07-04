@@ -38,7 +38,7 @@ export class LiteralClient {
       apiUrl = process.env.LITERAL_API_URL || 'https://cloud.getliteral.ai';
     }
 
-    this.api = new API(apiKey!, apiUrl!, disabled);
+    this.api = new API(this, apiKey!, apiUrl!, disabled);
     this.openai = openai(this);
     this.instrumentation = instrumentation(this);
   }

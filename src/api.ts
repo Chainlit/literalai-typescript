@@ -3,6 +3,7 @@ import FormData from 'form-data';
 import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
+import { LiteralClient } from '.';
 import {
   GenerationsFilter,
   GenerationsOrderBy,
@@ -32,8 +33,8 @@ import {
   Prompt,
   Score,
   Step,
-  StepConstructor,
   StepType,
+  Thread,
   User,
   Utils
 } from './types';
@@ -328,6 +329,8 @@ function addGenerationsToDatasetQueryBuilder(generationIds: string[]) {
 
 export class API {
   /** @ignore */
+  private client: LiteralClient;
+  /** @ignore */
   private apiKey: string;
   /** @ignore */
   private url: string;
@@ -339,7 +342,13 @@ export class API {
   public disabled: boolean;
 
   /** @ignore */
-  constructor(apiKey: string, url: string, disabled?: boolean) {
+  constructor(
+    client: LiteralClient,
+    apiKey: string,
+    url: string,
+    disabled?: boolean
+  ) {
+    this.client = new LiteralClient(apiKey, url, disabled);
     this.apiKey = apiKey;
     this.url = url;
     this.graphqlEndpoint = `${url}/api/graphql`;
@@ -467,7 +476,7 @@ export class API {
     before?: Maybe<string>;
     filters?: StepsFilter[];
     orderBy?: StepsOrderBy;
-  }): Promise<PaginatedResponse<OmitUtils<StepConstructor>>> {
+  }): Promise<PaginatedResponse<Step>> {
     const query = `
       query GetSteps(
         $after: ID,
@@ -509,7 +518,9 @@ export class API {
 
     const response = result.data.steps;
 
-    response.data = response.edges.map((x: any) => x.node);
+    response.data = response.edges.map(
+      (x: any) => new Step(this.client, x.node)
+    );
     delete response.edges;
 
     return response;
@@ -537,9 +548,11 @@ export class API {
 
     const result = await this.makeGqlCall(query, variables);
 
-    const step = result.data.step;
+    if (!result.data.step) {
+      return null;
+    }
 
-    return step;
+    return new Step(this.client, result.data.step);
   }
 
   /**
@@ -876,7 +889,7 @@ export class API {
     };
 
     const response = await this.makeGqlCall(query, variables);
-    return response.data.upsertThread;
+    return new Thread(this.client, response.data.upsertThread);
   }
 
   /**
@@ -897,7 +910,7 @@ export class API {
     filters?: ThreadsFilter[];
     orderBy?: ThreadsOrderBy;
     stepTypesToKeep?: StepType[];
-  }): Promise<PaginatedResponse<CleanThreadFields>> {
+  }): Promise<PaginatedResponse<Thread>> {
     const query = `
     query GetThreads(
         $after: ID,
@@ -941,7 +954,9 @@ export class API {
 
     const response = result.data.threads;
 
-    response.data = response.edges.map((x: any) => x.node);
+    response.data = response.edges.map(
+      (x: any) => new Thread(this.client, x.node)
+    );
     delete response.edges;
 
     return response;
@@ -953,7 +968,7 @@ export class API {
    * @param id - The unique identifier of the thread. This parameter is required.
    * @returns The detailed information of the specified thread.
    */
-  async getThread(id: string) {
+  async getThread(id: string): Promise<Maybe<Thread>> {
     const query = `
     query GetThread($id: String!) {
         threadDetail(id: $id) {
@@ -966,7 +981,11 @@ export class API {
 
     const response = await this.makeGqlCall(query, variables);
 
-    return response.data.threadDetail;
+    if (!response.data.threadDetail) {
+      return null;
+    }
+
+    return new Thread(this.client, response.data.threadDetail);
   }
 
   /**
@@ -975,7 +994,7 @@ export class API {
    * @param id - The unique identifier of the thread to be deleted. This parameter is required.
    * @returns The ID of the deleted thread.
    */
-  async deleteThread(id: string) {
+  async deleteThread(id: string): Promise<string> {
     const query = `
     mutation DeleteThread($threadId: String!) {
         deleteThread(id: $threadId) {
@@ -1052,7 +1071,7 @@ export class API {
 
     const response = result.data.participants;
 
-    response.data = response.edges.map((x: any) => x.node);
+    response.data = response.edges.map((x: any) => new User(x.node));
     delete response.edges;
 
     return response;
@@ -1274,7 +1293,7 @@ export class API {
 
     const response = result.data.scores;
 
-    response.data = response.edges.map((x: any) => x.node);
+    response.data = response.edges.map((x: any) => new Score(x.node));
     delete response.edges;
 
     return response;
