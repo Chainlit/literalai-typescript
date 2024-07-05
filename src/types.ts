@@ -222,39 +222,52 @@ export class Thread extends ThreadFields {
     return output;
   }
 
-  decorate<Class extends { new (...args: any[]): object }>(
+  decorateClass<Class extends { new (...args: any[]): object }>(
     constructor: Class,
     ..._args: unknown[]
   ) {
-    const client = this.client;
     /* eslint-disable-next-line @typescript-eslint/no-this-alias*/
     const thread = this;
+    const store = this.client.store;
+
+    const classMethodDescriptors = Reflect.ownKeys(constructor.prototype)
+      .filter((key) => key !== 'constructor')
+      .map((key) => ({
+        key,
+        descriptor: Object.getOwnPropertyDescriptor(constructor.prototype, key)
+      }))
+      .filter(({ descriptor }) => {
+        return descriptor && typeof descriptor.value === 'function';
+      });
 
     return class extends constructor {
       constructor(...args: any[]) {
         super(...args);
+        store.enterWith({ currentThread: thread, currentStep: null });
 
-        Reflect.ownKeys(constructor.prototype).forEach((key) => {
-          const descriptor = Object.getOwnPropertyDescriptor(
-            constructor.prototype,
-            key
-          );
+        console.log(1, store.getStore());
 
-          if (
-            !descriptor ||
-            typeof descriptor.value !== 'function' ||
-            key === 'constructor'
-          ) {
+        classMethodDescriptors.forEach(({ key, descriptor }) => {
+          if (!descriptor) {
             return;
           }
 
           Object.defineProperty(this, key, {
             ...descriptor,
             value: (...methodArgs: unknown[]) =>
-              client.store.run(
-                { currentThread: thread, currentStep: null },
-                () => descriptor.value.apply(this, methodArgs)
-              )
+              store.run({ currentThread: thread, currentStep: null }, () => {
+                const result = descriptor.value.apply(this, methodArgs);
+
+                if (result instanceof Promise) {
+                  return result.then(async (output) => {
+                    await thread.upsert();
+                    return output;
+                  });
+                } else {
+                  thread.upsert();
+                  return result;
+                }
+              })
           });
         });
 
@@ -263,6 +276,7 @@ export class Thread extends ThreadFields {
     };
   }
 }
+
 export type StepType =
   | 'assistant_message'
   | 'embedding'
@@ -322,6 +336,7 @@ export class Step extends StepFields {
 
     // Automatically assign parent thread & step if there are any in the store.
     const store = this.client.store.getStore();
+
     if (store?.currentThread) {
       this.threadId = store.currentThread.id;
     }
@@ -425,9 +440,120 @@ export class Step extends StepFields {
       Object.assign(this, updatedStep);
     }
 
-    this.send();
+    await this.send();
 
     return output;
+  }
+
+  decorateMethod<Class, Args extends any[], Result>(
+    _target: (this: Class, ...args: Args) => Promise<Result>,
+    _key: string,
+    descriptor: TypedPropertyDescriptor<
+      (this: Class, ...args: Args) => Promise<Result>
+    >
+  ) {
+    const originalMethod = descriptor.value;
+    /* eslint-disable-next-line @typescript-eslint/no-this-alias*/
+    const step = this;
+
+    if (!originalMethod) {
+      return descriptor;
+    }
+
+    descriptor.value = async function (
+      this: Class,
+      ...args: Args
+    ): Promise<Result> {
+      const startTime = new Date();
+      step.startTime = startTime.toISOString();
+      const currentStore = step.client.store.getStore();
+
+      const output = await step.client.store.run(
+        {
+          currentThread: currentStore?.currentThread ?? null,
+          currentStep: step
+        },
+        () => originalMethod.apply(this, args)
+      );
+
+      step.output = { output };
+      step.endTime = new Date().toISOString();
+
+      await step.send();
+
+      return output;
+    };
+
+    return descriptor;
+  }
+
+  decorateClass<Class extends { new (...args: any[]): object }>(
+    constructor: Class,
+    ..._args: unknown[]
+  ) {
+    /* eslint-disable-next-line @typescript-eslint/no-this-alias*/
+    const step = this;
+    const store = this.client.store;
+
+    const classMethodDescriptors = Reflect.ownKeys(constructor.prototype)
+      .filter((key) => key !== 'constructor')
+      .map((key) => ({
+        key,
+        descriptor: Object.getOwnPropertyDescriptor(constructor.prototype, key)
+      }))
+      .filter(({ descriptor }) => {
+        return descriptor && typeof descriptor.value === 'function';
+      });
+
+    return class extends constructor {
+      constructor(...args: any[]) {
+        super(...args);
+
+        const currentThread = store.getStore()?.currentThread ?? null;
+
+        store.enterWith({ currentThread, currentStep: step });
+
+        const currentStore = store.getStore();
+
+        console.log(2, currentStore);
+
+        // classMethodDescriptors.forEach(({ key, descriptor }) => {
+        //   if (!descriptor) {
+        //     return;
+        //   }
+
+        //   Object.defineProperty(this, key, {
+        //     ...descriptor,
+        //     value: (...methodArgs: unknown[]) =>
+        //       store.run({ currentThread, currentStep: step }, () => {
+        //         const startTime = new Date();
+        //         step.startTime = startTime.toISOString();
+
+        //         const result = descriptor.value.apply(this, methodArgs);
+
+        //         if (result instanceof Promise) {
+        //           return result.then(async (output) => {
+        //             step.output = { output };
+        //             step.endTime = new Date().toISOString();
+
+        //             await step.send();
+
+        //             return output;
+        //           });
+        //         } else {
+        //           step.output = { output: result };
+        //           step.endTime = new Date().toISOString();
+        //           step.send();
+
+        //           return result;
+        //         }
+        //       })
+        //   });
+        // });
+
+        step.send();
+      }
+    };
   }
 }
 

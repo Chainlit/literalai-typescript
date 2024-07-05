@@ -166,7 +166,7 @@ describe('Wrapper', () => {
     });
   });
 
-  describe.only('Updating the thread / step after the wrap', () => {
+  describe('Updating the thread / step after the wrap', () => {
     it('updates the thread / step with a static object', async () => {
       let threadId: Maybe<string>;
       let stepId: Maybe<string>;
@@ -233,7 +233,7 @@ describe('Wrapper', () => {
     });
   });
 
-  describe.skip('Editing current thread / step', () => {
+  describe('Editing current thread / step', () => {
     it('handles edition using the `getCurrentXXX` helpers', async () => {
       let threadId: Maybe<string>;
       let stepId: Maybe<string>;
