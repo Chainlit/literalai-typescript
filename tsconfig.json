@@ -12,7 +12,7 @@
   },
   "typedocOptions": {
     "plugin": "typedoc-plugin-markdown",
-    "entryPoints": ["./src/api.ts"] /*, "./src/index.ts" */,
+    "entryPoints": ["./src/api.ts"],
     "disableSources": true,
     "sort": "source-order",
     "readme": "none",

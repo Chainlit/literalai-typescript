@@ -229,7 +229,15 @@ export class Thread extends ThreadFields {
         typeof updateThread === 'function'
           ? await updateThread(output)
           : updateThread;
-      Object.assign(this, updatedThread);
+
+      Object.assign(this, {
+        participantId: updatedThread.participantId,
+        environment: updatedThread.environment,
+        name: updatedThread.name,
+        metadata: updatedThread.metadata,
+        steps: updatedThread.steps,
+        tags: updatedThread.tags
+      });
     }
 
     this.upsert().catch(console.error);
@@ -412,7 +420,24 @@ export class Step extends StepFields {
         typeof updateStep === 'function'
           ? await updateStep(output)
           : updateStep;
-      Object.assign(this, updatedStep);
+
+      Object.assign(this, {
+        name: updatedStep.name,
+        type: updatedStep.type,
+        threadId: updatedStep.threadId,
+        createdAt: updatedStep.createdAt,
+        startTime: updatedStep.startTime,
+        error: updatedStep.error,
+        input: updatedStep.input,
+        output: updatedStep.output,
+        metadata: updatedStep.metadata,
+        tags: updatedStep.tags,
+        parentId: updatedStep.parentId,
+        endTime: updatedStep.endTime,
+        generation: updatedStep.generation,
+        scores: updatedStep.scores,
+        attachments: updatedStep.attachments
+      });
     }
 
     this.send().catch(console.error);
