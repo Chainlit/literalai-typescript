@@ -519,7 +519,7 @@ export class API {
     const response = result.data.steps;
 
     response.data = response.edges.map(
-      (x: any) => new Step(this.client, x.node)
+      (x: any) => new Step(this.client, x.node, true)
     );
     delete response.edges;
 
@@ -552,7 +552,7 @@ export class API {
       return null;
     }
 
-    return new Step(this.client, result.data.step);
+    return new Step(this.client, result.data.step, true);
   }
 
   /**
@@ -980,7 +980,6 @@ export class API {
     const variables = { id };
 
     const response = await this.makeGqlCall(query, variables);
-
     if (!response.data.threadDetail) {
       return null;
     }

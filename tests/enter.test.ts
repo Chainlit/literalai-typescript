@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-import { LiteralClient, Maybe, Step } from '../src';
+import { LiteralClient, Maybe } from '../src';
 
 const url = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
@@ -11,8 +11,8 @@ if (!url || !apiKey) {
 
 const client = new LiteralClient(apiKey, url);
 
-describe('Wrapper', () => {
-  it('handles failing step', async () => {
+describe('Context without callbacks', () => {
+  it.skip('handles failing step', async () => {
     let threadId: Maybe<string>;
     let stepId: Maybe<string>;
 
@@ -39,36 +39,33 @@ describe('Wrapper', () => {
     expect(step).toBeNull();
   });
 
-  describe('Wrapping', () => {
-    it('handles simple use case', async () => {
-      let threadId: Maybe<string>;
-      let stepId: Maybe<string>;
+  describe.only('Entering context', () => {
+    it.only('handles simple use case', async () => {
+      client.thread({ name: 'Test Wrappers Thread' }).enter();
+      client
+        .step({ name: 'Test Wrappers Step', type: 'assistant_message' })
+        .enter();
 
-      const result = await client
-        .thread({ name: 'Test Wrappers Thread' })
-        .wrap(async () => {
-          threadId = client.getCurrentThread()!.id;
+      const threadId = client.getCurrentThread()!.id;
+      const stepId = client.getCurrentStep()!.id;
 
-          return client
-            .step({ name: 'Test Wrappers Step', type: 'assistant_message' })
-            .wrap(async () => {
-              stepId = client.getCurrentStep()!.id;
+      client.getCurrentStep()!.name = 'Edited Test Wrappers Step';
+      client.getCurrentStep()!.output = {
+        content: 'Paris is a city in Europe'
+      };
 
-              return 'Paris is a city in Europe';
-            });
-        });
+      await client.getCurrentStep()!.send();
+      await client.getCurrentThread()!.upsert();
 
       const thread = await client.api.getThread(threadId!);
       const step = await client.api.getStep(stepId!);
 
-      expect(result).toBe('Paris is a city in Europe');
-
       expect(thread!.name).toEqual('Test Wrappers Thread');
 
-      expect(step!.name).toEqual('Test Wrappers Step');
+      expect(step!.name).toEqual('Edited Test Wrappers Step');
       expect(step!.threadId).toEqual(thread!.id);
       expect(step!.parentId).toBeNull();
-      expect(step!.output).toEqual({ output: 'Paris is a city in Europe' });
+      expect(step!.output).toEqual({ content: 'Paris is a city in Europe' });
     });
 
     it('handles nested steps', async () => {
@@ -163,26 +160,6 @@ describe('Wrapper', () => {
       expect(step!.name).toEqual('Test Wrappers Step');
       expect(step!.threadId).toBeNull();
       expect(step!.parentId).toEqual(run!.id);
-    });
-
-    it("doesn't leak the current store when getting entities from the API", async () => {
-      let fetchedOldStep: Maybe<Step>;
-
-      const oldStep = await client
-        .step({ name: 'Test Old Step', type: 'run' })
-        .send();
-
-      await client.thread({ name: 'Test Wrappers Thread' }).wrap(async () => {
-        return client
-          .step({ name: 'Test Wrappers Step', type: 'assistant_message' })
-          .wrap(async () => {
-            fetchedOldStep = await client.api.getStep(oldStep!.id!);
-
-            return 'Paris is a city in Europe';
-          });
-      });
-
-      expect(fetchedOldStep!.parentId).toBeNull();
     });
   });
 

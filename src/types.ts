@@ -25,6 +25,18 @@ export type PaginatedResponse<T> = {
   pageInfo: PageInfo;
 };
 
+function getClassMethods(constructor: { new (...args: any[]): object }) {
+  return Reflect.ownKeys(constructor.prototype)
+    .filter((key) => key !== 'constructor')
+    .map((key) => ({
+      key,
+      descriptor: Object.getOwnPropertyDescriptor(constructor.prototype, key)
+    }))
+    .filter(({ descriptor }) => {
+      return descriptor && typeof descriptor.value === 'function';
+    });
+}
+
 /**
  * Represents a utility class with serialization capabilities.
  */
@@ -222,6 +234,12 @@ export class Thread extends ThreadFields {
     return output;
   }
 
+  enter() {
+    this.client.store.enterWith({ currentThread: this, currentStep: null });
+
+    return this;
+  }
+
   decorateClass<Class extends { new (...args: any[]): object }>(
     constructor: Class,
     ..._args: unknown[]
@@ -230,23 +248,19 @@ export class Thread extends ThreadFields {
     const thread = this;
     const store = this.client.store;
 
-    const classMethodDescriptors = Reflect.ownKeys(constructor.prototype)
-      .filter((key) => key !== 'constructor')
-      .map((key) => ({
-        key,
-        descriptor: Object.getOwnPropertyDescriptor(constructor.prototype, key)
-      }))
-      .filter(({ descriptor }) => {
-        return descriptor && typeof descriptor.value === 'function';
-      });
+    const classMethodDescriptors = getClassMethods(constructor);
+
+    store.enterWith({ currentThread: thread, currentStep: null });
 
     return class extends constructor {
       constructor(...args: any[]) {
         super(...args);
+
         store.enterWith({ currentThread: thread, currentStep: null });
 
-        console.log(1, store.getStore());
+        thread.upsert();
 
+        // Here we wrap every method of the class to ensure that the thread is updated after each method call.
         classMethodDescriptors.forEach(({ key, descriptor }) => {
           if (!descriptor) {
             return;
@@ -254,24 +268,21 @@ export class Thread extends ThreadFields {
 
           Object.defineProperty(this, key, {
             ...descriptor,
-            value: (...methodArgs: unknown[]) =>
-              store.run({ currentThread: thread, currentStep: null }, () => {
-                const result = descriptor.value.apply(this, methodArgs);
+            value: (...methodArgs: unknown[]) => {
+              const result = descriptor.value.apply(this, methodArgs);
 
-                if (result instanceof Promise) {
-                  return result.then(async (output) => {
-                    await thread.upsert();
-                    return output;
-                  });
-                } else {
-                  thread.upsert();
-                  return result;
-                }
-              })
+              if (result instanceof Promise) {
+                return result.then(async (output) => {
+                  await thread.upsert();
+                  return output;
+                });
+              } else {
+                thread.upsert();
+                return result;
+              }
+            }
           });
         });
-
-        thread.upsert();
       }
     };
   }
@@ -322,7 +333,11 @@ export class Step extends StepFields {
    * @param api The API instance to be used for sending and managing steps.
    * @param data The initial data for the step, excluding utility properties.
    */
-  constructor(client: LiteralClient, data: StepConstructor) {
+  constructor(
+    client: LiteralClient,
+    data: StepConstructor,
+    ignoreContext?: true
+  ) {
     super();
     this.api = client.api;
     this.client = client;
@@ -332,6 +347,10 @@ export class Step extends StepFields {
     // Automatically generate an ID if not provided.
     if (!this.id) {
       this.id = uuidv4();
+    }
+
+    if (ignoreContext) {
+      return;
     }
 
     // Automatically assign parent thread & step if there are any in the store.
@@ -445,25 +464,23 @@ export class Step extends StepFields {
     return output;
   }
 
+  enter() {
+    const currentStore = this.client.store.getStore();
+
+    this.client.store.enterWith({
+      currentThread: currentStore?.currentThread ?? null,
+      currentStep: this
+    });
+  }
+
   decorateMethod<Class, Args extends any[], Result>(
-    _target: (this: Class, ...args: Args) => Promise<Result>,
-    _key: string,
-    descriptor: TypedPropertyDescriptor<
-      (this: Class, ...args: Args) => Promise<Result>
-    >
+    originalMethod: (this: Class, ...args: Args) => Promise<Result>,
+    _context: any
   ) {
-    const originalMethod = descriptor.value;
     /* eslint-disable-next-line @typescript-eslint/no-this-alias*/
     const step = this;
 
-    if (!originalMethod) {
-      return descriptor;
-    }
-
-    descriptor.value = async function (
-      this: Class,
-      ...args: Args
-    ): Promise<Result> {
+    return async function (this: Class, ...args: Args): Promise<Result> {
       const startTime = new Date();
       step.startTime = startTime.toISOString();
       const currentStore = step.client.store.getStore();
@@ -483,8 +500,6 @@ export class Step extends StepFields {
 
       return output;
     };
-
-    return descriptor;
   }
 
   decorateClass<Class extends { new (...args: any[]): object }>(
@@ -495,61 +510,55 @@ export class Step extends StepFields {
     const step = this;
     const store = this.client.store;
 
-    const classMethodDescriptors = Reflect.ownKeys(constructor.prototype)
-      .filter((key) => key !== 'constructor')
-      .map((key) => ({
-        key,
-        descriptor: Object.getOwnPropertyDescriptor(constructor.prototype, key)
-      }))
-      .filter(({ descriptor }) => {
-        return descriptor && typeof descriptor.value === 'function';
-      });
+    const classMethodDescriptors = getClassMethods(constructor);
+
+    store.enterWith({
+      currentThread: store.getStore()?.currentThread ?? null,
+      currentStep: null
+    });
 
     return class extends constructor {
       constructor(...args: any[]) {
         super(...args);
 
-        const currentThread = store.getStore()?.currentThread ?? null;
+        store.enterWith({
+          currentThread: store.getStore()?.currentThread ?? null,
+          currentStep: step
+        });
 
-        store.enterWith({ currentThread, currentStep: step });
+        // Here we wrap every method of the class to ensure that the step is updated after each method call.
+        classMethodDescriptors.forEach(({ key, descriptor }) => {
+          if (!descriptor) {
+            return;
+          }
 
-        const currentStore = store.getStore();
+          Object.defineProperty(this, key, {
+            ...descriptor,
+            value: (...methodArgs: unknown[]) => {
+              const startTime = new Date();
+              step.startTime = startTime.toISOString();
 
-        console.log(2, currentStore);
+              const result = descriptor.value.apply(this, methodArgs);
 
-        // classMethodDescriptors.forEach(({ key, descriptor }) => {
-        //   if (!descriptor) {
-        //     return;
-        //   }
+              if (result instanceof Promise) {
+                return result.then(async (output) => {
+                  step.output = { output };
+                  step.endTime = new Date().toISOString();
 
-        //   Object.defineProperty(this, key, {
-        //     ...descriptor,
-        //     value: (...methodArgs: unknown[]) =>
-        //       store.run({ currentThread, currentStep: step }, () => {
-        //         const startTime = new Date();
-        //         step.startTime = startTime.toISOString();
+                  await step.send();
 
-        //         const result = descriptor.value.apply(this, methodArgs);
+                  return output;
+                });
+              } else {
+                step.output = { output: result };
+                step.endTime = new Date().toISOString();
+                step.send();
 
-        //         if (result instanceof Promise) {
-        //           return result.then(async (output) => {
-        //             step.output = { output };
-        //             step.endTime = new Date().toISOString();
-
-        //             await step.send();
-
-        //             return output;
-        //           });
-        //         } else {
-        //           step.output = { output: result };
-        //           step.endTime = new Date().toISOString();
-        //           step.send();
-
-        //           return result;
-        //         }
-        //       })
-        //   });
-        // });
+                return result;
+              }
+            }
+          });
+        });
 
         step.send();
       }
