@@ -251,8 +251,6 @@ describe('Wrapper', () => {
       expect(step!.output!.type).toEqual('assistant');
       expect(step!.output!.message).toEqual('Paris is a city in Europe');
     });
-
-    it("updates a step's output and end time", async () => {});
   });
 
   describe('Editing current thread / step', () => {

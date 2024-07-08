@@ -16,18 +16,18 @@ export * from './generation';
 
 export type * from './instrumentation';
 
-type Store = {
+type StoredContext = {
   currentThread: Thread | null;
   currentStep: Step | null;
 };
 
-const storage = new AsyncLocalStorage<Store>();
+const storage = new AsyncLocalStorage<StoredContext>();
 
 export class LiteralClient {
   api: API;
   openai: ReturnType<typeof openai>;
   instrumentation: ReturnType<typeof instrumentation>;
-  store: AsyncLocalStorage<Store> = storage;
+  store: AsyncLocalStorage<StoredContext> = storage;
 
   constructor(apiKey?: string, apiUrl?: string, disabled?: boolean) {
     if (!apiKey) {
