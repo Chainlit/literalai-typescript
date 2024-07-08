@@ -11,6 +11,10 @@ if (!url || !apiKey) {
 
 const client = new LiteralClient(apiKey, url);
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 describe('Wrapper', () => {
   it('handles failing step', async () => {
     let threadId: Maybe<string>;
@@ -58,6 +62,7 @@ describe('Wrapper', () => {
             });
         });
 
+      await sleep(1000);
       const thread = await client.api.getThread(threadId!);
       const step = await client.api.getStep(stepId!);
 
@@ -113,6 +118,7 @@ describe('Wrapper', () => {
           });
         });
 
+      await sleep(1000);
       const thread = await client.api.getThread(threadId!);
       const run = await client.api.getStep(runId!);
       const retrieveStep = await client.api.getStep(retrieveStepId!);
@@ -131,7 +137,7 @@ describe('Wrapper', () => {
       expect(completionStep!.threadId).toEqual(thread!.id);
       expect(completionStep!.parentId).toEqual(run!.id);
       expect(completionStep!.output).toEqual({
-        output: { content: 'Paris is a city in Europe' }
+        content: 'Paris is a city in Europe'
       });
     });
 
@@ -153,6 +159,7 @@ describe('Wrapper', () => {
             });
         });
 
+      await sleep(1000);
       const run = await client.api.getStep(runId!);
       const step = await client.api.getStep(stepId!);
 
@@ -210,6 +217,7 @@ describe('Wrapper', () => {
         { metadata: { key: 'thread-value' } }
       );
 
+      await sleep(1000);
       const thread = await client.api.getThread(threadId!);
       const step = await client.api.getStep(stepId!);
 
@@ -242,6 +250,7 @@ describe('Wrapper', () => {
         (output) => ({ metadata: { assistantMessage: output.content } })
       );
 
+      await sleep(1000);
       const thread = await client.api.getThread(threadId!);
       const step = await client.api.getStep(stepId!);
 
@@ -272,6 +281,7 @@ describe('Wrapper', () => {
           });
       });
 
+      await sleep(1000);
       const thread = await client.api.getThread(threadId!);
       const step = await client.api.getStep(stepId!);
 
@@ -299,6 +309,7 @@ describe('Wrapper', () => {
             });
         });
 
+      await sleep(1000);
       const thread = await client.api.getThread(threadId!);
       const step = await client.api.getStep(stepId!);
 
@@ -313,6 +324,7 @@ describe('Wrapper', () => {
         .thread({ name: 'Test Wrappers Thread' })
         .upsert();
 
+      await sleep(1000);
       const thread = await client.api.getThread(threadId);
 
       const wrappedThreadId = await thread!.wrap(async () => {
@@ -327,6 +339,7 @@ describe('Wrapper', () => {
         .run({ name: 'Test Wrappers Thread' })
         .send();
 
+      await sleep(1000);
       const step = await client.api.getStep(stepId!);
 
       const wrappedStepId = await step!.wrap(async () => {
@@ -334,6 +347,42 @@ describe('Wrapper', () => {
       });
 
       expect(wrappedStepId).toEqual(stepId);
+    });
+  });
+
+  describe('Concurrency', () => {
+    it("doesn't mix up threads and steps", async () => {
+      let firstThreadId: Maybe<string>;
+      let secondThreadId: Maybe<string>;
+      let firstStep: Maybe<Step>;
+      let secondStep: Maybe<Step>;
+
+      await Promise.all([
+        client.thread({ name: 'Thread 1' }).wrap(async () => {
+          firstThreadId = client.getCurrentThread()!.id;
+
+          return client
+            .step({ name: 'Step 1', type: 'assistant_message' })
+            .wrap(async () => {
+              firstStep = client.getCurrentStep();
+              return 'Paris is a city in Europe';
+            });
+        }),
+        client.thread({ name: 'Thread 2' }).wrap(async () => {
+          secondThreadId = client.getCurrentThread()!.id;
+
+          return client
+            .step({ name: 'Step 2', type: 'assistant_message' })
+            .wrap(async () => {
+              secondStep = client.getCurrentStep();
+              return 'London is a city in Europe';
+            });
+        })
+      ]);
+
+      expect(firstThreadId).not.toEqual(secondThreadId);
+      expect(firstStep?.threadId).toEqual(firstThreadId);
+      expect(secondStep?.threadId).toEqual(secondThreadId);
     });
   });
 });

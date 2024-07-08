@@ -25,6 +25,15 @@ export type PaginatedResponse<T> = {
   pageInfo: PageInfo;
 };
 
+function isPlainObject(value: unknown): value is Record<string, any> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === null || prototype === Object.prototype;
+}
+
 /**
  * Represents a utility class with serialization capabilities.
  */
@@ -197,6 +206,12 @@ export class Thread extends ThreadFields {
     return this;
   }
 
+  /**
+   * Sends the thread to the API, handling disabled state and setting the end time if not already set.
+   * @param cb The callback function to run within the context of the thread.
+   * @param updateThread Optional update function to modify the thread after the callback.
+   * @returns The output of the wrapped callback function.
+   */
   async wrap<Output>(
     cb: (thread: Thread) => Output | Promise<Output>,
     updateThread?:
@@ -217,7 +232,7 @@ export class Thread extends ThreadFields {
       Object.assign(this, updatedThread);
     }
 
-    await this.upsert();
+    this.upsert().catch(console.error);
 
     return output;
   }
@@ -367,6 +382,12 @@ export class Step extends StepFields {
     return this;
   }
 
+  /**
+   * Sends the step to the API, handling disabled state and setting the end time if not already set.
+   * @param cb The callback function to run within the context of the step.
+   * @param updateStep Optional update function to modify the step after the callback.
+   * @returns The output of the wrapped callback function.
+   */
   async wrap<Output>(
     cb: (step: Step) => Output | Promise<Output>,
     updateStep?:
@@ -383,7 +404,7 @@ export class Step extends StepFields {
       () => cb(this)
     );
 
-    this.output = { output };
+    this.output = isPlainObject(output) ? output : { output };
     this.endTime = new Date().toISOString();
 
     if (updateStep) {
@@ -394,7 +415,7 @@ export class Step extends StepFields {
       Object.assign(this, updatedStep);
     }
 
-    await this.send();
+    this.send().catch(console.error);
 
     return output;
   }
