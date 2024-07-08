@@ -306,4 +306,34 @@ describe('Wrapper', () => {
       expect(step!.name).toEqual('Edited Test Wrappers Step');
     });
   });
+
+  describe('Wrapping existing steps and threads', () => {
+    it('wraps an existing thread', async () => {
+      const { id: threadId } = await client
+        .thread({ name: 'Test Wrappers Thread' })
+        .upsert();
+
+      const thread = await client.api.getThread(threadId);
+
+      const wrappedThreadId = await thread!.wrap(async () => {
+        return client.getCurrentThread()!.id;
+      });
+
+      expect(wrappedThreadId).toEqual(threadId);
+    });
+
+    it('wraps an existing step', async () => {
+      const { id: stepId } = await client
+        .run({ name: 'Test Wrappers Thread' })
+        .send();
+
+      const step = await client.api.getStep(stepId!);
+
+      const wrappedStepId = await step!.wrap(async () => {
+        return client.getCurrentStep()!.id;
+      });
+
+      expect(wrappedStepId).toEqual(stepId);
+    });
+  });
 });
