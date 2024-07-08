@@ -339,9 +339,7 @@ describe('End to end tests for the SDK', function () {
   it('should test attachment', async function () {
     const thread = await client.thread({ id: uuidv4() });
     // Upload an attachment
-    const fileStream = createReadStream(
-      './tests/integration/chainlit-logo.png'
-    );
+    const fileStream = createReadStream('./tests/chainlit-logo.png');
     const mime = 'image/png';
 
     const { objectKey } = await client.api.uploadFile({
