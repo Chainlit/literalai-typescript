@@ -8,7 +8,7 @@ import {
   Dataset,
   LiteralClient,
   Score
-} from '../../src';
+} from '../src';
 
 describe('End to end tests for the SDK', function () {
   let client: LiteralClient;
