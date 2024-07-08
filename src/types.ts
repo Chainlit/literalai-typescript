@@ -25,18 +25,6 @@ export type PaginatedResponse<T> = {
   pageInfo: PageInfo;
 };
 
-function getClassMethods(constructor: { new (...args: any[]): object }) {
-  return Reflect.ownKeys(constructor.prototype)
-    .filter((key) => key !== 'constructor')
-    .map((key) => ({
-      key,
-      descriptor: Object.getOwnPropertyDescriptor(constructor.prototype, key)
-    }))
-    .filter(({ descriptor }) => {
-      return descriptor && typeof descriptor.value === 'function';
-    });
-}
-
 /**
  * Represents a utility class with serialization capabilities.
  */
@@ -233,59 +221,6 @@ export class Thread extends ThreadFields {
 
     return output;
   }
-
-  enter() {
-    this.client.store.enterWith({ currentThread: this, currentStep: null });
-
-    return this;
-  }
-
-  decorateClass<Class extends { new (...args: any[]): object }>(
-    constructor: Class,
-    ..._args: unknown[]
-  ) {
-    /* eslint-disable-next-line @typescript-eslint/no-this-alias*/
-    const thread = this;
-    const store = this.client.store;
-
-    const classMethodDescriptors = getClassMethods(constructor);
-
-    store.enterWith({ currentThread: thread, currentStep: null });
-
-    return class extends constructor {
-      constructor(...args: any[]) {
-        super(...args);
-
-        store.enterWith({ currentThread: thread, currentStep: null });
-
-        thread.upsert();
-
-        // Here we wrap every method of the class to ensure that the thread is updated after each method call.
-        classMethodDescriptors.forEach(({ key, descriptor }) => {
-          if (!descriptor) {
-            return;
-          }
-
-          Object.defineProperty(this, key, {
-            ...descriptor,
-            value: (...methodArgs: unknown[]) => {
-              const result = descriptor.value.apply(this, methodArgs);
-
-              if (result instanceof Promise) {
-                return result.then(async (output) => {
-                  await thread.upsert();
-                  return output;
-                });
-              } else {
-                thread.upsert();
-                return result;
-              }
-            }
-          });
-        });
-      }
-    };
-  }
 }
 
 export type StepType =
@@ -462,107 +397,6 @@ export class Step extends StepFields {
     await this.send();
 
     return output;
-  }
-
-  enter() {
-    const currentStore = this.client.store.getStore();
-
-    this.client.store.enterWith({
-      currentThread: currentStore?.currentThread ?? null,
-      currentStep: this
-    });
-  }
-
-  decorateMethod<Class, Args extends any[], Result>(
-    originalMethod: (this: Class, ...args: Args) => Promise<Result>,
-    _context: any
-  ) {
-    /* eslint-disable-next-line @typescript-eslint/no-this-alias*/
-    const step = this;
-
-    return async function (this: Class, ...args: Args): Promise<Result> {
-      const startTime = new Date();
-      step.startTime = startTime.toISOString();
-      const currentStore = step.client.store.getStore();
-
-      const output = await step.client.store.run(
-        {
-          currentThread: currentStore?.currentThread ?? null,
-          currentStep: step
-        },
-        () => originalMethod.apply(this, args)
-      );
-
-      step.output = { output };
-      step.endTime = new Date().toISOString();
-
-      await step.send();
-
-      return output;
-    };
-  }
-
-  decorateClass<Class extends { new (...args: any[]): object }>(
-    constructor: Class,
-    ..._args: unknown[]
-  ) {
-    /* eslint-disable-next-line @typescript-eslint/no-this-alias*/
-    const step = this;
-    const store = this.client.store;
-
-    const classMethodDescriptors = getClassMethods(constructor);
-
-    store.enterWith({
-      currentThread: store.getStore()?.currentThread ?? null,
-      currentStep: null
-    });
-
-    return class extends constructor {
-      constructor(...args: any[]) {
-        super(...args);
-
-        store.enterWith({
-          currentThread: store.getStore()?.currentThread ?? null,
-          currentStep: step
-        });
-
-        // Here we wrap every method of the class to ensure that the step is updated after each method call.
-        classMethodDescriptors.forEach(({ key, descriptor }) => {
-          if (!descriptor) {
-            return;
-          }
-
-          Object.defineProperty(this, key, {
-            ...descriptor,
-            value: (...methodArgs: unknown[]) => {
-              const startTime = new Date();
-              step.startTime = startTime.toISOString();
-
-              const result = descriptor.value.apply(this, methodArgs);
-
-              if (result instanceof Promise) {
-                return result.then(async (output) => {
-                  step.output = { output };
-                  step.endTime = new Date().toISOString();
-
-                  await step.send();
-
-                  return output;
-                });
-              } else {
-                step.output = { output: result };
-                step.endTime = new Date().toISOString();
-                step.send();
-
-                return result;
-              }
-            }
-          });
-        });
-
-        step.send();
-      }
-    };
   }
 }
 
