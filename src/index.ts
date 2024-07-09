@@ -3,13 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { API } from './api';
 import instrumentation from './instrumentation';
 import openai from './openai';
-import {
-  Maybe,
-  Step,
-  StepConstructor,
-  Thread,
-  ThreadConstructor
-} from './types';
+import { Step, StepConstructor, Thread, ThreadConstructor } from './types';
 
 export * from './types';
 export * from './generation';
@@ -55,11 +49,37 @@ export class LiteralClient {
     return this.step({ ...data, type: 'run' });
   }
 
-  getCurrentThread(): Maybe<Thread> {
-    return storage.getStore()?.currentThread ?? null;
+  /**
+   * Gets the current thread from the context.
+   * WARNING : this will throw if run outside of a thread context.
+   * @returns The current thread, if any.
+   */
+  getCurrentThread(): Thread {
+    const store = storage.getStore();
+
+    if (!store?.currentThread) {
+      throw new Error(
+        'Literal AI SDK : tried to access current thread outside of a thread context.'
+      );
+    }
+
+    return store.currentThread;
   }
 
-  getCurrentStep(): Maybe<Step> {
-    return storage.getStore()?.currentStep ?? null;
+  /**
+   * Gets the current step from the context.
+   * WARNING : this will throw if run outside of a step context.
+   * @returns The current step, if any.
+   */
+  getCurrentStep(): Step {
+    const store = storage.getStore();
+
+    if (!store?.currentStep) {
+      throw new Error(
+        'Literal AI SDK : tried to access current step outside of a context.'
+      );
+    }
+
+    return store.currentStep;
   }
 }
