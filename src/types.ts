@@ -230,14 +230,11 @@ export class Thread extends ThreadFields {
           ? await updateThread(output)
           : updateThread;
 
-      Object.assign(this, {
-        participantId: updatedThread.participantId,
-        environment: updatedThread.environment,
-        name: updatedThread.name,
-        metadata: updatedThread.metadata,
-        steps: updatedThread.steps,
-        tags: updatedThread.tags
-      });
+      this.participantId = updatedThread.participantId ?? this.participantId;
+      this.environment = updatedThread.environment ?? this.environment;
+      this.name = updatedThread.name ?? this.name;
+      this.metadata = updatedThread.metadata ?? this.metadata;
+      this.tags = updatedThread.tags ?? this.tags;
     }
 
     this.upsert().catch(console.error);
@@ -421,23 +418,21 @@ export class Step extends StepFields {
           ? await updateStep(output)
           : updateStep;
 
-      Object.assign(this, {
-        name: updatedStep.name,
-        type: updatedStep.type,
-        threadId: updatedStep.threadId,
-        createdAt: updatedStep.createdAt,
-        startTime: updatedStep.startTime,
-        error: updatedStep.error,
-        input: updatedStep.input,
-        output: updatedStep.output,
-        metadata: updatedStep.metadata,
-        tags: updatedStep.tags,
-        parentId: updatedStep.parentId,
-        endTime: updatedStep.endTime,
-        generation: updatedStep.generation,
-        scores: updatedStep.scores,
-        attachments: updatedStep.attachments
-      });
+      this.name = updatedStep.name ?? this.name;
+      this.type = updatedStep.type ?? this.type;
+      this.threadId = updatedStep.threadId ?? this.threadId;
+      this.createdAt = updatedStep.createdAt ?? this.createdAt;
+      this.startTime = updatedStep.startTime ?? this.startTime;
+      this.error = updatedStep.error ?? this.error;
+      this.input = updatedStep.input ?? this.input;
+      this.output = updatedStep.output ?? this.output;
+      this.metadata = updatedStep.metadata ?? this.metadata;
+      this.tags = updatedStep.tags ?? this.tags;
+      this.parentId = updatedStep.parentId ?? this.parentId;
+      this.endTime = updatedStep.endTime ?? this.endTime;
+      this.generation = updatedStep.generation ?? this.generation;
+      this.scores = updatedStep.scores ?? this.scores;
+      this.attachments = updatedStep.attachments ?? this.attachments;
     }
 
     this.send().catch(console.error);
