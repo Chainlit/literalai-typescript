@@ -14,7 +14,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsup ./src",
-    "test": "jest --runInBand --watchAll=false",
+    "test": "jest --detectOpenHandles --runInBand --watchAll=false",
     "prepare": "husky install"
   },
   "author": "Literal AI",

@@ -5,6 +5,7 @@ import {
 } from 'openai/resources';
 import { v4 as uuidv4 } from 'uuid';
 
+import { LiteralClient } from '.';
 import { API } from './api';
 import { Generation, GenerationType, IGenerationMessage } from './generation';
 import { CustomChatPromptTemplate } from './instrumentation/langchain';
@@ -24,6 +25,15 @@ export type PaginatedResponse<T> = {
   pageInfo: PageInfo;
 };
 
+function isPlainObject(value: unknown): value is Record<string, any> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === null || prototype === Object.prototype;
+}
+
 /**
  * Represents a utility class with serialization capabilities.
  */
@@ -37,7 +47,7 @@ export class Utils {
   serialize(): any {
     const dict: any = {};
     Object.keys(this as any).forEach((key) => {
-      if (key === 'api') {
+      if (['api', 'client'].includes(key)) {
         return;
       }
       if ((this as any)[key] !== undefined) {
@@ -135,20 +145,24 @@ export type ThreadConstructor = Omit<CleanThreadFields, 'id'> &
  */
 export class Thread extends ThreadFields {
   api: API;
+  client: LiteralClient;
 
   /**
    * Constructs a new Thread instance.
    * @param api - The API instance to interact with backend services.
    * @param data - Optional initial data for the thread, with an auto-generated ID if not provided.
    */
-  constructor(api: API, data?: ThreadConstructor) {
+  constructor(client: LiteralClient, data?: ThreadConstructor) {
     super();
-    this.api = api;
+    this.api = client.api;
+    this.client = client;
+
     if (!data) {
       data = { id: uuidv4() };
     } else if (!data.id) {
       data.id = uuidv4();
     }
+
     Object.assign(this, data);
   }
 
@@ -158,10 +172,19 @@ export class Thread extends ThreadFields {
    * @returns A new Step instance linked to this thread.
    */
   step(data: Omit<StepConstructor, 'threadId'>) {
-    return new Step(this.api, {
+    return new Step(this.client, {
       ...data,
       threadId: this.id
     });
+  }
+
+  /**
+   * Creates a new Run step associated with this thread.
+   * @param data - The data for the new step, excluding the thread ID and the type
+   * @returns A new Step instance linked to this thread.
+   */
+  run(data: Omit<StepConstructor, 'threadId' | 'type'>) {
+    return this.step({ ...data, type: 'run' });
   }
 
   /**
@@ -181,6 +204,42 @@ export class Thread extends ThreadFields {
       tags: this.tags
     });
     return this;
+  }
+
+  /**
+   * Sends the thread to the API, handling disabled state and setting the end time if not already set.
+   * @param cb The callback function to run within the context of the thread.
+   * @param updateThread Optional update function to modify the thread after the callback.
+   * @returns The output of the wrapped callback function.
+   */
+  async wrap<Output>(
+    cb: (thread: Thread) => Output | Promise<Output>,
+    updateThread?:
+      | ThreadConstructor
+      | ((output: Output) => ThreadConstructor)
+      | ((output: Output) => Promise<ThreadConstructor>)
+  ) {
+    const output = await this.client.store.run(
+      { currentThread: this, currentStep: null },
+      () => cb(this)
+    );
+
+    if (updateThread) {
+      const updatedThread =
+        typeof updateThread === 'function'
+          ? await updateThread(output)
+          : updateThread;
+
+      this.participantId = updatedThread.participantId ?? this.participantId;
+      this.environment = updatedThread.environment ?? this.environment;
+      this.name = updatedThread.name ?? this.name;
+      this.metadata = updatedThread.metadata ?? this.metadata;
+      this.tags = updatedThread.tags ?? this.tags;
+    }
+
+    this.upsert().catch(console.error);
+
+    return output;
   }
 }
 
@@ -222,20 +281,41 @@ export type StepConstructor = OmitUtils<StepFields>;
  */
 export class Step extends StepFields {
   api: API;
+  client: LiteralClient;
 
   /**
    * Constructs a new Step instance.
    * @param api The API instance to be used for sending and managing steps.
    * @param data The initial data for the step, excluding utility properties.
    */
-  constructor(api: API, data: StepConstructor) {
+  constructor(
+    client: LiteralClient,
+    data: StepConstructor,
+    ignoreContext?: true
+  ) {
     super();
-    this.api = api;
+    this.api = client.api;
+    this.client = client;
+
     Object.assign(this, data);
 
     // Automatically generate an ID if not provided.
     if (!this.id) {
       this.id = uuidv4();
+    }
+
+    if (ignoreContext) {
+      return;
+    }
+
+    // Automatically assign parent thread & step if there are any in the store.
+    const store = this.client.store.getStore();
+
+    if (store?.currentThread) {
+      this.threadId = store.currentThread.id;
+    }
+    if (store?.currentStep) {
+      this.parentId = store.currentStep.id;
     }
 
     // Set the creation and start time to the current time if not provided.
@@ -284,7 +364,7 @@ export class Step extends StepFields {
    * @returns A new Step instance.
    */
   step(data: Omit<StepConstructor, 'threadId'>) {
-    return new Step(this.api, {
+    return new Step(this.client, {
       ...data,
       threadId: this.threadId,
       parentId: this.id
@@ -305,6 +385,59 @@ export class Step extends StepFields {
     }
     await this.api.sendSteps([this]);
     return this;
+  }
+
+  /**
+   * Sends the step to the API, handling disabled state and setting the end time if not already set.
+   * @param cb The callback function to run within the context of the step.
+   * @param updateStep Optional update function to modify the step after the callback.
+   * @returns The output of the wrapped callback function.
+   */
+  async wrap<Output>(
+    cb: (step: Step) => Output | Promise<Output>,
+    updateStep?:
+      | Partial<StepConstructor>
+      | ((output: Output) => Partial<StepConstructor>)
+      | ((output: Output) => Promise<Partial<StepConstructor>>)
+  ) {
+    const startTime = new Date();
+    this.startTime = startTime.toISOString();
+    const currentStore = this.client.store.getStore();
+
+    const output = await this.client.store.run(
+      { currentThread: currentStore?.currentThread ?? null, currentStep: this },
+      () => cb(this)
+    );
+
+    this.output = isPlainObject(output) ? output : { output };
+    this.endTime = new Date().toISOString();
+
+    if (updateStep) {
+      const updatedStep =
+        typeof updateStep === 'function'
+          ? await updateStep(output)
+          : updateStep;
+
+      this.name = updatedStep.name ?? this.name;
+      this.type = updatedStep.type ?? this.type;
+      this.threadId = updatedStep.threadId ?? this.threadId;
+      this.createdAt = updatedStep.createdAt ?? this.createdAt;
+      this.startTime = updatedStep.startTime ?? this.startTime;
+      this.error = updatedStep.error ?? this.error;
+      this.input = updatedStep.input ?? this.input;
+      this.output = updatedStep.output ?? this.output;
+      this.metadata = updatedStep.metadata ?? this.metadata;
+      this.tags = updatedStep.tags ?? this.tags;
+      this.parentId = updatedStep.parentId ?? this.parentId;
+      this.endTime = updatedStep.endTime ?? this.endTime;
+      this.generation = updatedStep.generation ?? this.generation;
+      this.scores = updatedStep.scores ?? this.scores;
+      this.attachments = updatedStep.attachments ?? this.attachments;
+    }
+
+    this.send().catch(console.error);
+
+    return output;
   }
 }
 

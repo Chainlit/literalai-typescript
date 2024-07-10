@@ -3,6 +3,7 @@ import FormData from 'form-data';
 import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
+import { LiteralClient } from '.';
 import {
   GenerationsFilter,
   GenerationsOrderBy,
@@ -328,6 +329,8 @@ function addGenerationsToDatasetQueryBuilder(generationIds: string[]) {
 
 export class API {
   /** @ignore */
+  private client: LiteralClient;
+  /** @ignore */
   private apiKey: string;
   /** @ignore */
   private url: string;
@@ -339,7 +342,13 @@ export class API {
   public disabled: boolean;
 
   /** @ignore */
-  constructor(apiKey: string, url: string, disabled?: boolean) {
+  constructor(
+    client: LiteralClient,
+    apiKey: string,
+    url: string,
+    disabled?: boolean
+  ) {
+    this.client = client;
     this.apiKey = apiKey;
     this.url = url;
     this.graphqlEndpoint = `${url}/api/graphql`;
@@ -509,7 +518,9 @@ export class API {
 
     const response = result.data.steps;
 
-    response.data = response.edges.map((x: any) => new Step(this, x.node));
+    response.data = response.edges.map(
+      (x: any) => new Step(this.client, x.node, true)
+    );
     delete response.edges;
 
     return response;
@@ -541,7 +552,7 @@ export class API {
       return null;
     }
 
-    return new Step(this, result.data.step);
+    return new Step(this.client, result.data.step, true);
   }
 
   /**
@@ -878,7 +889,7 @@ export class API {
     };
 
     const response = await this.makeGqlCall(query, variables);
-    return new Thread(this, response.data.upsertThread);
+    return new Thread(this.client, response.data.upsertThread);
   }
 
   /**
@@ -943,7 +954,9 @@ export class API {
 
     const response = result.data.threads;
 
-    response.data = response.edges.map((x: any) => new Thread(this, x.node));
+    response.data = response.edges.map(
+      (x: any) => new Thread(this.client, x.node)
+    );
     delete response.edges;
 
     return response;
@@ -967,12 +980,11 @@ export class API {
     const variables = { id };
 
     const response = await this.makeGqlCall(query, variables);
-
     if (!response.data.threadDetail) {
       return null;
     }
 
-    return new Thread(this, response.data.threadDetail);
+    return new Thread(this.client, response.data.threadDetail);
   }
 
   /**
