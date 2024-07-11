@@ -1,6 +1,6 @@
 {
   "name": "@literalai/client",
-  "version": "0.0.508",
+  "version": "0.0.509",
   "description": "",
   "exports": {
     ".": {
