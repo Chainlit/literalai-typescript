@@ -18,26 +18,14 @@ import {
   Thread
 } from '..';
 
-const openaiReqs: Record<
-  string,
-  {
-    // Record the ID of the request
-    id: string;
-    // Record the start time of the request
-    start: number;
-    // Record the inputs of the request
-    inputs: Record<string, any>;
-    // Record the stream of the request if it's a streaming request
-    stream?: Stream<ChatCompletionChunk | Completion>;
-  }
-> = {};
-
 // Define a generic type for the original function to be wrapped
 type OriginalFunction<T extends any[], R> = (...args: T) => Promise<R>;
 
 // Utility function to wrap a method
 function wrapFunction<T extends any[], R>(
-  originalFunction: OriginalFunction<T, R>
+  originalFunction: OriginalFunction<T, R>,
+  client: LiteralClient,
+  options: InstrumentOpenAIOptions = {}
 ): OriginalFunction<T, R> {
   return async function (this: any, ...args: T): Promise<R> {
     const start = Date.now();
@@ -46,58 +34,57 @@ function wrapFunction<T extends any[], R>(
     const result = await originalFunction.apply(this, args);
 
     if (result instanceof Stream) {
-      const streamResult = result as Stream<ChatCompletionChunk | Completion>;
-      // If it is a streaming request, we need to process the first token to get the id
-      // However we also need to tee the stream so that the end developer can process the stream
-      const [a, b] = streamResult.tee();
-      // Re split the stream to store a clean instance for final processing later on
-      const c = a.tee()[0];
-      let id;
-      // Iterate over the stream to find the first chunk and store the id
-      for await (const chunk of a) {
-        id = chunk.id;
-        if (!openaiReqs[id]) {
-          openaiReqs[id] = {
-            id,
-            inputs: args[0],
-            start,
-            stream: c
-          };
-          break;
-        }
-      }
-      // @ts-expect-error Hacky way to add the id to the stream
-      b.id = id;
+      const streamResult = result;
+      const [returnedResult, processedResult] = streamResult.tee();
 
-      return b as any;
+      await processOpenAIOutput(client, processedResult, {
+        ...options,
+        start,
+        inputs: args[0]
+      });
+
+      return returnedResult as R;
     } else {
-      const regularResult = result as ChatCompletion | Completion;
-      const id = regularResult.id;
-      openaiReqs[id] = {
-        id,
-        inputs: args[0],
-        start
-      };
+      await processOpenAIOutput(client, result as ChatCompletion | Completion, {
+        ...options,
+        start,
+        inputs: args[0]
+      });
+
       return result;
     }
   };
 }
 
-// Patching the chat.completions.create function
-const originalChatCompletionsCreate = OpenAI.Chat.Completions.prototype.create;
-OpenAI.Chat.Completions.prototype.create = wrapFunction(
-  originalChatCompletionsCreate
-) as any;
+function instrumentOpenAI(
+  client: LiteralClient,
+  options: InstrumentOpenAIOptions = {}
+) {
+  // Patching the chat.completions.create function
+  const originalChatCompletionsCreate =
+    OpenAI.Chat.Completions.prototype.create;
+  OpenAI.Chat.Completions.prototype.create = wrapFunction(
+    originalChatCompletionsCreate,
+    client,
+    options
+  ) as any;
 
-// Patching the completions.create function
-const originalCompletionsCreate = OpenAI.Completions.prototype.create;
-OpenAI.Completions.prototype.create = wrapFunction(
-  originalCompletionsCreate
-) as any;
+  // Patching the completions.create function
+  const originalCompletionsCreate = OpenAI.Completions.prototype.create;
+  OpenAI.Completions.prototype.create = wrapFunction(
+    originalCompletionsCreate,
+    client,
+    options
+  ) as any;
 
-// Patching the completions.create function
-const originalImagesGenerate = OpenAI.Images.prototype.generate;
-OpenAI.Images.prototype.generate = wrapFunction(originalImagesGenerate) as any;
+  // Patching the completions.create function
+  const originalImagesGenerate = OpenAI.Images.prototype.generate;
+  OpenAI.Images.prototype.generate = wrapFunction(
+    originalImagesGenerate,
+    client,
+    options
+  ) as any;
+}
 
 function processChatDelta(
   newDelta: ChatCompletionChunk.Choice.Delta,
@@ -296,21 +283,38 @@ export interface InstrumentOpenAIOptions {
   tags?: Maybe<string[]>;
 }
 
-const instrumentOpenAI = async (
+export interface ProcessOpenAIOutput extends InstrumentOpenAIOptions {
+  start: number;
+  inputs: Record<string, any>;
+}
+
+const processOpenAIOutput = async (
   client: LiteralClient,
   output: OpenAIOutput,
-  parent?: Step | Thread,
-  options: InstrumentOpenAIOptions = {}
+  { start, tags, inputs }: ProcessOpenAIOutput
 ) => {
-  //@ts-expect-error - This is a hacky way to get the id from the stream
-  const outputId = output.id;
-  const { stream, start, inputs } = openaiReqs[outputId];
   const baseGeneration = {
     provider: 'openai',
     model: inputs.model,
     settings: getSettings(inputs),
-    tags: options.tags
+    tags: tags
   };
+
+  let threadFromStore: Thread | null = null;
+  try {
+    threadFromStore = client.getCurrentThread();
+  } catch (error) {
+    // Ignore error thrown if getCurrentThread is called outside of a context
+  }
+
+  let stepFromStore: Step | null = null;
+  try {
+    stepFromStore = client.getCurrentStep();
+  } catch (error) {
+    // Ignore error thrown if getCurrentStep is called outside of a context
+  }
+
+  const parent = stepFromStore || threadFromStore;
 
   if ('data' in output) {
     // Image Generation
@@ -322,7 +326,7 @@ const instrumentOpenAI = async (
       output: output,
       startTime: new Date(start).toISOString(),
       endTime: new Date().toISOString(),
-      tags: options.tags
+      tags: tags
     };
 
     const step = parent
@@ -330,6 +334,8 @@ const instrumentOpenAI = async (
       : client.step({ ...stepData, type: 'run' });
     await step.send();
   } else if (output instanceof Stream) {
+    const stream = output as Stream<ChatCompletionChunk | Completion>;
+
     if (!stream) {
       throw new Error('Stream not found');
     }
@@ -460,8 +466,6 @@ const instrumentOpenAI = async (
       }
     }
   }
-
-  delete openaiReqs[outputId];
 };
 
 export default instrumentOpenAI;
