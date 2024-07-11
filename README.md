@@ -14,187 +14,68 @@ To get an API key, go to the [Literal AI](https://cloud.getliteral.ai), create a
 
 ## Usage
 
-```ts
-import OpenAI from 'openai';
+The full documentation of the SDK can be found [here](https://docs.getliteral.ai/typescript-client/introduction).
 
+You can also find more involved examples in our [cookbooks repository](https://github.com/Chainlit/literal-cookbook).
+
+### Basic usage
+
+The following example will create a Thread on Literal AI and create a Step inside this Thread.
+
+```typescript
 import { LiteralClient } from '@literalai/client';
 
-const openai = new OpenAI({
-  apiKey: process.env['OPENAI_API_KEY']
-});
-const client = new LiteralClient(process.env['LITERAL_API_KEY']);
-```
+const client = new LiteralClient();
 
-### Create/Update Threads
+await client.thread({ name: 'Test Wrappers Thread' }).wrap(async () => {
+  // You can access the current thread and step using the client
+  const thread = client.getCurrentThread();
 
-```ts
-import { v4 as uuidv4 } from 'uuid';
-
-const userIdentifier = 'foobar';
-const participantId = await client.api.getOrCreateUser(userIdentifier);
-
-// Create the thread
-const thread = await client.thread({ id: uuidv4(), participantId }).upsert();
-```
-
-### Create/Update Steps
-
-```ts
-// Create the first step
-const step = await thread
-  .step({
-    name: userIdentifier,
-    type: 'user_message',
-    output: { text: 'Hello' },
-  })
-  .send();
-
-
-// Create a child llm step
-const step = step.step({
-  name: 'gpt-4',
-  type: 'llm',
-  input: { text: 'Hello' }
-});
-
-const stream = await openai.chat.completions.create({
-  model: 'gpt-4',
-  stream: true,
-  messages: [{ role: 'user', content: 'Say this is a test' }]
-});
-
-// Instrument the openai response
-await client.instrumentation.openai(step, stream);
-
-// Send the child step
-await step.send();
-```
-
-### Attach a File to a Step
-
-```ts
-const fileStream = createReadStream('PATH_TO_FILE');
-const mime = 'image/png';
-
-const { objectKey } = await client.api.uploadFile({
-  threadId: thread.id,
-  content: fileStream,
-  mime
-});
-
-const attachment = new Attachment({
-  name: 'test',
-  objectKey,
-  mime
-});
-
-const finalStep = await thread
-  .step({
-    name: 'Assistant',
-    type: 'assistant_message',
-    output: fakeCompletion,
-    attachments: [attachment]
-  })
-  .send();
-```
-
-### Create Score
-
-```ts
-const score = await client.api.createScore({
-  stepId: finalStep.id!,
-  name: 'user-feedback',
-  value: 1,
-  type: 'HUMAN',
-  comment: 'Great!'
+  // This step will be created with the thread as its parent
+  await client
+    .step({ name: 'Test Wrappers Step', type: 'assistant_message' })
+    .send();
 });
 ```
 
-### Get Threads
+### Advanced usage
 
-```ts
-const threads = await client.api.getThreads({
-  first: 20,
-  filters: [
-    {
-      field: 'createdAt',
-      operator: 'gt',
-      value: '2021-01-01'
-    }
-  ],
-  orderBy: {
-    column: 'createdAt',
-    direction: 'DESC'
-  }
-});
+The following example will create a Thread with a Run step nested inside. In the Run step, we will create two child steps: one for a retrieval and another for an LLM completion.
+
+```typescript
+import { LiteralClient } from '@literalai/client';
+
+const client = new LiteralClient();
+
+// Wrapped functions can be defined anywhere
+// When they run, they will inherit the current thread and step from the context
+const retrieve = async (_query: string) =>
+  client.step({ name: 'Retrieve', type: 'retrieval' }).wrap(async () => {
+    // Fetch data from the vector database ...
+
+    return [
+      { score: 0.8, text: 'France is a country in Europe' },
+      { score: 0.7, text: 'Paris is the capital of France' }
+    ]
+  });
+
+const completion = async (_query: string, _augmentations: string[]) =>
+  client.step({ name: 'Completion', type: 'llm' }).wrap(async () => {
+    // Fetch completions from the language model ...
+    return { content: 'Paris is a city in Europe' };
+  });
+
+  // The output of wrapped functions will always bubble up the wrapper chain
+  const result = await client
+    .thread({ name: 'Test Wrappers Thread' })
+    .wrap(async () => {
+      return client.run({ name: 'Test Wrappers Run' }).wrap(async () => {
+        const results = await retrieve(query);
+        const augmentations = results.map((result) => result.text);
+        const completionText = await completion(query, augmentations);
+        return completionText.content;
+      });
+    });
+
+  return result;
 ```
-
-## Integrations
-
-### OpenAI
-
-You can monitor your OpenAI LLM calls by leverage the completion response:
-
-```ts
-// Works for both chat/completion and stream/non stream
-const stream = await openai.chat.completions.create({
-  model: 'gpt-4',
-  stream: true,
-  messages: [{ role: 'user', content: 'Say this is a test' }]
-});
-
-// Consume the stream
-for await (const chunk of stream) {
-  console.log('h1');
-}
-
-// Optionally pass a parent step or thread to create an llm step automatically
-await client.instrumentation.openai(stream);
-```
-
-### OpenAI Assistant
-
-Once you created an OpenAI Assistant and created a thread, you can sync that thread on Literal with one line of code.
-
-This will keep track of:
-
-- Messages, runs and tools input/output + duration
-- Generated files
-- Token consumption
-
-```ts
-import OpenAI from 'openai';
-
-import { LiteralClient, User } from '@literalai/client';
-
-const openai = new OpenAI();
-
-const client = new LiteralClient(process.env['LITERAL_API_KEY']);
-const syncer = client.openai(openai).assistant.syncer;
-
-async function main() {
-  // You can sync a thread at any moment. We recommend to sync it once you get a `completed` run status.
-  const threadId = 'THREAD_ID_TO_SYNC';
-
-  // Optional: Add/update a user to the thread. Use any unique identifier you like.
-  const user = new User({ identifier: 'willy', metadata: { name: 'Willy' } });
-  // Optional: Add/update metadata to the thread
-  const threadMetadata = {};
-  await syncer.syncThread(threadId, user, threadMetadata);
-}
-
-main();
-```
-
-### Langchain
-
-You can instantiate the Literal Langchain Callback as:
-
-```ts
-// Literal thread ID is optional
-const cb = client.instrumentation.langchain.literalCallback(thread.id);
-
-// Use callback as any other Langchain callback
-```
-
-You will have to install the langchain npm package yourself as it is a peer dependency.
