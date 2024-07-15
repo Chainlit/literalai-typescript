@@ -77,7 +77,7 @@ function instrumentOpenAI(
     options
   ) as any;
 
-  // Patching the completions.create function
+  // Patching the images.generate function
   const originalImagesGenerate = OpenAI.Images.prototype.generate;
   OpenAI.Images.prototype.generate = wrapFunction(
     originalImagesGenerate,
@@ -288,6 +288,16 @@ export interface ProcessOpenAIOutput extends InstrumentOpenAIOptions {
   inputs: Record<string, any>;
 }
 
+function isStream(obj: any): boolean {
+  return (
+    obj !== null &&
+    typeof obj === 'object' &&
+    typeof obj.pipe === 'function' &&
+    typeof obj.on === 'function' &&
+    typeof obj.read === 'function'
+  );
+}
+
 const processOpenAIOutput = async (
   client: LiteralClient,
   output: OpenAIOutput,
@@ -333,7 +343,7 @@ const processOpenAIOutput = async (
       ? parent.step(stepData)
       : client.step({ ...stepData, type: 'run' });
     await step.send();
-  } else if (output instanceof Stream) {
+  } else if (output instanceof Stream || isStream(output)) {
     const stream = output as Stream<ChatCompletionChunk | Completion>;
 
     if (!stream) {
