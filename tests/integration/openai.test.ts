@@ -18,7 +18,7 @@ if (!url || !apiKey) {
   throw new Error('Missing environment variables');
 }
 
-const openai = new OpenAI();
+const openai = new OpenAI({ apiKey: 'an-ocean-of-noise' });
 
 // Skip for the CI
 describe('OpenAI Instrumentation', () => {
