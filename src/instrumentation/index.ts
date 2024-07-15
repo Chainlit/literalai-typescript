@@ -1,20 +1,15 @@
-import { LiteralClient, Step, Thread } from '..';
+import { LiteralClient } from '..';
 import { LiteralCallbackHandler } from './langchain';
 import { instrumentLlamaIndex, withThread } from './llamaindex';
-import instrumentOpenAI, {
-  InstrumentOpenAIOptions,
-  OpenAIOutput
-} from './openai';
+import instrumentOpenAI from './openai';
+import { InstrumentOpenAIOptions } from './openai';
 import { makeInstrumentVercelSDK } from './vercel-sdk';
 
 export type { InstrumentOpenAIOptions } from './openai';
 
 export default (client: LiteralClient) => ({
-  openai: (
-    output: OpenAIOutput,
-    parent?: Step | Thread,
-    options?: InstrumentOpenAIOptions
-  ) => instrumentOpenAI(client, output, parent, options),
+  openai: (options?: InstrumentOpenAIOptions) =>
+    instrumentOpenAI(client, options),
   langchain: {
     literalCallback: (threadId?: string) => {
       try {

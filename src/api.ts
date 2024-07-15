@@ -399,6 +399,7 @@ export class API {
 
       return response.data;
     } catch (e) {
+      console.error(e);
       if (e instanceof AxiosError) {
         throw new Error(JSON.stringify(e.response?.data.errors));
       } else {
@@ -426,6 +427,7 @@ export class API {
 
       return response.data;
     } catch (e) {
+      console.error(e);
       if (e instanceof AxiosError) {
         throw new Error(JSON.stringify(e.response?.data));
       } else {
@@ -696,70 +698,60 @@ export class API {
     orderBy?: GenerationsOrderBy;
   }): Promise<PaginatedResponse<PersistedGeneration>> {
     const query = `
-    query GetGenerations(
-      $after: ID,
-      $before: ID,
-      $cursorAnchor: DateTime,
-      $filters: [generationsInputType!],
-      $orderBy: GenerationsOrderByInput,
-      $first: Int,
-      $last: Int,
-      $projectId: String,
+      query GetGenerations(
+        $after: ID
+        $before: ID
+        $cursorAnchor: DateTime
+        $filters: [generationsInputType!]
+        $orderBy: GenerationsOrderByInput
+        $first: Int
+        $last: Int
+        $projectId: String
       ) {
-      generations(
-          after: $after,
-          before: $before,
-          cursorAnchor: $cursorAnchor,
-          filters: $filters,
-          orderBy: $orderBy,
-          first: $first,
-          last: $last,
-          projectId: $projectId,
-          ) {
+        generations(
+          after: $after
+          before: $before
+          cursorAnchor: $cursorAnchor
+          filters: $filters
+          orderBy: $orderBy
+          first: $first
+          last: $last
+          projectId: $projectId
+        ) {
           pageInfo {
-              startCursor
-              endCursor
-              hasNextPage
-              hasPreviousPage
+            startCursor
+            endCursor
+            hasNextPage
+            hasPreviousPage
           }
           totalCount
           edges {
-              cursor
-              node {
-                  id
-                  projectId
-                  prompt
-                  completion
-                  createdAt
-                  provider
-                  model
-                  variables
-                  messages
-                  messageCompletion
-                  tools
-                  settings
-                  stepId
-                  tokenCount
-                  duration
-                  inputTokenCount
-                  outputTokenCount
-                  ttFirstToken
-                  duration
-                  tokenThroughputInSeconds
-                  error
-                  type
-                  tags
-                  step {
-                      threadId
-                      thread {
-                      participant {
-                          identifier
-                              }
-                          }
-                      }
-                  }
-              }
+            cursor
+            node {
+              id
+              projectId
+              prompt
+              completion
+              createdAt
+              provider
+              model
+              variables
+              messages
+              messageCompletion
+              tools
+              settings
+              tokenCount
+              duration
+              inputTokenCount
+              outputTokenCount
+              ttFirstToken
+              tokenThroughputInSeconds
+              error
+              type
+              tags
+            }
           }
+        }
       }`;
 
     const result = await this.makeGqlCall(query, variables);

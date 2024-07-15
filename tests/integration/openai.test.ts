@@ -1,130 +1,404 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
+import { PassThrough } from 'stream';
+import { v4 as uuidv4 } from 'uuid';
 
-import { LiteralClient } from '../../src';
+import {
+  ChatGeneration,
+  LiteralClient,
+  Maybe,
+  OmitUtils,
+  Step
+} from '../../src';
+
+const url = process.env.LITERAL_API_URL;
+const apiKey = process.env.LITERAL_API_KEY;
+
+if (!url || !apiKey) {
+  throw new Error('Missing environment variables');
+}
+
+const openai = new OpenAI({ apiKey: 'an-ocean-of-noise' });
 
 // Skip for the CI
-describe.skip('OpenAI Instrumentation', () => {
-  let client: LiteralClient;
+describe('OpenAI Instrumentation', () => {
+  // Mock OpenAI Calls
+  beforeAll(() => {
+    /* @ts-expect-error the mock is incomplete but that's OK */
+    OpenAI.Chat.Completions.prototype.create = jest.fn(
+      ({ stream }: { stream: boolean }) => {
+        if (stream) {
+          const generationId = uuidv4();
+          const stream = new PassThrough({ objectMode: true });
 
-  beforeAll(function () {
-    const url = process.env.LITERAL_API_URL;
-    const apiKey = process.env.LITERAL_API_KEY;
+          stream.write({
+            id: generationId,
+            object: 'chat.completion.chunk',
+            choices: [
+              {
+                delta: { role: 'assistant', content: 'Ottawa' },
+                index: 0,
+                finish_reason: null
+              }
+            ]
+          });
 
-    if (!url || !apiKey) {
-      throw new Error('Missing environment variables');
-    }
+          stream.write({
+            id: generationId,
+            object: 'chat.completion.chunk',
+            choices: [
+              {
+                delta: { role: 'assistant', content: ' is' },
+                index: 0,
+                finish_reason: null
+              }
+            ]
+          });
 
-    client = new LiteralClient(apiKey, url);
-  });
+          stream.end({
+            id: generationId,
+            object: 'chat.completion.chunk',
+            choices: [
+              {
+                delta: { role: 'assistant', content: ' the capital of Canada' },
+                index: 0,
+                finish_reason: 'stop'
+              }
+            ]
+          });
 
-  it('should monitor simple generation', async () => {
-    const spy = jest.spyOn(client.api, 'createGeneration');
+          return stream;
+        }
 
-    const openai = new OpenAI();
-
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: 'You are a helpful assistant.' },
-        { role: 'user', content: 'What is the capital of Canada?' }
-      ]
-    });
-
-    await client.instrumentation.openai(response);
-
-    expect(response.choices[0].message.content).toBeTruthy();
-
-    expect(spy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'CHAT',
-        provider: 'openai',
-        model: 'gpt-3.5-turbo-0125',
-        messages: [
-          { content: 'You are a helpful assistant.', role: 'system' },
-          { content: 'What is the capital of Canada?', role: 'user' }
-        ],
-        messageCompletion: response.choices[0].message,
-        tokenCount: expect.any(Number)
-      })
+        return Promise.resolve({
+          id: uuidv4(),
+          object: 'chat.completion',
+          choices: [
+            {
+              message: {
+                role: 'assistant',
+                content: 'Ottawa is the capital of Canada'
+              }
+            }
+          ]
+        });
+      }
     );
+
+    /* @ts-expect-error the mock is incomplete but that's OK */
+    OpenAI.Images.prototype.generate = jest.fn(() => {
+      return Promise.resolve({
+        data: [{ url: 'https://example.com/image.png' }]
+      });
+    });
   });
 
-  it('should monitor streamed generation', async () => {
-    const spy = jest.spyOn(client.api, 'createGeneration');
+  describe('Streamed chat generation', () => {
+    let step: Maybe<Step>;
+    let generationFromStep: OmitUtils<ChatGeneration>;
 
-    const openai = new OpenAI();
+    beforeAll(async () => {
+      const testId = uuidv4();
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: 'You are a helpful assistant.' },
-        { role: 'user', content: 'What is the capital of Switzerland?' }
-      ],
-      stream: true
+      const client = new LiteralClient(apiKey, url);
+      client.instrumentation.openai({ tags: [testId] });
+
+      await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          { role: 'user', content: 'What is the capital of Canada?' }
+        ],
+        stream: true
+      });
+
+      const {
+        data: [generation]
+      } = await client.api.getGenerations({
+        filters: [
+          {
+            field: 'tags',
+            operator: 'in',
+            value: [testId]
+          }
+        ]
+      });
+
+      step = await client.api.getStep(generation.id);
+      generationFromStep = step!.generation!;
     });
 
-    await client.instrumentation.openai(response);
+    it('should create a generation with no thread or parent', async () => {
+      expect(step?.threadId).toBeNull();
+      expect(step?.parentId).toBeNull();
+      expect(step?.type).toBe('llm');
+    });
 
-    let resultText = '';
-    // use stream as an async iterable:
-    for await (const chunk of response) {
-      resultText += chunk.choices[0].delta.content ?? '';
-    }
-
-    expect(resultText).toBeTruthy();
-
-    expect(spy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'CHAT',
-        provider: 'openai',
-        model: 'gpt-3.5-turbo-0125',
-        messages: [
-          { content: 'You are a helpful assistant.', role: 'system' },
-          { content: 'What is the capital of Switzerland?', role: 'user' }
-        ],
-        messageCompletion: {
-          role: 'assistant',
-          content: resultText
+    it("should log a generation's input & output", async () => {
+      expect(generationFromStep.messages).toEqual([
+        {
+          role: 'system',
+          content: 'You are a helpful assistant.'
         },
-        duration: expect.any(Number),
-        ttFirstToken: expect.any(Number),
-        outputTokenCount: expect.any(Number),
-        tokenThroughputInSeconds: expect.any(Number)
-      })
-    );
-  });
-
-  it('should monitor image generation', async () => {
-    const spy = jest.spyOn(client.api, 'sendSteps');
-
-    const openai = new OpenAI();
-
-    const response = await openai.images.generate({
-      prompt: 'A painting of a rose in the style of Picasso.',
-      model: 'dall-e-2',
-      size: '256x256',
-      n: 1
+        {
+          role: 'user',
+          content: 'What is the capital of Canada?'
+        }
+      ]);
+      expect(generationFromStep.messageCompletion).toEqual({
+        role: 'assistant',
+        content: 'Ottawa is the capital of Canada'
+      });
     });
 
-    await client.instrumentation.openai(response);
+    it("should log a generation's settings", async () => {
+      expect(generationFromStep.provider).toBe('openai');
+      expect(generationFromStep.model).toContain('gpt-3.5-turbo');
+      expect(generationFromStep.tokenCount).toEqual(expect.any(Number));
+      expect(generationFromStep.inputTokenCount).toEqual(expect.any(Number));
+      expect(generationFromStep.outputTokenCount).toEqual(expect.any(Number));
+    });
+  });
 
-    expect(response.data[0].url).toBeTruthy();
+  describe('Outside of a thread or step wrapper', () => {
+    describe('Simple chat generation', () => {
+      let step: Maybe<Step>;
+      let generationFromStep: OmitUtils<ChatGeneration>;
+      let response: OpenAI.ChatCompletion;
 
-    expect(spy).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          name: 'dall-e-2',
-          type: 'run',
-          input: {
-            model: 'dall-e-2',
-            prompt: 'A painting of a rose in the style of Picasso.',
-            size: '256x256',
-            n: 1
+      beforeAll(async () => {
+        const testId = uuidv4();
+
+        const client = new LiteralClient(apiKey, url);
+
+        client.instrumentation.openai({ tags: [testId] });
+
+        response = await openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant.' },
+            { role: 'user', content: 'What is the capital of Canada?' }
+          ]
+        });
+
+        const {
+          data: [generation]
+        } = await client.api.getGenerations({
+          filters: [
+            {
+              field: 'tags',
+              operator: 'in',
+              value: [testId]
+            }
+          ]
+        });
+
+        step = await client.api.getStep(generation.id);
+        generationFromStep = step!.generation!;
+      });
+
+      it('should create a generation with no thread or parent', async () => {
+        expect(step?.threadId).toBeNull();
+        expect(step?.parentId).toBeNull();
+        expect(step?.type).toBe('llm');
+      });
+
+      it("should log a generation's input & output", async () => {
+        expect(generationFromStep.messages).toEqual([
+          {
+            role: 'system',
+            content: 'You are a helpful assistant.'
           },
-          output: response
-        })
-      ])
-    );
+          {
+            role: 'user',
+            content: 'What is the capital of Canada?'
+          }
+        ]);
+        expect(generationFromStep.messageCompletion).toEqual({
+          role: 'assistant',
+          content: response.choices[0].message.content
+        });
+      });
+
+      it("should log a generation's settings", async () => {
+        expect(generationFromStep.provider).toBe('openai');
+        expect(generationFromStep.model).toContain('gpt-3.5-turbo');
+        expect(generationFromStep.tokenCount).toEqual(expect.any(Number));
+        expect(generationFromStep.inputTokenCount).toEqual(expect.any(Number));
+        expect(generationFromStep.outputTokenCount).toEqual(expect.any(Number));
+      });
+    });
+
+    describe('Image generation', () => {
+      it('should monitor image generation', async () => {
+        const testId = uuidv4();
+
+        const client = new LiteralClient(apiKey, url);
+        client.instrumentation.openai({ tags: [testId] });
+
+        const response = await openai.images.generate({
+          prompt: 'A painting of a rose in the style of Picasso.',
+          model: 'dall-e-2',
+          size: '256x256',
+          n: 1
+        });
+
+        const {
+          data: [step]
+        } = await client.api.getSteps({
+          first: 1,
+          filters: [
+            {
+              field: 'tags',
+              operator: 'in',
+              value: [testId]
+            }
+          ]
+        });
+
+        expect(step?.threadId).toBeNull();
+        expect(step?.parentId).toBeNull();
+        expect(step?.type).toBe('run');
+
+        expect(step?.output?.data[0].url).toEqual(response.data[0].url);
+      }, 30000);
+    });
+  });
+
+  describe('Inside of a thread or step wrapper', () => {
+    it('logs the generation inside its thread and parent', async () => {
+      const testId = uuidv4();
+
+      const client = new LiteralClient(apiKey, url);
+      client.instrumentation.openai({ tags: [testId] });
+
+      let threadId: Maybe<string>;
+      let parentId: Maybe<string>;
+
+      await client.thread({ name: 'openai' }).wrap(async () => {
+        threadId = client.getCurrentThread().id;
+        return client.run({ name: 'openai' }).wrap(async () => {
+          parentId = client.getCurrentStep().id;
+
+          await openai.chat.completions.create({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              { role: 'system', content: 'You are a helpful assistant.' },
+              { role: 'user', content: 'What is the capital of Canada?' }
+            ]
+          });
+        });
+      });
+
+      const {
+        data: [step]
+      } = await client.api.getSteps({
+        first: 1,
+        filters: [
+          {
+            field: 'tags',
+            operator: 'in',
+            value: [testId]
+          }
+        ]
+      });
+
+      expect(step?.threadId).toBe(threadId);
+      expect(step?.parentId).toBe(parentId);
+    });
+
+    it("doesn't mix up threads and steps", async () => {
+      const testId = uuidv4();
+
+      const client = new LiteralClient(apiKey, url);
+      client.instrumentation.openai({ tags: [testId] });
+
+      const firstThreadId = uuidv4();
+      const secondThreadId = uuidv4();
+
+      let firstStep: Maybe<Step>;
+      let secondStep: Maybe<Step>;
+
+      await Promise.all([
+        client
+          .thread({ id: firstThreadId, name: 'Thread 1' })
+          .wrap(async () => {
+            return client
+              .step({ name: 'Step 1', type: 'assistant_message' })
+              .wrap(async () => {
+                firstStep = client.getCurrentStep();
+
+                return openai.chat.completions.create({
+                  model: 'gpt-3.5-turbo',
+                  messages: [
+                    { role: 'system', content: 'You are a helpful assistant.' },
+                    { role: 'user', content: 'What is the capital of Canada?' }
+                  ]
+                });
+              });
+          }),
+        client
+          .thread({ id: secondThreadId, name: 'Thread 2' })
+          .wrap(async () => {
+            return client
+              .step({ name: 'Step 2', type: 'assistant_message' })
+              .wrap(async () => {
+                secondStep = client.getCurrentStep();
+
+                return openai.chat.completions.create({
+                  model: 'gpt-3.5-turbo',
+                  messages: [
+                    { role: 'system', content: 'You are a helpful assistant.' },
+                    { role: 'user', content: 'What is the capital of Canada?' }
+                  ]
+                });
+              });
+          })
+      ]);
+
+      const {
+        data: [firstGeneration]
+      } = await client.api.getSteps({
+        first: 1,
+        filters: [
+          {
+            field: 'threadId',
+            operator: 'eq',
+            value: firstThreadId!
+          },
+          {
+            field: 'tags',
+            operator: 'in',
+            value: [testId]
+          }
+        ]
+      });
+
+      const {
+        data: [secondGeneration]
+      } = await client.api.getSteps({
+        first: 1,
+        filters: [
+          {
+            field: 'threadId',
+            operator: 'eq',
+            value: secondThreadId!
+          },
+          {
+            field: 'tags',
+            operator: 'in',
+            value: [testId]
+          }
+        ]
+      });
+
+      expect(firstStep?.threadId).toEqual(firstThreadId);
+      expect(secondStep?.threadId).toEqual(secondThreadId);
+
+      expect(firstGeneration?.threadId).toEqual(firstThreadId);
+      expect(firstGeneration?.parentId).toEqual(firstStep?.id);
+      expect(secondGeneration?.threadId).toEqual(secondThreadId);
+      expect(secondGeneration?.parentId).toEqual(secondStep?.id);
+    }, 30000);
   });
 });
