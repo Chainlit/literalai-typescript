@@ -42,21 +42,16 @@ class OpenAIAssistantSyncer {
         );
         const mime = 'image/png';
 
-        const { objectKey } = await this.client.api.uploadFile({
-          threadId: litThreadId,
-          id: attachmentId,
-          content: file.body,
-          mime
-        });
+        if (file.body) {
+          const attachment = await this.client.api.createAttachment({
+            threadId: litThreadId,
+            id: attachmentId,
+            content: file.body,
+            mime
+          });
 
-        const attachment = new Attachment({
-          name: content.image_file.file_id,
-          id: attachmentId,
-          objectKey,
-          mime
-        });
-
-        attachments.push(attachment);
+          attachments.push(attachment);
+        }
       } else if (content.type === 'text') {
         output.content += content.text.value;
       }

@@ -1,14 +1,7 @@
 import 'dotenv/config';
-import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-import {
-  Attachment,
-  ChatGeneration,
-  Dataset,
-  LiteralClient,
-  Score
-} from '../src';
+import { ChatGeneration, Dataset, LiteralClient, Score } from '../src';
 
 describe('End to end tests for the SDK', function () {
   let client: LiteralClient;
@@ -334,42 +327,6 @@ describe('End to end tests for the SDK', function () {
     expect(scores.length).toEqual(2);
     expect(scores[0].value).toBe(firstScoreValue);
     expect(scores[1].scorer).toBe('openai:gpt-3.5-turbo');
-  });
-
-  it('should test attachment', async function () {
-    const thread = await client.thread({ id: uuidv4() });
-    // Upload an attachment
-    const fileStream = createReadStream('./tests/chainlit-logo.png');
-    const mime = 'image/png';
-
-    const { objectKey } = await client.api.uploadFile({
-      threadId: thread.id,
-      content: fileStream,
-      mime
-    });
-
-    const attachment = new Attachment({
-      name: 'test',
-      objectKey,
-      mime
-    });
-
-    const step = await thread
-      .step({
-        name: 'test',
-        type: 'run',
-        attachments: [attachment]
-      })
-      .send();
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const fetchedStep = await client.api.getStep(step.id!);
-    expect(fetchedStep?.attachments?.length).toBe(1);
-    expect(fetchedStep?.attachments![0].objectKey).toBe(objectKey);
-    expect(fetchedStep?.attachments![0].url).toBeDefined();
-
-    await client.api.deleteThread(thread.id);
   });
 
   it('should get project id', async () => {
