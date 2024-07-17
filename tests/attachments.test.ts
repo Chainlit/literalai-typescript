@@ -13,6 +13,10 @@ const client = new LiteralClient(apiKey, url);
 const filePath = './tests/chainlit-logo.png';
 const mime = 'image/png';
 
+function removeVariableParts(url: string) {
+  return url.split('X-Amz-Date')[0].split('X-Goog-Date')[0];
+}
+
 describe('Attachments', () => {
   describe('Uploading a file', () => {
     const stream = createReadStream(filePath);
@@ -47,9 +51,10 @@ describe('Attachments', () => {
 
       const fetchedStep = await client.api.getStep(step.id!);
 
-      const urlWithoutAmzVariables = attachment.url!.split('X-Amz-Date')[0];
-      const fetchedUrlWithoutAmzVariables =
-        fetchedStep?.attachments![0].url!.split('X-Amz-Date')[0];
+      const urlWithoutVariables = removeVariableParts(attachment.url!);
+      const fetchedUrlWithoutVariables = removeVariableParts(
+        fetchedStep?.attachments![0].url as string
+      );
 
       expect(fetchedStep?.attachments?.length).toBe(1);
       expect(fetchedStep?.attachments![0].objectKey).toEqual(
@@ -59,7 +64,7 @@ describe('Attachments', () => {
       expect(fetchedStep?.attachments![0].metadata).toEqual(
         attachment.metadata
       );
-      expect(urlWithoutAmzVariables).toEqual(fetchedUrlWithoutAmzVariables);
+      expect(urlWithoutVariables).toEqual(fetchedUrlWithoutVariables);
     });
   });
 
