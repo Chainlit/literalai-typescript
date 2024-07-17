@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { createReadStream, readFileSync } from 'fs';
 
-import { Attachment, LiteralClient, Maybe, Thread } from '../src';
+import { Attachment, LiteralClient, Maybe } from '../src';
 
 const url = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
@@ -22,11 +22,6 @@ describe('Attachments', () => {
     // We wrap the blob in a blob and simulate the structure of a File
     const file = new Blob([blob], { type: 'image/jpeg' });
 
-    let thread: Thread;
-    beforeAll(async () => {
-      thread = await client.thread({ name: 'Attachment test ' }).upsert();
-    });
-
     it.each([
       { type: 'Stream', content: stream! },
       { type: 'Buffer', content: buffer! },
@@ -41,21 +36,21 @@ describe('Attachments', () => {
         metadata: { type }
       });
 
-      const step = await thread
-        .step({
+      const step = await client
+        .run({
           name: `Test ${type}`,
-          type: 'run',
           attachments: [attachment]
         })
         .send();
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      const urlWithoutSignature = attachment.url!.split('X-Amz-Signature')[0];
-      const fetchedUrlWithoutSignature =
-        attachment.url!.split('X-Amz-Signature')[0];
-
       const fetchedStep = await client.api.getStep(step.id!);
+
+      const urlWithoutAmzVariables = attachment.url!.split('X-Amz-Date')[0];
+      const fetchedUrlWithoutAmzVariables =
+        fetchedStep?.attachments![0].url!.split('X-Amz-Date')[0];
+
       expect(fetchedStep?.attachments?.length).toBe(1);
       expect(fetchedStep?.attachments![0].objectKey).toEqual(
         attachment.objectKey
@@ -64,7 +59,7 @@ describe('Attachments', () => {
       expect(fetchedStep?.attachments![0].metadata).toEqual(
         attachment.metadata
       );
-      expect(urlWithoutSignature).toEqual(fetchedUrlWithoutSignature);
+      expect(urlWithoutAmzVariables).toEqual(fetchedUrlWithoutAmzVariables);
     });
   });
 

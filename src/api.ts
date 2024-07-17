@@ -703,7 +703,6 @@ export class API {
 
       return { objectKey, url: signedUrl };
     } catch (e) {
-      console.error(e);
       console.error(`Failed to upload file: ${e}`);
       return { objectKey: null, url: null };
     }
