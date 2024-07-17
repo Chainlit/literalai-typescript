@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { createReadStream, readFileSync } from 'fs';
 
-import { LiteralClient, Thread } from '../src';
+import { Attachment, LiteralClient, Maybe, Thread } from '../src';
 
 const url = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
@@ -65,6 +65,32 @@ describe('Attachments', () => {
         attachment.metadata
       );
       expect(urlWithoutSignature).toEqual(fetchedUrlWithoutSignature);
+    });
+  });
+
+  describe('Handling context', () => {
+    it('attaches the attachment to the step in the context', async () => {
+      const stream = createReadStream(filePath);
+
+      let stepId: Maybe<string>;
+      let attachment: Maybe<Attachment>;
+
+      await client.run({ name: 'Attachment test ' }).wrap(async () => {
+        stepId = client.getCurrentStep().id!;
+        attachment = await client.api.createAttachment({
+          content: stream!,
+          mime,
+          name: 'Attachment',
+          metadata: { type: 'Stream' }
+        });
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const fetchedStep = await client.api.getStep(stepId!);
+
+      expect(fetchedStep?.attachments?.length).toBe(1);
+      expect(fetchedStep?.attachments![0].id).toEqual(attachment!.id);
     });
   });
 });
