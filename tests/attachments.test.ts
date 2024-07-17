@@ -28,11 +28,11 @@ describe('Attachments', () => {
     });
 
     it.each([
-      { type: 'Stream', content: stream! }
-      // { type: 'Buffer', content: buffer! },
-      // { type: 'ArrayBuffer', content: arrayBuffer! },
-      // { type: 'Blob', content: blob! },
-      // { type: 'File', content: file! }
+      { type: 'Stream', content: stream! },
+      { type: 'Buffer', content: buffer! },
+      { type: 'ArrayBuffer', content: arrayBuffer! },
+      { type: 'Blob', content: blob! },
+      { type: 'File', content: file! }
     ])('handles $type objects', async function ({ type, content }) {
       const attachment = await client.api.createAttachment({
         content,

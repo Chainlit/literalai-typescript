@@ -692,13 +692,6 @@ export class API {
       };
     }
 
-    console.log({
-      method,
-      url,
-      headers
-      // data: uploadType === 'raw' ? content || createReadStream(path!) : formData
-    });
-
     try {
       await axios({
         method,
