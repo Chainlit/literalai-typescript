@@ -1,6 +1,6 @@
 {
   "name": "@literalai/client",
-  "version": "0.0.510",
+  "version": "0.0.511",
   "description": "",
   "exports": {
     ".": {
@@ -15,7 +15,8 @@
   "scripts": {
     "build": "tsup ./src",
     "test": "jest --detectOpenHandles --runInBand --watchAll=false",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "release": "./release.sh"
   },
   "author": "Literal AI",
   "license": "Apache-2.0",
