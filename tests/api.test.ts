@@ -182,6 +182,8 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     const fetchedStep = await client.api.getStep(step.id!);
     expect(fetchedStep?.id).toBe(step.id);
     expect(fetchedStep?.error).toBe('test');
@@ -214,6 +216,8 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     const fetchedStep = await client.api.getStep(step.id!);
     expect(fetchedStep?.id).toBe(step.id);
     expect(fetchedStep?.error).toBe('test');
@@ -240,6 +244,8 @@ describe('End to end tests for the SDK', function () {
     if (!step.id) {
       throw new Error('Step id is null');
     }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const steps = await client.api.getSteps({
       filters: [

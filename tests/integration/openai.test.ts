@@ -290,6 +290,8 @@ describe('OpenAI Instrumentation', () => {
         });
       });
 
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       const {
         data: [step]
       } = await client.api.getSteps({
@@ -305,7 +307,7 @@ describe('OpenAI Instrumentation', () => {
 
       expect(step?.threadId).toBe(threadId);
       expect(step?.parentId).toBe(parentId);
-    });
+    }, 30_000);
 
     it("doesn't mix up threads and steps", async () => {
       const testId = uuidv4();
@@ -399,6 +401,6 @@ describe('OpenAI Instrumentation', () => {
       expect(firstGeneration?.parentId).toEqual(firstStep?.id);
       expect(secondGeneration?.threadId).toEqual(secondThreadId);
       expect(secondGeneration?.parentId).toEqual(secondStep?.id);
-    }, 30000);
+    }, 30_000);
   });
 });
