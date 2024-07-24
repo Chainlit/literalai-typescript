@@ -78,11 +78,7 @@ export class Utils {
 
 export type ScoreType = 'HUMAN' | 'AI';
 
-/**
- * Represents a score entity with properties to track various aspects of scoring.
- * It extends the `Utils` class for serialization capabilities.
- */
-export class Score extends Utils {
+class ScoreFields extends Utils {
   id?: Maybe<string>;
   stepId?: Maybe<string>;
   generationId?: Maybe<string>;
@@ -93,12 +89,22 @@ export class Score extends Utils {
   scorer?: Maybe<string>;
   comment?: Maybe<string>;
   tags?: Maybe<string[]>;
+}
 
-  constructor(data: OmitUtils<Score>) {
+export type ScoreConstructor = OmitUtils<ScoreFields>;
+
+/**
+ * Represents a score entity with properties to track various aspects of scoring.
+ * It extends the `Utils` class for serialization capabilities.
+ */
+export class Score extends ScoreFields {
+  constructor(data: ScoreConstructor) {
     super();
     Object.assign(this, data);
   }
 }
+
+export type ScoreCons = OmitUtils<StepFields>;
 
 /**
  * Represents an attachment with optional metadata, MIME type, and other properties.
@@ -631,8 +637,8 @@ export class DatasetItem extends Utils {
 class DatasetExperimentItemFields extends Utils {
   id?: string;
   datasetExperimentId!: string;
-  datasetItemId!: string;
-  scores!: Score[];
+  datasetItemId?: string;
+  scores!: ScoreConstructor[];
   input?: Record<string, any>;
   output?: Record<string, any>;
 }
@@ -641,7 +647,7 @@ export class DatasetExperiment extends Utils {
   id!: string;
   createdAt!: string;
   name!: string;
-  datasetId!: string;
+  datasetId?: string;
   promptId?: string;
   api: API;
   params!: Record<string, any> | Array<Record<string, any>>;

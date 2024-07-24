@@ -32,6 +32,7 @@ import {
   PaginatedResponse,
   Prompt,
   Score,
+  ScoreConstructor,
   Step,
   StepType,
   Thread,
@@ -234,7 +235,7 @@ function ingestStepsQueryBuilder(steps: Step[]) {
     `;
 }
 
-function createScoresFieldsBuilder(scores: Score[]) {
+function createScoresFieldsBuilder(scores: ScoreConstructor[]) {
   let generated = '';
   for (let id = 0; id < scores.length; id++) {
     generated += `$name_${id}: String!
@@ -251,7 +252,7 @@ function createScoresFieldsBuilder(scores: Score[]) {
   return generated;
 }
 
-function createScoresArgsBuilder(scores: Score[]) {
+function createScoresArgsBuilder(scores: ScoreConstructor[]) {
   let generated = '';
   for (let id = 0; id < scores.length; id++) {
     generated += `
@@ -278,7 +279,7 @@ function createScoresArgsBuilder(scores: Score[]) {
   return generated;
 }
 
-function createScoresQueryBuilder(scores: Score[]) {
+function createScoresQueryBuilder(scores: ScoreConstructor[]) {
   return `
     mutation CreateScores(${createScoresFieldsBuilder(scores)}) {
       ${createScoresArgsBuilder(scores)}
@@ -1741,12 +1742,12 @@ export class API {
 
   public async createExperiment(datasetExperiment: {
     name: string;
-    datasetId: string;
+    datasetId?: string;
     promptId?: string;
     params?: Record<string, any> | Array<Record<string, any>>;
   }) {
     const query = `
-      mutation CreateDatasetExperiment($name: String!, $datasetId: String! $promptId: String, $params: Json) {
+      mutation CreateDatasetExperiment($name: String!, $datasetId: String $promptId: String, $params: Json) {
         createDatasetExperiment(name: $name, datasetId: $datasetId, promptId: $promptId, params: $params) {
           id
         }
@@ -1771,7 +1772,7 @@ export class API {
     scores
   }: DatasetExperimentItem) {
     const query = `
-      mutation CreateDatasetExperimentItem($datasetExperimentId: String!, $datasetItemId: String!, $input: Json, $output: Json) {
+      mutation CreateDatasetExperimentItem($datasetExperimentId: String!, $datasetItemId: String, $input: Json, $output: Json) {
         createDatasetExperimentItem(datasetExperimentId: $datasetExperimentId, datasetItemId: $datasetItemId, input: $input, output: $output) {
           id
           input
@@ -1791,7 +1792,7 @@ export class API {
       scores.map((score) => {
         score.datasetExperimentItemId =
           result.data.createDatasetExperimentItem.id;
-        return score;
+        return new Score(score);
       })
     );
 
