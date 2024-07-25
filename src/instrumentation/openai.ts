@@ -18,7 +18,6 @@ import {
   StepConstructor
 } from '..';
 
-// Define a generic type for the original function to be wrapped
 type OriginalFunction<Output> = (
   body: any,
   options?: RequestOptions
@@ -41,7 +40,6 @@ function cleanOpenAIArgs(
   return [body, restCallOptions];
 }
 
-// Utility function to wrap a method
 function wrapFunction<Output>(
   originalFunction: OriginalFunction<Output>,
   client: LiteralClient,

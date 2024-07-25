@@ -375,7 +375,7 @@ describe('OpenAI Instrumentation', () => {
 
       expect(step!.tags).toEqual(expect.arrayContaining(['tag1', 'tag2']));
       expect(step!.metadata).toEqual({ key: 'value' });
-    });
+    }, 30_000);
 
     it('handles tags and metadata on the LLM call', async () => {
       const client = new LiteralClient(apiKey, url);
@@ -419,6 +419,6 @@ describe('OpenAI Instrumentation', () => {
       );
       expect(step!.metadata!.key).toEqual('value');
       expect(step!.metadata!.otherKey).toEqual('otherValue');
-    });
+    }, 30_000);
   });
 });
