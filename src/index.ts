@@ -49,6 +49,18 @@ export class LiteralClient {
     return this.step({ ...data, type: 'run' });
   }
 
+  _currentThread(): Thread | null {
+    const store = storage.getStore();
+
+    return store?.currentThread || null;
+  }
+
+  _currentStep(): Step | null {
+    const store = storage.getStore();
+
+    return store?.currentStep || null;
+  }
+
   /**
    * Gets the current thread from the context.
    * WARNING : this will throw if run outside of a thread context.

@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import FormData from 'form-data';
 import { createReadStream } from 'fs';
+import { ReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
 import { LiteralClient } from '.';
@@ -21,6 +22,7 @@ import {
   PersistedGeneration
 } from './generation';
 import {
+  Attachment,
   CleanThreadFields,
   Dataset,
   DatasetExperiment,
@@ -327,6 +329,28 @@ function addGenerationsToDatasetQueryBuilder(generationIds: string[]) {
     `;
 }
 
+type UploadFileBaseParams = {
+  id?: Maybe<string>;
+  threadId?: string;
+  mime?: Maybe<string>;
+};
+type UploadFileParamsWithPath = UploadFileBaseParams & {
+  path: string;
+};
+type UploadFileParamsWithContent = UploadFileBaseParams & {
+  content:
+    | ReadableStream<any>
+    | ReadStream
+    | Buffer
+    | File
+    | Blob
+    | ArrayBuffer;
+};
+type CreateAttachmentParams = {
+  name?: string;
+  metadata?: Maybe<Record<string, any>>;
+};
+
 export class API {
   /** @ignore */
   private client: LiteralClient;
@@ -596,19 +620,25 @@ export class API {
    * @returns An object containing the `objectKey` of the uploaded file and the signed `url`, or `null` values if the upload fails.
    * @throws {Error} Throws an error if neither `content` nor `path` is provided, or if the server response is invalid.
    */
+
+  async uploadFile(params: UploadFileParamsWithContent): Promise<{
+    objectKey: Maybe<string>;
+    url: Maybe<string>;
+  }>;
+  async uploadFile(params: UploadFileParamsWithPath): Promise<{
+    objectKey: Maybe<string>;
+    url: Maybe<string>;
+  }>;
   async uploadFile({
     content,
     path,
     id,
     threadId,
     mime
-  }: {
-    content?: Maybe<any>;
-    path?: Maybe<string>;
-    id?: Maybe<string>;
-    threadId: string;
-    mime?: Maybe<string>;
-  }) {
+  }: UploadFileParamsWithContent & UploadFileParamsWithPath): Promise<{
+    objectKey: Maybe<string>;
+    url: Maybe<string>;
+  }> {
     if (!content && !path) {
       throw new Error('Either content or path must be provided');
     }
@@ -676,6 +706,52 @@ export class API {
       console.error(`Failed to upload file: ${e}`);
       return { objectKey: null, url: null };
     }
+  }
+
+  async createAttachment(
+    params: UploadFileParamsWithContent & CreateAttachmentParams
+  ): Promise<Attachment>;
+  async createAttachment(
+    params: UploadFileParamsWithPath & CreateAttachmentParams
+  ): Promise<Attachment>;
+  async createAttachment(
+    params: UploadFileParamsWithContent &
+      UploadFileParamsWithPath &
+      CreateAttachmentParams
+  ): Promise<Attachment> {
+    if (params.content instanceof Blob) {
+      params.content = Buffer.from(await params.content.arrayBuffer());
+    }
+    if (params.content instanceof ArrayBuffer) {
+      params.content = Buffer.from(params.content);
+    }
+
+    const threadFromStore = this.client._currentThread();
+    const stepFromStore = this.client._currentStep();
+
+    if (threadFromStore) {
+      params.threadId = threadFromStore.id;
+    }
+
+    const { objectKey, url } = await this.uploadFile(params);
+
+    const attachment = new Attachment({
+      name: params.name,
+      objectKey,
+      mime: params.mime,
+      metadata: params.metadata,
+      url
+    });
+
+    if (stepFromStore) {
+      if (!stepFromStore.attachments) {
+        stepFromStore.attachments = [];
+      }
+
+      stepFromStore.attachments.push(attachment);
+    }
+
+    return attachment;
   }
 
   // Generation

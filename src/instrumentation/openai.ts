@@ -13,9 +13,7 @@ import {
   IGenerationMessage,
   LiteralClient,
   Maybe,
-  Step,
-  StepConstructor,
-  Thread
+  StepConstructor
 } from '..';
 
 // Define a generic type for the original function to be wrapped
@@ -310,25 +308,13 @@ const processOpenAIOutput = async (
     tags: tags
   };
 
-  let threadFromStore: Thread | null = null;
-  try {
-    threadFromStore = client.getCurrentThread();
-  } catch (error) {
-    // Ignore error thrown if getCurrentThread is called outside of a context
-  }
-
-  let stepFromStore: Step | null = null;
-  try {
-    stepFromStore = client.getCurrentStep();
-  } catch (error) {
-    // Ignore error thrown if getCurrentStep is called outside of a context
-  }
+  const threadFromStore = client._currentThread();
+  const stepFromStore = client._currentStep();
 
   const parent = stepFromStore || threadFromStore;
 
   if ('data' in output) {
     // Image Generation
-
     const stepData: StepConstructor = {
       name: inputs.model || 'openai',
       type: 'llm',
