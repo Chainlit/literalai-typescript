@@ -726,19 +726,8 @@ export class API {
       params.content = Buffer.from(params.content);
     }
 
-    let threadFromStore: Thread | null = null;
-    try {
-      threadFromStore = this.client.getCurrentThread();
-    } catch (error) {
-      // Ignore error thrown if getCurrentThread is called outside of a context
-    }
-
-    let stepFromStore: Step | null = null;
-    try {
-      stepFromStore = this.client.getCurrentStep();
-    } catch (error) {
-      // Ignore error thrown if getCurrentStep is called outside of a context
-    }
+    const threadFromStore = this.client._currentThread();
+    const stepFromStore = this.client._currentStep();
 
     if (threadFromStore) {
       params.threadId = threadFromStore.id;

@@ -24,7 +24,7 @@ describe('Attachments', () => {
     const arrayBuffer = buffer.buffer;
     const blob = new Blob([buffer]);
     // We wrap the blob in a blob and simulate the structure of a File
-    const file = new Blob([blob], { type: 'image/jpeg' });
+    const file = new Blob([blob], { type: 'image/png' });
 
     it.each([
       { type: 'Stream', content: stream! },
