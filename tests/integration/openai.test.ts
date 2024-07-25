@@ -115,13 +115,7 @@ describe('OpenAI Instrumentation', () => {
       const {
         data: [generation]
       } = await client.api.getGenerations({
-        filters: [
-          {
-            field: 'tags',
-            operator: 'in',
-            value: [testId]
-          }
-        ]
+        filters: [{ field: 'tags', operator: 'in', value: [testId] }]
       });
 
       step = await client.api.getStep(generation.id);
@@ -136,14 +130,8 @@ describe('OpenAI Instrumentation', () => {
 
     it("should log a generation's input & output", async () => {
       expect(generationFromStep.messages).toEqual([
-        {
-          role: 'system',
-          content: 'You are a helpful assistant.'
-        },
-        {
-          role: 'user',
-          content: 'What is the capital of Canada?'
-        }
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'What is the capital of Canada?' }
       ]);
       expect(generationFromStep.messageCompletion).toEqual({
         role: 'assistant',
@@ -184,13 +172,7 @@ describe('OpenAI Instrumentation', () => {
         const {
           data: [generation]
         } = await client.api.getGenerations({
-          filters: [
-            {
-              field: 'tags',
-              operator: 'in',
-              value: [testId]
-            }
-          ]
+          filters: [{ field: 'tags', operator: 'in', value: [testId] }]
         });
 
         step = await client.api.getStep(generation.id);
@@ -205,14 +187,8 @@ describe('OpenAI Instrumentation', () => {
 
       it("should log a generation's input & output", async () => {
         expect(generationFromStep.messages).toEqual([
-          {
-            role: 'system',
-            content: 'You are a helpful assistant.'
-          },
-          {
-            role: 'user',
-            content: 'What is the capital of Canada?'
-          }
+          { role: 'system', content: 'You are a helpful assistant.' },
+          { role: 'user', content: 'What is the capital of Canada?' }
         ]);
         expect(generationFromStep.messageCompletion).toEqual({
           role: 'assistant',
@@ -247,13 +223,7 @@ describe('OpenAI Instrumentation', () => {
           data: [step]
         } = await client.api.getSteps({
           first: 1,
-          filters: [
-            {
-              field: 'tags',
-              operator: 'in',
-              value: [testId]
-            }
-          ]
+          filters: [{ field: 'tags', operator: 'in', value: [testId] }]
         });
 
         expect(step?.threadId).toBeNull();
@@ -267,10 +237,8 @@ describe('OpenAI Instrumentation', () => {
 
   describe('Inside of a thread or step wrapper', () => {
     it('logs the generation inside its thread and parent', async () => {
-      const testId = uuidv4();
-
       const client = new LiteralClient(apiKey, url);
-      client.instrumentation.openai({ tags: [testId] });
+      client.instrumentation.openai();
 
       let threadId: Maybe<string>;
       let parentId: Maybe<string>;
@@ -296,13 +264,7 @@ describe('OpenAI Instrumentation', () => {
         data: [step]
       } = await client.api.getSteps({
         first: 1,
-        filters: [
-          {
-            field: 'tags',
-            operator: 'in',
-            value: [testId]
-          }
-        ]
+        filters: [{ field: 'parentId', operator: 'eq', value: parentId! }]
       });
 
       expect(step?.threadId).toBe(threadId);
@@ -310,10 +272,8 @@ describe('OpenAI Instrumentation', () => {
     }, 30_000);
 
     it("doesn't mix up threads and steps", async () => {
-      const testId = uuidv4();
-
       const client = new LiteralClient(apiKey, url);
-      client.instrumentation.openai({ tags: [testId] });
+      client.instrumentation.openai();
 
       const firstThreadId = uuidv4();
       const secondThreadId = uuidv4();
@@ -362,36 +322,14 @@ describe('OpenAI Instrumentation', () => {
         data: [firstGeneration]
       } = await client.api.getSteps({
         first: 1,
-        filters: [
-          {
-            field: 'threadId',
-            operator: 'eq',
-            value: firstThreadId!
-          },
-          {
-            field: 'tags',
-            operator: 'in',
-            value: [testId]
-          }
-        ]
+        filters: [{ field: 'threadId', operator: 'eq', value: firstThreadId! }]
       });
 
       const {
         data: [secondGeneration]
       } = await client.api.getSteps({
         first: 1,
-        filters: [
-          {
-            field: 'threadId',
-            operator: 'eq',
-            value: secondThreadId!
-          },
-          {
-            field: 'tags',
-            operator: 'in',
-            value: [testId]
-          }
-        ]
+        filters: [{ field: 'threadId', operator: 'eq', value: secondThreadId! }]
       });
 
       expect(firstStep?.threadId).toEqual(firstThreadId);
@@ -402,5 +340,85 @@ describe('OpenAI Instrumentation', () => {
       expect(secondGeneration?.threadId).toEqual(secondThreadId);
       expect(secondGeneration?.parentId).toEqual(secondStep?.id);
     }, 30_000);
+  });
+
+  describe('Handling tags and metadata', () => {
+    it('handles tags and metadata on the instrumentation call', async () => {
+      const client = new LiteralClient(apiKey, url);
+      client.instrumentation.openai({
+        tags: ['tag1', 'tag2'],
+        metadata: { key: 'value' }
+      });
+
+      let parentId: Maybe<string>;
+
+      await client.thread({ name: 'openai' }).wrap(async () => {
+        return client.run({ name: 'openai' }).wrap(async () => {
+          parentId = client.getCurrentStep().id;
+
+          await openai.chat.completions.create({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              { role: 'system', content: 'You are a helpful assistant.' },
+              { role: 'user', content: 'What is the capital of Canada?' }
+            ]
+          });
+        });
+      });
+
+      const {
+        data: [step]
+      } = await client.api.getSteps({
+        first: 1,
+        filters: [{ field: 'parentId', operator: 'eq', value: parentId! }]
+      });
+
+      expect(step!.tags).toEqual(expect.arrayContaining(['tag1', 'tag2']));
+      expect(step!.metadata).toEqual({ key: 'value' });
+    });
+
+    it('handles tags and metadata on the LLM call', async () => {
+      const client = new LiteralClient(apiKey, url);
+
+      const instrumentedOpenAi = client.instrumentation.openai({
+        tags: ['tag1', 'tag2'],
+        metadata: { key: 'value' }
+      });
+
+      let parentId: Maybe<string>;
+
+      await client.thread({ name: 'openai' }).wrap(async () => {
+        return client.run({ name: 'openai' }).wrap(async () => {
+          parentId = client.getCurrentStep().id;
+
+          await instrumentedOpenAi.chat.completions.create(
+            {
+              model: 'gpt-3.5-turbo',
+              messages: [
+                { role: 'system', content: 'You are a helpful assistant.' },
+                { role: 'user', content: 'What is the capital of Canada?' }
+              ]
+            },
+            {
+              literalaiTags: ['tag3', 'tag4'],
+              literalaiMetadata: { otherKey: 'otherValue' }
+            }
+          );
+        });
+      });
+
+      const {
+        data: [step]
+      } = await client.api.getSteps({
+        first: 1,
+        filters: [{ field: 'parentId', operator: 'eq', value: parentId! }]
+      });
+
+      expect(step!.tags).toEqual(
+        expect.arrayContaining(['tag1', 'tag2', 'tag3', 'tag4'])
+      );
+      expect(step!.metadata!.key).toEqual('value');
+      expect(step!.metadata!.otherKey).toEqual('otherValue');
+    });
   });
 });

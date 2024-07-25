@@ -423,7 +423,6 @@ export class API {
 
       return response.data;
     } catch (e) {
-      console.error(e);
       if (e instanceof AxiosError) {
         throw new Error(JSON.stringify(e.response?.data.errors));
       } else {
@@ -451,7 +450,6 @@ export class API {
 
       return response.data;
     } catch (e) {
-      console.error(e);
       if (e instanceof AxiosError) {
         throw new Error(JSON.stringify(e.response?.data));
       } else {
