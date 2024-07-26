@@ -1,15 +1,16 @@
-import { LiteralClient } from '..';
+import { LiteralClient, Maybe } from '..';
 import { LiteralCallbackHandler } from './langchain';
 import { instrumentLlamaIndex, withThread } from './llamaindex';
 import instrumentOpenAI from './openai';
-import { InstrumentOpenAIOptions } from './openai';
 import { makeInstrumentVercelSDK } from './vercel-sdk';
 
-export type { InstrumentOpenAIOptions } from './openai';
+export type OpenAIGlobalOptions = {
+  tags?: Maybe<string[]>;
+  metadata?: Maybe<Record<string, any>>;
+};
 
 export default (client: LiteralClient) => ({
-  openai: (options?: InstrumentOpenAIOptions) =>
-    instrumentOpenAI(client, options),
+  openai: (options?: OpenAIGlobalOptions) => instrumentOpenAI(client, options),
   langchain: {
     literalCallback: (threadId?: string) => {
       try {

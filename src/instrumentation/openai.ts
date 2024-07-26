@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { RequestOptions } from 'openai/core';
 import type {
   ChatCompletion,
   ChatCompletionChunk,
@@ -13,42 +14,68 @@ import {
   IGenerationMessage,
   LiteralClient,
   Maybe,
-  Step,
-  StepConstructor,
-  Thread
+  OpenAIGlobalOptions,
+  StepConstructor
 } from '..';
 
-// Define a generic type for the original function to be wrapped
-type OriginalFunction<T extends any[], R> = (...args: T) => Promise<R>;
+type OriginalFunction<Output> = (
+  body: any,
+  options?: RequestOptions
+) => Promise<Output>;
 
-// Utility function to wrap a method
-function wrapFunction<T extends any[], R>(
-  originalFunction: OriginalFunction<T, R>,
+type OpenAICallOptions = {
+  literalaiTags?: Maybe<string[]>;
+  literalaiMetadata?: Maybe<Record<string, any>>;
+};
+
+function cleanOpenAIArgs(
+  body: any,
+  callOptions?: RequestOptions & OpenAICallOptions
+): [any, RequestOptions?] {
+  if (!callOptions) {
+    return [body];
+  }
+
+  const { literalaiTags, literalaiMetadata, ...restCallOptions } = callOptions;
+  return [body, restCallOptions];
+}
+
+function wrapFunction<Output>(
+  originalFunction: OriginalFunction<Output>,
   client: LiteralClient,
-  options: InstrumentOpenAIOptions = {}
-): OriginalFunction<T, R> {
-  return async function (this: any, ...args: T): Promise<R> {
+  globalOptions: OpenAIGlobalOptions = {}
+) {
+  return async function (
+    this: any,
+    body: any,
+    callOptions?: RequestOptions & OpenAICallOptions
+  ): Promise<Output> {
     const start = Date.now();
 
     // Call the original function
-    const result = await originalFunction.apply(this, args);
+    const result = await originalFunction.apply(
+      this,
+      cleanOpenAIArgs(body, callOptions)
+    );
 
     if (result instanceof Stream) {
       const streamResult = result;
       const [returnedResult, processedResult] = streamResult.tee();
 
       await processOpenAIOutput(client, processedResult, {
-        ...options,
+        globalOptions,
+        callOptions,
         start,
-        inputs: args[0]
+        inputs: body
       });
 
-      return returnedResult as R;
+      return returnedResult as Output;
     } else {
       await processOpenAIOutput(client, result as ChatCompletion | Completion, {
-        ...options,
+        globalOptions,
+        callOptions,
         start,
-        inputs: args[0]
+        inputs: body
       });
 
       return result;
@@ -58,32 +85,51 @@ function wrapFunction<T extends any[], R>(
 
 function instrumentOpenAI(
   client: LiteralClient,
-  options: InstrumentOpenAIOptions = {}
+  options: OpenAIGlobalOptions = {}
 ) {
   // Patching the chat.completions.create function
   const originalChatCompletionsCreate =
     OpenAI.Chat.Completions.prototype.create;
-  OpenAI.Chat.Completions.prototype.create = wrapFunction(
+  const wrappedChatCompletionsCreate = wrapFunction(
     originalChatCompletionsCreate,
     client,
     options
-  ) as any;
+  );
 
   // Patching the completions.create function
   const originalCompletionsCreate = OpenAI.Completions.prototype.create;
-  OpenAI.Completions.prototype.create = wrapFunction(
+  const wrappedCompletionsCreate = wrapFunction(
     originalCompletionsCreate,
     client,
     options
-  ) as any;
+  );
 
   // Patching the images.generate function
   const originalImagesGenerate = OpenAI.Images.prototype.generate;
-  OpenAI.Images.prototype.generate = wrapFunction(
+  const wrappedImagesGenerate = wrapFunction(
     originalImagesGenerate,
     client,
     options
-  ) as any;
+  );
+
+  OpenAI.Chat.Completions.prototype.create =
+    wrappedChatCompletionsCreate as any;
+  OpenAI.Completions.prototype.create = wrappedCompletionsCreate as any;
+  OpenAI.Images.prototype.generate = wrappedImagesGenerate as any;
+
+  return {
+    chat: {
+      completions: {
+        create: wrappedChatCompletionsCreate
+      }
+    },
+    completions: {
+      create: wrappedCompletionsCreate
+    },
+    images: {
+      generate: wrappedImagesGenerate
+    }
+  };
 }
 
 function processChatDelta(
@@ -279,11 +325,9 @@ export type OpenAIOutput =
   | Stream<ChatCompletionChunk>
   | ImagesResponse;
 
-export interface InstrumentOpenAIOptions {
-  tags?: Maybe<string[]>;
-}
-
-export interface ProcessOpenAIOutput extends InstrumentOpenAIOptions {
+export interface ProcessOpenAIOutput {
+  globalOptions: Maybe<OpenAIGlobalOptions>;
+  callOptions: Maybe<OpenAICallOptions>;
   start: number;
   inputs: Record<string, any>;
 }
@@ -301,34 +345,31 @@ function isStream(obj: any): boolean {
 const processOpenAIOutput = async (
   client: LiteralClient,
   output: OpenAIOutput,
-  { start, tags, inputs }: ProcessOpenAIOutput
+  { start, globalOptions, callOptions, inputs }: ProcessOpenAIOutput
 ) => {
+  const tags = [
+    ...(globalOptions?.tags ?? []),
+    ...(callOptions?.literalaiTags ?? [])
+  ];
+  const metadata = {
+    ...globalOptions?.metadata,
+    ...callOptions?.literalaiMetadata
+  };
+
   const baseGeneration = {
     provider: 'openai',
     model: inputs.model,
     settings: getSettings(inputs),
-    tags: tags
+    tags
   };
 
-  let threadFromStore: Thread | null = null;
-  try {
-    threadFromStore = client.getCurrentThread();
-  } catch (error) {
-    // Ignore error thrown if getCurrentThread is called outside of a context
-  }
-
-  let stepFromStore: Step | null = null;
-  try {
-    stepFromStore = client.getCurrentStep();
-  } catch (error) {
-    // Ignore error thrown if getCurrentStep is called outside of a context
-  }
+  const threadFromStore = client._currentThread();
+  const stepFromStore = client._currentStep();
 
   const parent = stepFromStore || threadFromStore;
 
   if ('data' in output) {
     // Image Generation
-
     const stepData: StepConstructor = {
       name: inputs.model || 'openai',
       type: 'llm',
@@ -336,7 +377,8 @@ const processOpenAIOutput = async (
       output: output,
       startTime: new Date(start).toISOString(),
       endTime: new Date().toISOString(),
-      tags: tags
+      tags,
+      metadata
     };
 
     const step = parent
@@ -380,7 +422,9 @@ const processOpenAIOutput = async (
           generation,
           output: messageCompletion,
           startTime: new Date(start).toISOString(),
-          endTime: new Date(start + metrics.duration).toISOString()
+          endTime: new Date(start + metrics.duration).toISOString(),
+          tags,
+          metadata
         });
         await step.send();
       } else {
@@ -406,7 +450,9 @@ const processOpenAIOutput = async (
           generation,
           output: { content: completion },
           startTime: new Date(start).toISOString(),
-          endTime: new Date(start + metrics.duration).toISOString()
+          endTime: new Date(start + metrics.duration).toISOString(),
+          tags,
+          metadata
         });
         await step.send();
       } else {
@@ -444,7 +490,9 @@ const processOpenAIOutput = async (
           generation,
           output: messageCompletion,
           startTime: new Date(start).toISOString(),
-          endTime: new Date().toISOString()
+          endTime: new Date().toISOString(),
+          tags,
+          metadata
         });
         await step.send();
       } else {
@@ -468,7 +516,9 @@ const processOpenAIOutput = async (
           generation,
           output: { content: completion },
           startTime: new Date(start).toISOString(),
-          endTime: new Date().toISOString()
+          endTime: new Date().toISOString(),
+          tags,
+          metadata
         });
         await step.send();
       } else {
