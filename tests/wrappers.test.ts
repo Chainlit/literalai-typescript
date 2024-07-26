@@ -357,7 +357,8 @@ describe('Wrapper', () => {
       });
       let persistedExperimentItem: DatasetExperimentItem | undefined =
         undefined;
-      client.experimentRun().wrap(async () => {
+
+      await client.experimentRun().wrap(async () => {
         const scores = [
           {
             name: 'context_relevancy',
@@ -365,7 +366,7 @@ describe('Wrapper', () => {
             value: 0.6
           }
         ];
-        client.step({ name: 'agent', type: 'run' }).wrap(async () => {
+        await client.step({ name: 'agent', type: 'run' }).wrap(async () => {
           const experimentItem = {
             scores: scores, // scores in the format above
             input: { question: 'question' },
@@ -374,6 +375,10 @@ describe('Wrapper', () => {
           persistedExperimentItem = await experiment.log(experimentItem);
         });
       });
+      expect(persistedExperimentItem).toBeTruthy();
+
+      await sleep(1000);
+
       const experimentRunId = persistedExperimentItem!.experimentRunId;
       expect(experimentRunId).toBeTruthy();
       const experimentRun = await client.api.getStep(experimentRunId!);

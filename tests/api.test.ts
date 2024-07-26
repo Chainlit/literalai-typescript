@@ -97,7 +97,6 @@ describe('End to end tests for the SDK', function () {
       'name',
       { foo: 'bar' },
       undefined,
-      undefined,
       ['hello']
     );
 
@@ -111,7 +110,6 @@ describe('End to end tests for the SDK', function () {
       thread.id,
       'test',
       { foo: 'baz' },
-      undefined,
       undefined,
       ['hello:world']
     );

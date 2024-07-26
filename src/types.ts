@@ -206,7 +206,6 @@ export class Thread extends ThreadFields {
       name: this.name,
       metadata: this.metadata,
       participantId: this.participantId,
-      environment: this.environment,
       tags: this.tags
     });
     return this;
@@ -225,8 +224,14 @@ export class Thread extends ThreadFields {
       | ((output: Output) => ThreadConstructor)
       | ((output: Output) => Promise<ThreadConstructor>)
   ) {
+    const currentStore = this.client.store.getStore();
+
     const output = await this.client.store.run(
-      { currentThread: this, currentStep: null, currentExperimentRunId: null },
+      {
+        currentThread: this,
+        currentExperimentRunId: currentStore?.currentExperimentRunId ?? null,
+        currentStep: null
+      },
       () => cb(this)
     );
 
@@ -386,7 +391,6 @@ export class Step extends StepFields {
     if (this.api.disabled) {
       return this;
     }
-    await new Promise((resolve) => setTimeout(resolve, 1));
     if (!this.endTime) {
       this.endTime = new Date().toISOString();
     }
@@ -414,8 +418,8 @@ export class Step extends StepFields {
     const output = await this.client.store.run(
       {
         currentThread: currentStore?.currentThread ?? null,
-        currentStep: this,
-        currentExperimentRunId: null
+        currentExperimentRunId: currentStore?.currentExperimentRunId ?? null,
+        currentStep: this
       },
       () => cb(this)
     );

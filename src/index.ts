@@ -20,7 +20,7 @@ export type * from './instrumentation';
 type StoredContext = {
   currentThread: Thread | null;
   currentStep: Step | null;
-  currentExperimentRunId: string | null;
+  currentExperimentRunId?: string | null;
 };
 
 const storage = new AsyncLocalStorage<StoredContext>();

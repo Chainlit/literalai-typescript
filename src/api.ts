@@ -110,10 +110,13 @@ const threadFields = `
         id
         identifier
         metadata
-    }
-    steps {
-        ${stepFields}
     }`;
+
+const threadFieldsWithSteps = `
+${threadFields}
+steps {
+  ${stepFields}
+}`;
 
 /**
  * Serializes the step object with a suffix ID to each key.
@@ -880,7 +883,6 @@ export class API {
    * @param options.name - The name of the thread. (Optional)
    * @param options.metadata - Additional metadata for the thread as a key-value pair object. (Optional)
    * @param options.participantId - The unique identifier of the participant. (Optional)
-   * @param options.environment - The environment where the thread is being upserted. (Optional)
    * @param options.tags - An array of tags associated with the thread. (Optional)
    * @returns The upserted thread object.
    */
@@ -889,7 +891,6 @@ export class API {
     name?: Maybe<string>;
     metadata?: Maybe<Record<string, any>>;
     participantId?: Maybe<string>;
-    environment?: Maybe<string>;
     tags?: Maybe<string[]>;
   }): Promise<CleanThreadFields>;
 
@@ -901,7 +902,6 @@ export class API {
    * @param name - The name of the thread. (Optional)
    * @param metadata - Additional metadata for the thread as a key-value pair object. (Optional)
    * @param participantId - The unique identifier of the participant. (Optional)
-   * @param environment - The environment where the thread is being upserted. (Optional)
    * @param tags - An array of tags associated with the thread. (Optional)
    * @returns The upserted thread object.
    */
@@ -910,7 +910,6 @@ export class API {
     name?: Maybe<string>,
     metadata?: Maybe<Record<string, any>>,
     participantId?: Maybe<string>,
-    environment?: Maybe<string>,
     tags?: Maybe<string[]>
   ): Promise<CleanThreadFields>;
 
@@ -919,7 +918,6 @@ export class API {
     name?: Maybe<string>,
     metadata?: Maybe<Record<string, any>>,
     participantId?: Maybe<string>,
-    environment?: Maybe<string>,
     tags?: Maybe<string[]>
   ): Promise<CleanThreadFields> {
     let threadId = threadIdOrOptions;
@@ -928,7 +926,6 @@ export class API {
       name = threadIdOrOptions.name;
       metadata = threadIdOrOptions.metadata;
       participantId = threadIdOrOptions.participantId;
-      environment = threadIdOrOptions.environment;
       tags = threadIdOrOptions.tags;
     }
 
@@ -938,7 +935,6 @@ export class API {
       $name: String,
       $metadata: Json,
       $participantId: String,
-      $environment: String,
       $tags: [String!],
   ) {
       upsertThread(
@@ -946,7 +942,6 @@ export class API {
           name: $name
           metadata: $metadata
           participantId: $participantId
-          environment: $environment
           tags: $tags
       ) {
         ${threadFields}
@@ -959,7 +954,6 @@ export class API {
       name,
       metadata,
       participantId,
-      environment,
       tags
     };
 
@@ -1019,7 +1013,7 @@ export class API {
             edges {
                 cursor
                 node {
-                    ${threadFields}
+                    ${threadFieldsWithSteps}
                 }
             }
         }
@@ -1047,7 +1041,7 @@ export class API {
     const query = `
     query GetThread($id: String!) {
         threadDetail(id: $id) {
-            ${threadFields}
+            ${threadFieldsWithSteps}
         }
     }
     `;
