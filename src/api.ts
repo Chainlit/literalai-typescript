@@ -29,11 +29,13 @@ import {
   DatasetExperimentItem,
   DatasetItem,
   DatasetType,
+  Environment,
   Maybe,
   OmitUtils,
   PaginatedResponse,
   Prompt,
   Score,
+  ScoreConstructor,
   Step,
   StepType,
   Thread,
@@ -57,6 +59,7 @@ const stepFields = `
     input
     output
     metadata
+    environment
     scores {
       id
       type
@@ -107,10 +110,13 @@ const threadFields = `
         id
         identifier
         metadata
-    }
-    steps {
-        ${stepFields}
     }`;
+
+const threadFieldsWithSteps = `
+${threadFields}
+steps {
+  ${stepFields}
+}`;
 
 /**
  * Serializes the step object with a suffix ID to each key.
@@ -236,7 +242,7 @@ function ingestStepsQueryBuilder(steps: Step[]) {
     `;
 }
 
-function createScoresFieldsBuilder(scores: Score[]) {
+function createScoresFieldsBuilder(scores: ScoreConstructor[]) {
   let generated = '';
   for (let id = 0; id < scores.length; id++) {
     generated += `$name_${id}: String!
@@ -253,7 +259,7 @@ function createScoresFieldsBuilder(scores: Score[]) {
   return generated;
 }
 
-function createScoresArgsBuilder(scores: Score[]) {
+function createScoresArgsBuilder(scores: ScoreConstructor[]) {
   let generated = '';
   for (let id = 0; id < scores.length; id++) {
     generated += `
@@ -280,7 +286,7 @@ function createScoresArgsBuilder(scores: Score[]) {
   return generated;
 }
 
-function createScoresQueryBuilder(scores: Score[]) {
+function createScoresQueryBuilder(scores: ScoreConstructor[]) {
   return `
     mutation CreateScores(${createScoresFieldsBuilder(scores)}) {
       ${createScoresArgsBuilder(scores)}
@@ -353,7 +359,7 @@ type CreateAttachmentParams = {
 
 export class API {
   /** @ignore */
-  private client: LiteralClient;
+  public client: LiteralClient;
   /** @ignore */
   private apiKey: string;
   /** @ignore */
@@ -363,28 +369,33 @@ export class API {
   /** @ignore */
   private restEndpoint: string;
   /** @ignore */
+  public environment: Environment | undefined;
+  /** @ignore */
   public disabled: boolean;
 
   /** @ignore */
   constructor(
     client: LiteralClient,
-    apiKey: string,
-    url: string,
+    apiKey?: string,
+    url?: string,
+    environment?: Environment,
     disabled?: boolean
   ) {
     this.client = client;
+
+    if (!apiKey) {
+      throw new Error('LITERAL_API_KEY not set');
+    }
+    if (!url) {
+      throw new Error('LITERAL_API_URL not set');
+    }
+
     this.apiKey = apiKey;
     this.url = url;
+    this.environment = environment;
     this.graphqlEndpoint = `${url}/api/graphql`;
     this.restEndpoint = `${url}/api`;
     this.disabled = !!disabled;
-
-    if (!this.apiKey) {
-      throw new Error('LITERAL_API_KEY not set');
-    }
-    if (!this.url) {
-      throw new Error('LITERAL_API_URL not set');
-    }
   }
 
   /** @ignore */
@@ -392,8 +403,9 @@ export class API {
     return {
       'Content-Type': 'application/json',
       'x-api-key': this.apiKey,
-      'x-client-name': 'js-literal-client',
-      'x-client-version': version
+      'x-client-name': 'ts-literal-client',
+      'x-client-version': version,
+      'x-env': this.environment
     };
   }
 
@@ -871,7 +883,6 @@ export class API {
    * @param options.name - The name of the thread. (Optional)
    * @param options.metadata - Additional metadata for the thread as a key-value pair object. (Optional)
    * @param options.participantId - The unique identifier of the participant. (Optional)
-   * @param options.environment - The environment where the thread is being upserted. (Optional)
    * @param options.tags - An array of tags associated with the thread. (Optional)
    * @returns The upserted thread object.
    */
@@ -880,7 +891,6 @@ export class API {
     name?: Maybe<string>;
     metadata?: Maybe<Record<string, any>>;
     participantId?: Maybe<string>;
-    environment?: Maybe<string>;
     tags?: Maybe<string[]>;
   }): Promise<CleanThreadFields>;
 
@@ -892,7 +902,6 @@ export class API {
    * @param name - The name of the thread. (Optional)
    * @param metadata - Additional metadata for the thread as a key-value pair object. (Optional)
    * @param participantId - The unique identifier of the participant. (Optional)
-   * @param environment - The environment where the thread is being upserted. (Optional)
    * @param tags - An array of tags associated with the thread. (Optional)
    * @returns The upserted thread object.
    */
@@ -901,7 +910,6 @@ export class API {
     name?: Maybe<string>,
     metadata?: Maybe<Record<string, any>>,
     participantId?: Maybe<string>,
-    environment?: Maybe<string>,
     tags?: Maybe<string[]>
   ): Promise<CleanThreadFields>;
 
@@ -910,7 +918,6 @@ export class API {
     name?: Maybe<string>,
     metadata?: Maybe<Record<string, any>>,
     participantId?: Maybe<string>,
-    environment?: Maybe<string>,
     tags?: Maybe<string[]>
   ): Promise<CleanThreadFields> {
     let threadId = threadIdOrOptions;
@@ -919,7 +926,6 @@ export class API {
       name = threadIdOrOptions.name;
       metadata = threadIdOrOptions.metadata;
       participantId = threadIdOrOptions.participantId;
-      environment = threadIdOrOptions.environment;
       tags = threadIdOrOptions.tags;
     }
 
@@ -929,7 +935,6 @@ export class API {
       $name: String,
       $metadata: Json,
       $participantId: String,
-      $environment: String,
       $tags: [String!],
   ) {
       upsertThread(
@@ -937,7 +942,6 @@ export class API {
           name: $name
           metadata: $metadata
           participantId: $participantId
-          environment: $environment
           tags: $tags
       ) {
         ${threadFields}
@@ -950,7 +954,6 @@ export class API {
       name,
       metadata,
       participantId,
-      environment,
       tags
     };
 
@@ -1010,7 +1013,7 @@ export class API {
             edges {
                 cursor
                 node {
-                    ${threadFields}
+                    ${threadFieldsWithSteps}
                 }
             }
         }
@@ -1038,7 +1041,7 @@ export class API {
     const query = `
     query GetThread($id: String!) {
         threadDetail(id: $id) {
-            ${threadFields}
+            ${threadFieldsWithSteps}
         }
     }
     `;
@@ -1815,12 +1818,12 @@ export class API {
 
   public async createExperiment(datasetExperiment: {
     name: string;
-    datasetId: string;
+    datasetId?: string;
     promptId?: string;
     params?: Record<string, any> | Array<Record<string, any>>;
   }) {
     const query = `
-      mutation CreateDatasetExperiment($name: String!, $datasetId: String! $promptId: String, $params: Json) {
+      mutation CreateDatasetExperiment($name: String!, $datasetId: String $promptId: String, $params: Json) {
         createDatasetExperiment(name: $name, datasetId: $datasetId, promptId: $promptId, params: $params) {
           id
         }
@@ -1840,16 +1843,18 @@ export class API {
   public async createExperimentItem({
     datasetExperimentId,
     datasetItemId,
+    experimentRunId,
     input,
     output,
     scores
   }: DatasetExperimentItem) {
     const query = `
-      mutation CreateDatasetExperimentItem($datasetExperimentId: String!, $datasetItemId: String!, $input: Json, $output: Json) {
-        createDatasetExperimentItem(datasetExperimentId: $datasetExperimentId, datasetItemId: $datasetItemId, input: $input, output: $output) {
+      mutation CreateDatasetExperimentItem($datasetExperimentId: String!, $datasetItemId: String, $experimentRunId: String, $input: Json, $output: Json) {
+        createDatasetExperimentItem(datasetExperimentId: $datasetExperimentId, datasetItemId: $datasetItemId, experimentRunId: $experimentRunId, input: $input, output: $output) {
           id
           input
           output
+          experimentRunId
         }
       }
     `;
@@ -1857,6 +1862,7 @@ export class API {
     const result = await this.makeGqlCall(query, {
       datasetExperimentId,
       datasetItemId,
+      experimentRunId,
       input,
       output
     });
@@ -1865,7 +1871,7 @@ export class API {
       scores.map((score) => {
         score.datasetExperimentItemId =
           result.data.createDatasetExperimentItem.id;
-        return score;
+        return new Score(score);
       })
     );
 

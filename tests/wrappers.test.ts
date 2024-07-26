@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-import { LiteralClient, Maybe, Step } from '../src';
+import { DatasetExperimentItem, LiteralClient, Maybe, Step } from '../src';
 
 const url = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
@@ -9,7 +9,7 @@ if (!url || !apiKey) {
   throw new Error('Missing environment variables');
 }
 
-const client = new LiteralClient(apiKey, url);
+const client = new LiteralClient({ apiKey, apiUrl: url });
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -347,6 +347,43 @@ describe('Wrapper', () => {
       });
 
       expect(wrappedStepId).toEqual(stepId);
+    });
+  });
+
+  describe('Wrapping experimentRun', () => {
+    it('wraps an experiment run', async () => {
+      const experiment = await client.api.createExperiment({
+        name: 'Test Experiment Run'
+      });
+      let persistedExperimentItem: DatasetExperimentItem | undefined =
+        undefined;
+
+      await client.experimentRun().wrap(async () => {
+        const scores = [
+          {
+            name: 'context_relevancy',
+            type: 'AI' as const,
+            value: 0.6
+          }
+        ];
+        await client.step({ name: 'agent', type: 'run' }).wrap(async () => {
+          const experimentItem = {
+            scores: scores, // scores in the format above
+            input: { question: 'question' },
+            output: { content: 'answer' }
+          };
+          persistedExperimentItem = await experiment.log(experimentItem);
+        });
+      });
+      expect(persistedExperimentItem).toBeTruthy();
+
+      await sleep(1000);
+
+      const experimentRunId = persistedExperimentItem!.experimentRunId;
+      expect(experimentRunId).toBeTruthy();
+      const experimentRun = await client.api.getStep(experimentRunId!);
+      expect(experimentRun).toBeTruthy();
+      expect(experimentRun?.environment).toEqual('experiment');
     });
   });
 

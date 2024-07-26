@@ -11,10 +11,10 @@ import {
   Step
 } from '../../src';
 
-const url = process.env.LITERAL_API_URL;
+const apiUrl = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
 
-if (!url || !apiKey) {
+if (!apiUrl || !apiKey) {
   throw new Error('Missing environment variables');
 }
 
@@ -100,7 +100,7 @@ describe('OpenAI Instrumentation', () => {
     beforeAll(async () => {
       const testId = uuidv4();
 
-      const client = new LiteralClient(apiKey, url);
+      const client = new LiteralClient({ apiKey, apiUrl });
       client.instrumentation.openai({ tags: [testId] });
 
       await openai.chat.completions.create({
@@ -157,7 +157,7 @@ describe('OpenAI Instrumentation', () => {
       beforeAll(async () => {
         const testId = uuidv4();
 
-        const client = new LiteralClient(apiKey, url);
+        const client = new LiteralClient({ apiKey, apiUrl });
 
         client.instrumentation.openai({ tags: [testId] });
 
@@ -209,7 +209,7 @@ describe('OpenAI Instrumentation', () => {
       it('should monitor image generation', async () => {
         const testId = uuidv4();
 
-        const client = new LiteralClient(apiKey, url);
+        const client = new LiteralClient({ apiKey, apiUrl });
         client.instrumentation.openai({ tags: [testId] });
 
         const response = await openai.images.generate({
@@ -237,8 +237,10 @@ describe('OpenAI Instrumentation', () => {
 
   describe('Inside of a thread or step wrapper', () => {
     it('logs the generation inside its thread and parent', async () => {
-      const client = new LiteralClient(apiKey, url);
-      client.instrumentation.openai();
+      const testId = uuidv4();
+
+      const client = new LiteralClient({ apiKey, apiUrl });
+      client.instrumentation.openai({ tags: [testId] });
 
       let threadId: Maybe<string>;
       let parentId: Maybe<string>;
@@ -272,8 +274,10 @@ describe('OpenAI Instrumentation', () => {
     }, 30_000);
 
     it("doesn't mix up threads and steps", async () => {
-      const client = new LiteralClient(apiKey, url);
-      client.instrumentation.openai();
+      const testId = uuidv4();
+
+      const client = new LiteralClient({ apiKey, apiUrl });
+      client.instrumentation.openai({ tags: [testId] });
 
       const firstThreadId = uuidv4();
       const secondThreadId = uuidv4();
@@ -344,7 +348,7 @@ describe('OpenAI Instrumentation', () => {
 
   describe('Handling tags and metadata', () => {
     it('handles tags and metadata on the instrumentation call', async () => {
-      const client = new LiteralClient(apiKey, url);
+      const client = new LiteralClient({ apiKey, apiUrl });
       client.instrumentation.openai({
         tags: ['tag1', 'tag2'],
         metadata: { key: 'value' }
@@ -366,6 +370,8 @@ describe('OpenAI Instrumentation', () => {
         });
       });
 
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       const {
         data: [step]
       } = await client.api.getSteps({
@@ -378,7 +384,7 @@ describe('OpenAI Instrumentation', () => {
     }, 30_000);
 
     it('handles tags and metadata on the LLM call', async () => {
-      const client = new LiteralClient(apiKey, url);
+      const client = new LiteralClient({ apiKey, apiUrl });
 
       const instrumentedOpenAi = client.instrumentation.openai({
         tags: ['tag1', 'tag2'],
@@ -406,6 +412,8 @@ describe('OpenAI Instrumentation', () => {
           );
         });
       });
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
       const {
         data: [step]

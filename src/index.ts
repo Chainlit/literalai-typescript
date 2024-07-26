@@ -3,7 +3,14 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { API } from './api';
 import instrumentation from './instrumentation';
 import openai from './openai';
-import { Step, StepConstructor, Thread, ThreadConstructor } from './types';
+import {
+  Environment,
+  ExperimentRun,
+  Step,
+  StepConstructor,
+  Thread,
+  ThreadConstructor
+} from './types';
 
 export * from './types';
 export * from './generation';
@@ -13,6 +20,7 @@ export type * from './instrumentation';
 type StoredContext = {
   currentThread: Thread | null;
   currentStep: Step | null;
+  currentExperimentRunId?: string | null;
 };
 
 const storage = new AsyncLocalStorage<StoredContext>();
@@ -23,7 +31,17 @@ export class LiteralClient {
   instrumentation: ReturnType<typeof instrumentation>;
   store: AsyncLocalStorage<StoredContext> = storage;
 
-  constructor(apiKey?: string, apiUrl?: string, disabled?: boolean) {
+  constructor({
+    apiKey,
+    apiUrl,
+    environment,
+    disabled
+  }: {
+    apiKey?: string;
+    apiUrl?: string;
+    environment?: Environment;
+    disabled?: boolean;
+  } = {}) {
     if (!apiKey) {
       apiKey = process.env.LITERAL_API_KEY;
     }
@@ -32,7 +50,7 @@ export class LiteralClient {
       apiUrl = process.env.LITERAL_API_URL || 'https://cloud.getliteral.ai';
     }
 
-    this.api = new API(this, apiKey!, apiUrl!, disabled);
+    this.api = new API(this, apiKey, apiUrl, environment, disabled);
     this.openai = openai(this);
     this.instrumentation = instrumentation(this);
   }
@@ -47,6 +65,14 @@ export class LiteralClient {
 
   run(data: Omit<StepConstructor, 'type'>) {
     return this.step({ ...data, type: 'run' });
+  }
+
+  experimentRun(data?: Omit<StepConstructor, 'type' | 'name'>) {
+    return new ExperimentRun(this, {
+      ...(data || {}),
+      name: 'Experiment Run',
+      type: 'run'
+    });
   }
 
   _currentThread(): Thread | null {

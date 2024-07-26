@@ -3,12 +3,12 @@ import { createReadStream, readFileSync } from 'fs';
 
 import { Attachment, LiteralClient, Maybe } from '../src';
 
-const url = process.env.LITERAL_API_URL;
+const apiUrl = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
-if (!url || !apiKey) {
+if (!apiUrl || !apiKey) {
   throw new Error('Missing environment variables');
 }
-const client = new LiteralClient(apiKey, url);
+const client = new LiteralClient({ apiKey, apiUrl });
 
 const filePath = './tests/chainlit-logo.png';
 const mime = 'image/png';

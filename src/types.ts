@@ -14,6 +14,8 @@ export type Maybe<T> = T | null | undefined;
 
 export type OmitUtils<T> = Omit<T, keyof Utils>;
 
+export type Environment = 'dev' | 'staging' | 'prod' | 'experiment';
+
 export type PageInfo = {
   hasNextPage: boolean;
   startCursor: string;
@@ -78,11 +80,7 @@ export class Utils {
 
 export type ScoreType = 'HUMAN' | 'AI';
 
-/**
- * Represents a score entity with properties to track various aspects of scoring.
- * It extends the `Utils` class for serialization capabilities.
- */
-export class Score extends Utils {
+class ScoreFields extends Utils {
   id?: Maybe<string>;
   stepId?: Maybe<string>;
   generationId?: Maybe<string>;
@@ -93,8 +91,16 @@ export class Score extends Utils {
   scorer?: Maybe<string>;
   comment?: Maybe<string>;
   tags?: Maybe<string[]>;
+}
 
-  constructor(data: OmitUtils<Score>) {
+export type ScoreConstructor = OmitUtils<ScoreFields>;
+
+/**
+ * Represents a score entity with properties to track various aspects of scoring.
+ * It extends the `Utils` class for serialization capabilities.
+ */
+export class Score extends ScoreFields {
+  constructor(data: ScoreConstructor) {
     super();
     Object.assign(this, data);
   }
@@ -200,7 +206,6 @@ export class Thread extends ThreadFields {
       name: this.name,
       metadata: this.metadata,
       participantId: this.participantId,
-      environment: this.environment,
       tags: this.tags
     });
     return this;
@@ -219,8 +224,14 @@ export class Thread extends ThreadFields {
       | ((output: Output) => ThreadConstructor)
       | ((output: Output) => Promise<ThreadConstructor>)
   ) {
+    const currentStore = this.client.store.getStore();
+
     const output = await this.client.store.run(
-      { currentThread: this, currentStep: null },
+      {
+        currentThread: this,
+        currentExperimentRunId: currentStore?.currentExperimentRunId ?? null,
+        currentStep: null
+      },
       () => cb(this)
     );
 
@@ -262,6 +273,7 @@ class StepFields extends Utils {
   createdAt?: Maybe<string>;
   startTime?: Maybe<string>;
   id?: Maybe<string>;
+  environment?: Maybe<Environment>;
   error?: Maybe<string | Record<string, any>>;
   input?: Maybe<Record<string, any>>;
   output?: Maybe<Record<string, any>>;
@@ -379,7 +391,6 @@ export class Step extends StepFields {
     if (this.api.disabled) {
       return this;
     }
-    await new Promise((resolve) => setTimeout(resolve, 1));
     if (!this.endTime) {
       this.endTime = new Date().toISOString();
     }
@@ -405,7 +416,11 @@ export class Step extends StepFields {
     const currentStore = this.client.store.getStore();
 
     const output = await this.client.store.run(
-      { currentThread: currentStore?.currentThread ?? null, currentStep: this },
+      {
+        currentThread: currentStore?.currentThread ?? null,
+        currentExperimentRunId: currentStore?.currentExperimentRunId ?? null,
+        currentStep: this
+      },
       () => cb(this)
     );
 
@@ -437,6 +452,64 @@ export class Step extends StepFields {
 
     this.send().catch(console.error);
 
+    return output;
+  }
+}
+
+/**
+ * Represents a step in a process or workflow, extending the fields and methods from StepFields.
+ */
+export class ExperimentRun extends Step {
+  api: API;
+  client: LiteralClient;
+
+  /**
+   * Constructs a new ExperimentRun instance.
+   * @param api The API instance to be used for sending and managing steps.
+   * @param data The initial data for the step, excluding utility properties.
+   */
+  constructor(
+    client: LiteralClient,
+    data: StepConstructor,
+    ignoreContext?: true
+  ) {
+    super(client, data, ignoreContext);
+    this.client = client;
+    this.api = client.api;
+  }
+
+  async wrap<Output>(
+    cb: (step: Step) => Output | Promise<Output>,
+    updateStep?:
+      | Partial<StepConstructor>
+      | ((output: Output) => Partial<StepConstructor>)
+      | ((output: Output) => Promise<Partial<StepConstructor>>)
+  ) {
+    const originalEnvironment = this.api.environment;
+    this.api.environment = 'experiment';
+
+    const currentStore = this.client.store.getStore();
+    const output: Output = await this.client.store.run(
+      {
+        currentThread: currentStore?.currentThread ?? null,
+        currentStep: this,
+        currentExperimentRunId: this.id ?? null
+      },
+      async () => {
+        try {
+          const output = await super.wrap(cb, updateStep);
+          return output;
+        } finally {
+          // Clear the currentExperimentRunId after execution
+          const updatedStore = this.client.store.getStore();
+          if (updatedStore) {
+            updatedStore.currentExperimentRunId = null;
+          }
+        }
+      }
+    );
+
+    this.api.environment = originalEnvironment;
     return output;
   }
 }
@@ -631,8 +704,9 @@ export class DatasetItem extends Utils {
 class DatasetExperimentItemFields extends Utils {
   id?: string;
   datasetExperimentId!: string;
-  datasetItemId!: string;
-  scores!: Score[];
+  datasetItemId?: string;
+  experimentRunId?: string;
+  scores!: ScoreConstructor[];
   input?: Record<string, any>;
   output?: Record<string, any>;
 }
@@ -641,7 +715,7 @@ export class DatasetExperiment extends Utils {
   id!: string;
   createdAt!: string;
   name!: string;
-  datasetId!: string;
+  datasetId?: string;
   promptId?: string;
   api: API;
   params!: Record<string, any> | Array<Record<string, any>>;
@@ -662,9 +736,13 @@ export class DatasetExperiment extends Utils {
       'id' | 'datasetExperimentId'
     >
   ) {
+    const currentStore = this.api.client.store.getStore();
+    const experimentRunId = currentStore?.currentExperimentRunId;
+
     const datasetExperimentItem = new DatasetExperimentItem({
       ...itemFields,
-      datasetExperimentId: this.id
+      datasetExperimentId: this.id,
+      ...(experimentRunId && { experimentRunId })
     });
 
     const item = await this.api.createExperimentItem(datasetExperimentItem);
