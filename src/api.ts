@@ -27,6 +27,7 @@ import {
   DatasetExperimentItem,
   DatasetItem,
   DatasetType,
+  Environment,
   Maybe,
   OmitUtils,
   PaginatedResponse,
@@ -56,6 +57,7 @@ const stepFields = `
     input
     output
     metadata
+    environment
     scores {
       id
       type
@@ -330,7 +332,7 @@ function addGenerationsToDatasetQueryBuilder(generationIds: string[]) {
 
 export class API {
   /** @ignore */
-  private client: LiteralClient;
+  public client: LiteralClient;
   /** @ignore */
   private apiKey: string;
   /** @ignore */
@@ -340,28 +342,33 @@ export class API {
   /** @ignore */
   private restEndpoint: string;
   /** @ignore */
+  public environment: Environment | undefined;
+  /** @ignore */
   public disabled: boolean;
 
   /** @ignore */
   constructor(
     client: LiteralClient,
-    apiKey: string,
-    url: string,
+    apiKey?: string,
+    url?: string,
+    environment?: Environment,
     disabled?: boolean
   ) {
     this.client = client;
+
+    if (!apiKey) {
+      throw new Error('LITERAL_API_KEY not set');
+    }
+    if (!url) {
+      throw new Error('LITERAL_API_URL not set');
+    }
+
     this.apiKey = apiKey;
     this.url = url;
+    this.environment = environment;
     this.graphqlEndpoint = `${url}/api/graphql`;
     this.restEndpoint = `${url}/api`;
     this.disabled = !!disabled;
-
-    if (!this.apiKey) {
-      throw new Error('LITERAL_API_KEY not set');
-    }
-    if (!this.url) {
-      throw new Error('LITERAL_API_URL not set');
-    }
   }
 
   /** @ignore */
@@ -369,8 +376,9 @@ export class API {
     return {
       'Content-Type': 'application/json',
       'x-api-key': this.apiKey,
-      'x-client-name': 'js-literal-client',
-      'x-client-version': version
+      'x-client-name': 'ts-literal-client',
+      'x-client-version': version,
+      'x-env': this.environment
     };
   }
 
@@ -1767,16 +1775,18 @@ export class API {
   public async createExperimentItem({
     datasetExperimentId,
     datasetItemId,
+    experimentRunId,
     input,
     output,
     scores
   }: DatasetExperimentItem) {
     const query = `
-      mutation CreateDatasetExperimentItem($datasetExperimentId: String!, $datasetItemId: String, $input: Json, $output: Json) {
-        createDatasetExperimentItem(datasetExperimentId: $datasetExperimentId, datasetItemId: $datasetItemId, input: $input, output: $output) {
+      mutation CreateDatasetExperimentItem($datasetExperimentId: String!, $datasetItemId: String, $experimentRunId: String, $input: Json, $output: Json) {
+        createDatasetExperimentItem(datasetExperimentId: $datasetExperimentId, datasetItemId: $datasetItemId, experimentRunId: $experimentRunId, input: $input, output: $output) {
           id
           input
           output
+          experimentRunId
         }
       }
     `;
@@ -1784,6 +1794,7 @@ export class API {
     const result = await this.makeGqlCall(query, {
       datasetExperimentId,
       datasetItemId,
+      experimentRunId,
       input,
       output
     });

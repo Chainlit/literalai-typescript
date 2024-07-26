@@ -14,6 +14,8 @@ export type Maybe<T> = T | null | undefined;
 
 export type OmitUtils<T> = Omit<T, keyof Utils>;
 
+export type Environment = 'dev' | 'staging' | 'prod' | 'experiment';
+
 export type PageInfo = {
   hasNextPage: boolean;
   startCursor: string;
@@ -103,8 +105,6 @@ export class Score extends ScoreFields {
     Object.assign(this, data);
   }
 }
-
-export type ScoreCons = OmitUtils<StepFields>;
 
 /**
  * Represents an attachment with optional metadata, MIME type, and other properties.
@@ -226,7 +226,7 @@ export class Thread extends ThreadFields {
       | ((output: Output) => Promise<ThreadConstructor>)
   ) {
     const output = await this.client.store.run(
-      { currentThread: this, currentStep: null },
+      { currentThread: this, currentStep: null, currentExperimentRunId: null },
       () => cb(this)
     );
 
@@ -268,6 +268,7 @@ class StepFields extends Utils {
   createdAt?: Maybe<string>;
   startTime?: Maybe<string>;
   id?: Maybe<string>;
+  environment?: Maybe<Environment>;
   error?: Maybe<string | Record<string, any>>;
   input?: Maybe<Record<string, any>>;
   output?: Maybe<Record<string, any>>;
@@ -411,7 +412,11 @@ export class Step extends StepFields {
     const currentStore = this.client.store.getStore();
 
     const output = await this.client.store.run(
-      { currentThread: currentStore?.currentThread ?? null, currentStep: this },
+      {
+        currentThread: currentStore?.currentThread ?? null,
+        currentStep: this,
+        currentExperimentRunId: null
+      },
       () => cb(this)
     );
 
@@ -443,6 +448,64 @@ export class Step extends StepFields {
 
     this.send().catch(console.error);
 
+    return output;
+  }
+}
+
+/**
+ * Represents a step in a process or workflow, extending the fields and methods from StepFields.
+ */
+export class ExperimentRun extends Step {
+  api: API;
+  client: LiteralClient;
+
+  /**
+   * Constructs a new ExperimentRun instance.
+   * @param api The API instance to be used for sending and managing steps.
+   * @param data The initial data for the step, excluding utility properties.
+   */
+  constructor(
+    client: LiteralClient,
+    data: StepConstructor,
+    ignoreContext?: true
+  ) {
+    super(client, data, ignoreContext);
+    this.client = client;
+    this.api = client.api;
+  }
+
+  async wrap<Output>(
+    cb: (step: Step) => Output | Promise<Output>,
+    updateStep?:
+      | Partial<StepConstructor>
+      | ((output: Output) => Partial<StepConstructor>)
+      | ((output: Output) => Promise<Partial<StepConstructor>>)
+  ) {
+    const originalEnvironment = this.api.environment;
+    this.api.environment = 'experiment';
+
+    const currentStore = this.client.store.getStore();
+    const output: Output = await this.client.store.run(
+      {
+        currentThread: currentStore?.currentThread ?? null,
+        currentStep: this,
+        currentExperimentRunId: this.id ?? null
+      },
+      async () => {
+        try {
+          const output = await super.wrap(cb, updateStep);
+          return output;
+        } finally {
+          // Clear the currentExperimentRunId after execution
+          const updatedStore = this.client.store.getStore();
+          if (updatedStore) {
+            updatedStore.currentExperimentRunId = null;
+          }
+        }
+      }
+    );
+
+    this.api.environment = originalEnvironment;
     return output;
   }
 }
@@ -638,6 +701,7 @@ class DatasetExperimentItemFields extends Utils {
   id?: string;
   datasetExperimentId!: string;
   datasetItemId?: string;
+  experimentRunId?: string;
   scores!: ScoreConstructor[];
   input?: Record<string, any>;
   output?: Record<string, any>;
@@ -668,9 +732,13 @@ export class DatasetExperiment extends Utils {
       'id' | 'datasetExperimentId'
     >
   ) {
+    const currentStore = this.api.client.store.getStore();
+    const experimentRunId = currentStore?.currentExperimentRunId;
+
     const datasetExperimentItem = new DatasetExperimentItem({
       ...itemFields,
-      datasetExperimentId: this.id
+      datasetExperimentId: this.id,
+      ...(experimentRunId && { experimentRunId })
     });
 
     const item = await this.api.createExperimentItem(datasetExperimentItem);

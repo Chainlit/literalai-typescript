@@ -16,14 +16,14 @@ describe('Llama Index Instrumentation', () => {
   let client: LiteralClient;
 
   beforeAll(function () {
-    const url = process.env.LITERAL_API_URL;
+    const apiUrl = process.env.LITERAL_API_URL;
     const apiKey = process.env.LITERAL_API_KEY;
 
-    if (!url || !apiKey) {
+    if (!apiUrl || !apiKey) {
       throw new Error('Missing environment variables');
     }
 
-    client = new LiteralClient(apiKey, url);
+    client = new LiteralClient({ apiKey, apiUrl });
 
     // Reset the callback manager
     Settings.callbackManager = new CallbackManager();

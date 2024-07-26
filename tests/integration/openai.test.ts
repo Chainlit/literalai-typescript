@@ -11,10 +11,10 @@ import {
   Step
 } from '../../src';
 
-const url = process.env.LITERAL_API_URL;
+const apiUrl = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
 
-if (!url || !apiKey) {
+if (!apiUrl || !apiKey) {
   throw new Error('Missing environment variables');
 }
 
@@ -100,7 +100,7 @@ describe('OpenAI Instrumentation', () => {
     beforeAll(async () => {
       const testId = uuidv4();
 
-      const client = new LiteralClient(apiKey, url);
+      const client = new LiteralClient({ apiKey, apiUrl });
       client.instrumentation.openai({ tags: [testId] });
 
       await openai.chat.completions.create({
@@ -169,7 +169,7 @@ describe('OpenAI Instrumentation', () => {
       beforeAll(async () => {
         const testId = uuidv4();
 
-        const client = new LiteralClient(apiKey, url);
+        const client = new LiteralClient({ apiKey, apiUrl });
 
         client.instrumentation.openai({ tags: [testId] });
 
@@ -233,7 +233,7 @@ describe('OpenAI Instrumentation', () => {
       it('should monitor image generation', async () => {
         const testId = uuidv4();
 
-        const client = new LiteralClient(apiKey, url);
+        const client = new LiteralClient({ apiKey, apiUrl });
         client.instrumentation.openai({ tags: [testId] });
 
         const response = await openai.images.generate({
@@ -269,7 +269,7 @@ describe('OpenAI Instrumentation', () => {
     it('logs the generation inside its thread and parent', async () => {
       const testId = uuidv4();
 
-      const client = new LiteralClient(apiKey, url);
+      const client = new LiteralClient({ apiKey, apiUrl });
       client.instrumentation.openai({ tags: [testId] });
 
       let threadId: Maybe<string>;
@@ -312,7 +312,7 @@ describe('OpenAI Instrumentation', () => {
     it("doesn't mix up threads and steps", async () => {
       const testId = uuidv4();
 
-      const client = new LiteralClient(apiKey, url);
+      const client = new LiteralClient({ apiKey, apiUrl });
       client.instrumentation.openai({ tags: [testId] });
 
       const firstThreadId = uuidv4();

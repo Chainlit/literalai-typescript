@@ -21,7 +21,7 @@ describe('End to end tests for the SDK', function () {
       throw new Error('Missing environment variables');
     }
 
-    client = new LiteralClient(apiKey, url);
+    client = new LiteralClient({ apiKey, apiUrl: url });
   });
 
   it('should test user', async function () {
