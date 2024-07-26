@@ -508,6 +508,7 @@ const processOpenAIOutput = async (
         outputTokenCount: output.usage?.completion_tokens,
         tokenCount: output.usage?.total_tokens
       });
+
       if (parent) {
         const step = parent.step({
           name: generation.model || 'openai',
