@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import { createReadStream, readFileSync } from 'fs';
 
-import { Attachment, LiteralClient, Maybe } from '../src';
+import { LiteralClient, Maybe } from '../src';
+import { Attachment } from '../src/observability/attachment';
 
 const apiUrl = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;

@@ -9,8 +9,9 @@ import type {
 import { v5 as uuidv5 } from 'uuid';
 
 import { LiteralClient } from '.';
-import { ChatGeneration } from './generation';
-import { Attachment, User } from './types';
+import { Attachment } from './observability/attachment';
+import { ChatGeneration } from './observability/generation';
+import { User } from './utils';
 
 class OpenAIAssistantSyncer {
   private NAMESPACE_UUID = '1b671a64-40d5-491e-99b0-da01ff1f3341';

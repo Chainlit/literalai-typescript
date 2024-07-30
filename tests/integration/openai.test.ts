@@ -3,13 +3,8 @@ import OpenAI from 'openai';
 import { PassThrough } from 'stream';
 import { v4 as uuidv4 } from 'uuid';
 
-import {
-  ChatGeneration,
-  LiteralClient,
-  Maybe,
-  OmitUtils,
-  Step
-} from '../../src';
+import { ChatGeneration, LiteralClient, Maybe, OmitUtils } from '../../src';
+import { Step } from '../../src/observability/step';
 
 const apiUrl = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;

@@ -30,7 +30,7 @@ import {
   ITool,
   LiteralClient
 } from '..';
-import { Step } from '../types';
+import { Step } from '../observability/step';
 
 // @ts-expect-error Generics
 export class CustomChatPromptTemplate extends ChatPromptTemplate {

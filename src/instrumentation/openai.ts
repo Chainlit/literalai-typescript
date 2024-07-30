@@ -14,9 +14,9 @@ import {
   IGenerationMessage,
   LiteralClient,
   Maybe,
-  OpenAIGlobalOptions,
-  StepConstructor
+  OpenAIGlobalOptions
 } from '..';
+import { StepConstructor } from '../observability/step';
 
 type OriginalFunction<Output> = (
   body: any,

@@ -1,4 +1,4 @@
-import { Maybe, OmitUtils, Utils } from './types';
+import { Maybe, OmitUtils, Utils } from '../utils';
 
 export type GenerationMessageRole =
   | 'system'

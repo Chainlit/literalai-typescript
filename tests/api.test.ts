@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import { v4 as uuidv4 } from 'uuid';
 
-import { ChatGeneration, Dataset, LiteralClient, Score } from '../src';
+import { ChatGeneration, LiteralClient } from '../src';
+import { Dataset } from '../src/evaluation/dataset';
+import { Score } from '../src/evaluation/score';
 
 describe('End to end tests for the SDK', function () {
   let client: LiteralClient;

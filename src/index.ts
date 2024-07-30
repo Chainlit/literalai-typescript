@@ -1,19 +1,15 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { API } from './api';
+import { ExperimentRun } from './evaluation/experiment-run';
 import instrumentation from './instrumentation';
+import { Step, StepConstructor } from './observability/step';
+import { Thread, ThreadConstructor } from './observability/thread';
 import openai from './openai';
-import {
-  Environment,
-  ExperimentRun,
-  Step,
-  StepConstructor,
-  Thread,
-  ThreadConstructor
-} from './types';
+import { Environment } from './utils';
 
-export * from './types';
-export * from './generation';
+export * from './utils';
+export * from './observability/generation';
 
 export type * from './instrumentation';
 
@@ -31,6 +27,15 @@ export class LiteralClient {
   instrumentation: ReturnType<typeof instrumentation>;
   store: AsyncLocalStorage<StoredContext> = storage;
 
+  /**
+   * Initialize a new Literal AI Client.
+   * @param options
+   * @param options.apiKey The API key to use for the Literal AI API. Defaults to the LITERAL_API_KEY environment variable.
+   * @param options.apiUrl The URL of the Literal AI API. Defaults to the LITERAL_API_URL environment variable.
+   * @param options.environment The environment to use for the Literal AI API.
+   * @param options.disabled If set to true, no call will be made to the Literal AI API.
+   * @returns A new LiteralClient instance.
+   */
   constructor({
     apiKey,
     apiUrl,
@@ -55,18 +60,38 @@ export class LiteralClient {
     this.instrumentation = instrumentation(this);
   }
 
+  /**
+   * Creates a new thread without sending it to the Literal AI API.
+   * @param data Optional initial data for the thread.
+   * @returns A new thread instance.
+   */
   thread(data?: ThreadConstructor) {
     return new Thread(this, data);
   }
 
+  /**
+   * Creates a new step without sending it to the Literal AI API.
+   * @param data Optional initial data for the step.
+   * @returns A new step instance.
+   */
   step(data: StepConstructor) {
     return new Step(this, data);
   }
 
+  /**
+   * Creates a new step with the type set to 'run'.
+   * @param data Optional initial data for the step.
+   * @returns A new step instance.
+   */
   run(data: Omit<StepConstructor, 'type'>) {
     return this.step({ ...data, type: 'run' });
   }
 
+  /**
+   * Creates a new Experiment Run.
+   * @param data Optional initial data for the step.
+   * @returns A new step instance.
+   */
   experimentRun(data?: Omit<StepConstructor, 'type' | 'name'>) {
     return new ExperimentRun(this, {
       ...(data || {}),
@@ -75,12 +100,20 @@ export class LiteralClient {
     });
   }
 
+  /**
+   * Returns the current thread from the context or null if none.
+   * @returns The current thread, if any.
+   */
   _currentThread(): Thread | null {
     const store = storage.getStore();
 
     return store?.currentThread || null;
   }
 
+  /**
+   * Returns the current step from the context or null if none.
+   * @returns The current step, if any.
+   */
   _currentStep(): Step | null {
     const store = storage.getStore();
 

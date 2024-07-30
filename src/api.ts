@@ -6,6 +6,14 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { LiteralClient } from '.';
 import {
+  Dataset,
+  DatasetExperiment,
+  DatasetExperimentItem,
+  DatasetItem,
+  DatasetType
+} from './evaluation/dataset';
+import { Score, ScoreConstructor } from './evaluation/score';
+import {
   GenerationsFilter,
   GenerationsOrderBy,
   ParticipantsFilter,
@@ -16,32 +24,23 @@ import {
   ThreadsFilter,
   ThreadsOrderBy
 } from './filter';
+import { Attachment } from './observability/attachment';
 import {
   Generation,
   IGenerationMessage,
   PersistedGeneration
-} from './generation';
+} from './observability/generation';
+import { Step, StepType } from './observability/step';
+import { CleanThreadFields, Thread } from './observability/thread';
+import { Prompt } from './prompt-engineering/prompt';
 import {
-  Attachment,
-  CleanThreadFields,
-  Dataset,
-  DatasetExperiment,
-  DatasetExperimentItem,
-  DatasetItem,
-  DatasetType,
   Environment,
   Maybe,
   OmitUtils,
   PaginatedResponse,
-  Prompt,
-  Score,
-  ScoreConstructor,
-  Step,
-  StepType,
-  Thread,
   User,
   Utils
-} from './types';
+} from './utils';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require('../package.json');
@@ -892,6 +891,7 @@ export class API {
     metadata?: Maybe<Record<string, any>>;
     participantId?: Maybe<string>;
     tags?: Maybe<string[]>;
+    environment?: Maybe<Environment>;
   }): Promise<CleanThreadFields>;
 
   /**
@@ -910,7 +910,8 @@ export class API {
     name?: Maybe<string>,
     metadata?: Maybe<Record<string, any>>,
     participantId?: Maybe<string>,
-    tags?: Maybe<string[]>
+    tags?: Maybe<string[]>,
+    environment?: Maybe<Environment>
   ): Promise<CleanThreadFields>;
 
   async upsertThread(
@@ -918,7 +919,8 @@ export class API {
     name?: Maybe<string>,
     metadata?: Maybe<Record<string, any>>,
     participantId?: Maybe<string>,
-    tags?: Maybe<string[]>
+    tags?: Maybe<string[]>,
+    environment?: Maybe<Environment>
   ): Promise<CleanThreadFields> {
     let threadId = threadIdOrOptions;
     if (typeof threadIdOrOptions === 'object') {
@@ -927,6 +929,13 @@ export class API {
       metadata = threadIdOrOptions.metadata;
       participantId = threadIdOrOptions.participantId;
       tags = threadIdOrOptions.tags;
+      environment = threadIdOrOptions.environment;
+    }
+
+    const originalEnvironment = this.environment;
+
+    if (environment && environment !== originalEnvironment) {
+      this.environment = environment;
     }
 
     const query = `
@@ -958,6 +967,11 @@ export class API {
     };
 
     const response = await this.makeGqlCall(query, variables);
+
+    if (environment && environment !== originalEnvironment) {
+      this.environment = originalEnvironment;
+    }
+
     return new Thread(this.client, response.data.upsertThread);
   }
 

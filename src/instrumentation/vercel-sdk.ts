@@ -16,10 +16,10 @@ import {
   IGenerationMessage,
   ILLMSettings,
   ITool,
-  LiteralClient,
-  Step,
-  Thread
+  LiteralClient
 } from '..';
+import { Step } from '../observability/step';
+import { Thread } from '../observability/thread';
 
 export type VercelLanguageModel = LanguageModel;
 

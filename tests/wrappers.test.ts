@@ -1,6 +1,8 @@
 import 'dotenv/config';
 
-import { DatasetExperimentItem, LiteralClient, Maybe, Step } from '../src';
+import { LiteralClient, Maybe } from '../src';
+import { DatasetExperimentItem } from '../src/evaluation/dataset';
+import { Step } from '../src/observability/step';
 
 const url = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;

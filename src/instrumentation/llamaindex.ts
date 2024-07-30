@@ -7,9 +7,9 @@ import {
   type IGenerationMessage,
   IImageUrlContent,
   ITextContent,
-  LiteralClient,
-  Thread
+  LiteralClient
 } from '..';
+import { Thread } from '../observability/thread';
 
 const convertMessage = (message: ChatMessage): IGenerationMessage => {
   return {
