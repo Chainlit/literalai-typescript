@@ -24,6 +24,13 @@ export class ExperimentRun extends Step {
     this.api = client.api;
   }
 
+  /**
+   * Wraps the provided callback in a new run with the environment set to "experiment".
+   * Experiment runs are filtered out of the Literal AI UI.
+   * @param cb The callback to wrap in a new step.
+   * @param updateStep Optional update to the step data after the callback is executed.
+   * @returns The output of the callback.
+   */
   async wrap<Output>(
     cb: (step: Step) => Output | Promise<Output>,
     updateStep?:

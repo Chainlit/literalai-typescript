@@ -146,6 +146,11 @@ export class Dataset extends DatasetFields {
     return item;
   }
 
+  /**
+   * Adds multiple generations to the dataset.
+   * @param generationIds - The IDs of the steps to add.
+   * @returns The added dataset items.
+   */
   public async addGenerations(generationIds?: string[]) {
     if (generationIds == undefined || generationIds?.length === 0) {
       return [];
@@ -194,7 +199,6 @@ export class DatasetExperiment extends Utils {
   api: API;
   params!: Record<string, any> | Array<Record<string, any>>;
   items!: DatasetExperimentItem[];
-
   constructor(api: API, data: OmitUtils<DatasetExperiment>) {
     super();
     this.api = api;
@@ -204,14 +208,18 @@ export class DatasetExperiment extends Utils {
     }
   }
 
+  /**
+   * Logs an item in the dataset experiment.
+   * @param itemFields the data for this item
+   * @returns the created item
+   */
   async log(
     itemFields: Omit<
       OmitUtils<DatasetExperimentItemFields>,
       'id' | 'datasetExperimentId'
     >
   ) {
-    const currentStore = this.api.client.store.getStore();
-    const experimentRunId = currentStore?.currentExperimentRunId;
+    const experimentRunId = this.api.client._currentExperimentRunId();
 
     const datasetExperimentItem = new DatasetExperimentItem({
       ...itemFields,

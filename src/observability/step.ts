@@ -74,14 +74,8 @@ export class Step extends StepFields {
     }
 
     // Automatically assign parent thread & step if there are any in the store.
-    const store = this.client.store.getStore();
-
-    if (store?.currentThread) {
-      this.threadId = store.currentThread.id;
-    }
-    if (store?.currentStep) {
-      this.parentId = store.currentStep.id;
-    }
+    this.threadId = this.client._currentThread()?.id;
+    this.parentId = this.client._currentStep()?.id;
 
     // Set the creation and start time to the current time if not provided.
     if (!this.createdAt) {

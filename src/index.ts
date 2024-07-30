@@ -16,7 +16,7 @@ export type * from './instrumentation';
 type StoredContext = {
   currentThread: Thread | null;
   currentStep: Step | null;
-  currentExperimentRunId?: string | null;
+  currentExperimentRunId: string | null;
 };
 
 const storage = new AsyncLocalStorage<StoredContext>();
@@ -121,6 +121,16 @@ export class LiteralClient {
   }
 
   /**
+   * Returns the current experiment from the context or null if none.
+   * @returns The current experiment, if any.
+   */
+  _currentExperimentRunId(): string | null {
+    const store = storage.getStore();
+
+    return store?.currentExperimentRunId || null;
+  }
+
+  /**
    * Gets the current thread from the context.
    * WARNING : this will throw if run outside of a thread context.
    * @returns The current thread, if any.
@@ -152,5 +162,22 @@ export class LiteralClient {
     }
 
     return store.currentStep;
+  }
+
+  /**
+   * Gets the current experiment run ID from the context.
+   * WARNING : this will throw if run outside of an experiment context.
+   * @returns The current experiment, if any.
+   */
+  getCurrentExperimentRunId(): string {
+    const store = storage.getStore();
+
+    if (!store?.currentExperimentRunId) {
+      throw new Error(
+        'Literal AI SDK : tried to access current experiment outside of a context.'
+      );
+    }
+
+    return store.currentExperimentRunId;
   }
 }
