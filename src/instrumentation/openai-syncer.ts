@@ -8,10 +8,10 @@ import type {
 } from 'openai/resources/beta/threads/runs/steps';
 import { v5 as uuidv5 } from 'uuid';
 
-import { LiteralClient } from '.';
-import { Attachment } from './observability/attachment';
-import { ChatGeneration } from './observability/generation';
-import { User } from './utils';
+import { LiteralClient } from '..';
+import { Attachment } from '../observability/attachment';
+import { ChatGeneration } from '../observability/generation';
+import { User } from '../utils';
 
 class OpenAIAssistantSyncer {
   private NAMESPACE_UUID = '1b671a64-40d5-491e-99b0-da01ff1f3341';
@@ -192,6 +192,12 @@ class OpenAIAssistantSyncer {
     await Promise.all(toolPromises);
   }
 
+  /**
+   * Logs a thread and all its messages and runs to the Literal AI API.
+   * @param threadId The ID of the thread to log to
+   * @param user A User instance containing the information of the user that participated in the thread
+   * @param threadMetadata Additional metadata to attach to the thread, in key-value pairs
+   */
   async syncThread(
     threadId: string,
     user?: User,

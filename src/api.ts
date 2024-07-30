@@ -117,13 +117,6 @@ steps {
   ${stepFields}
 }`;
 
-/**
- * Serializes the step object with a suffix ID to each key.
- *
- * @param object - The step object to serialize.
- * @param id - The numeric identifier to append to each key in the serialized object.
- * @returns A new object with serialized key-value pairs where each key is suffixed with the provided id.
- */
 function serialize(object: Utils, id: number) {
   const result: any = {};
 
@@ -134,12 +127,6 @@ function serialize(object: Utils, id: number) {
   return result;
 }
 
-/**
- * Constructs a variables object for GraphQL queries by serializing each step with a unique suffix.
- *
- * @param objects - An array of `Step` objects to be serialized and added to the variables object.
- * @returns An object containing serialized steps with keys suffixed by their index in the input array.
- */
 function variablesBuilder(objects: Utils[]) {
   let variables: any = {};
   for (let i = 0; i < objects.length; i++) {
@@ -160,13 +147,6 @@ function generationsVariablesBuilder(
   return variables;
 }
 
-/**
- * Builds a string for GraphQL field definitions for ingesting multiple steps.
- * Each step's fields are suffixed with its index to create unique variable names.
- *
- * @param steps - An array of `Step` objects. Each `Step` object represents a step to be ingested.
- * @returns A string containing GraphQL field definitions for all provided steps.
- */
 function ingestStepsFieldsBuilder(steps: Step[]) {
   let generated = '';
   for (let id = 0; id < steps.length; id++) {
@@ -190,14 +170,6 @@ function ingestStepsFieldsBuilder(steps: Step[]) {
   return generated;
 }
 
-/**
- * Constructs the arguments for a GraphQL mutation to ingest multiple steps.
- * Each step is transformed into a call to the `ingestStep` mutation with parameters
- * suffixed by the step's index to ensure uniqueness.
- *
- * @param steps - An array of `Step` objects. Each `Step` object represents a step to be ingested.
- * @returns A string containing the GraphQL mutation arguments for all provided steps.
- */
 function ingestStepsArgsBuilder(steps: Step[]) {
   let generated = '';
   for (let id = 0; id < steps.length; id++) {
@@ -227,12 +199,6 @@ function ingestStepsArgsBuilder(steps: Step[]) {
   return generated;
 }
 
-/**
- * Constructs a complete GraphQL mutation query for adding multiple steps.
- *
- * @param steps - An array of `Step` objects to be ingested. This parameter is required.
- * @returns A string representing the complete GraphQL mutation for adding steps.
- */
 function ingestStepsQueryBuilder(steps: Step[]) {
   return `
     mutation AddStep(${ingestStepsFieldsBuilder(steps)}) {
@@ -615,7 +581,6 @@ export class API {
     return result.data.deleteStep.id;
   }
 
-  // Upload
   /**
    * Uploads a file to a specified thread. This method supports uploading either through direct content or via a file path.
    * It first signs the upload through a pre-configured endpoint and then proceeds to upload the file using the signed URL.
@@ -629,7 +594,6 @@ export class API {
    * @returns An object containing the `objectKey` of the uploaded file and the signed `url`, or `null` values if the upload fails.
    * @throws {Error} Throws an error if neither `content` nor `path` is provided, or if the server response is invalid.
    */
-
   async uploadFile(params: UploadFileParamsWithContent): Promise<{
     objectKey: Maybe<string>;
     url: Maybe<string>;
@@ -717,6 +681,21 @@ export class API {
     }
   }
 
+  /**
+   * Uploads a file to a specified thread and creates an attachment object.
+   * If called inside a context, the attachment will be added to the current step and thread.
+   *
+   * @param params - The parameters for uploading a file, including:
+   * @param params.name - The name of the file.
+   * @param params.metadata - Additional metadata for the file as a key-value pair object.
+   * @param params.content - The content of the file to upload. Optional if `path` is provided.
+   * @param params.path - The path to the file to upload. Optional if `content` is provided.
+   * @param params.id - The unique identifier for the file. If not provided, a UUID will be generated.
+   * @param params.threadId - The unique identifier of the thread to which the file is being uploaded.
+   * @param params.mime - The MIME type of the file. Defaults to 'application/octet-stream' if not provided.
+   * @returns An object containing the `objectKey` of the uploaded file and the signed `url`, or `null` values if the upload fails.
+   * @throws {Error} Throws an error if neither `content` nor `path` is provided, or if the server response is invalid.
+   */
   async createAttachment(
     params: UploadFileParamsWithContent & CreateAttachmentParams
   ): Promise<Attachment>;
@@ -763,7 +742,6 @@ export class API {
     return attachment;
   }
 
-  // Generation
   /**
    * Retrieves a paginated list of Generations based on the provided filters and sorting order.
    *
@@ -873,7 +851,6 @@ export class API {
     return response.data.createGeneration as PersistedGeneration;
   }
 
-  // Thread
   /**
    * Upserts a Thread with new information.
    *
@@ -1091,7 +1068,6 @@ export class API {
     return response.data.deleteThread.id;
   }
 
-  // User
   /**
    * Retrieves a list of users with optional filters.
    *
@@ -1296,7 +1272,6 @@ export class API {
     return result.data.deleteParticipant.id;
   }
 
-  // Score
   /**
    * Get all scores connected to the platform.
    *
@@ -1515,8 +1490,6 @@ export class API {
     const result = await this.makeGqlCall(query, variables);
     return result.data.deleteScore;
   }
-
-  // Dataset
 
   /**
    * List all datasets in the platform.
@@ -1819,6 +1792,13 @@ export class API {
     return new DatasetItem(result.data.addGenerationToDataset);
   }
 
+  /**
+   * Adds multiple generation items to a dataset.
+   *
+   * @param datasetId - The unique identifier of the dataset. This parameter is required.
+   * @param generationIds - An array of unique identifiers for the generations to be added. This parameter is required.
+   * @returns An array of `DatasetItem` instances populated with the data of the newly added generations
+   */
   public async addGenerationsToDataset(
     datasetId: string,
     generationIds: string[]
@@ -1830,6 +1810,15 @@ export class API {
     return Object.values(result.data).map((x: any) => new DatasetItem(x));
   }
 
+  /**
+   * Creates a new dataset experiment.
+   * @param datasetExperiment
+   * @param datasetExperiment.name The name of the dataset experiment.
+   * @param datasetExperiment.datasetId The dataset ID to associate with the experiment.
+   * @param datasetExperiment.promptId The prompt ID to associate with the experiment.
+   * @param datasetExperiment.params The parameters for the experiment as a key-value pair object or an array of the same.
+   * @returns The newly created dataset experiment object.
+   */
   public async createExperiment(datasetExperiment: {
     name: string;
     datasetId?: string;
@@ -1854,6 +1843,18 @@ export class API {
     return new DatasetExperiment(this, result.data.createDatasetExperiment);
   }
 
+  /**
+   * Creates a new dataset experiment item.
+   *
+   * @param parameters
+   * @param parameters.datasetExperimentId The dataset experiment ID to associate with the item (required)
+   * @param parameters.scores An array of scores to associate with the item (required)
+   * @param parameters.datasetItemId The ID of the dataset item (optional)
+   * @param parameters.experimentRunId The ID of the experiment run (optional)
+   * @param parameters.input The input data for the item (optional)
+   * @param parameters.output The output data for the item (optional)
+   * @returns The dataset experiment object.
+   */
   public async createExperimentItem({
     datasetExperimentId,
     datasetItemId,
@@ -1895,7 +1896,6 @@ export class API {
     });
   }
 
-  // Prompt
   /**
    * Create a new prompt lineage.
    *
@@ -1949,6 +1949,7 @@ export class API {
    * @param name The name of the prompt to retrieve or create.
    * @param templateMessages A list of template messages for the prompt.
    * @param settings Optional settings for the prompt.
+   * @param tools Optional tools for the prompt.
    * @returns The prompt that was retrieved or created.
    */
   public async getOrCreatePrompt(
@@ -2064,7 +2065,7 @@ export class API {
     return await this.getPromptWithQuery(query, { name, version });
   }
 
-  public async getPromptWithQuery(
+  private async getPromptWithQuery(
     query: string,
     variables: Record<string, any>
   ) {

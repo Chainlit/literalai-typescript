@@ -3,9 +3,9 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { API } from './api';
 import { ExperimentRun } from './evaluation/experiment-run';
 import instrumentation from './instrumentation';
+import openai from './instrumentation/openai-syncer';
 import { Step, StepConstructor } from './observability/step';
 import { Thread, ThreadConstructor } from './observability/thread';
-import openai from './openai';
 import { Environment } from './utils';
 
 export * from './utils';
