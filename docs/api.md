@@ -322,6 +322,18 @@ Returns the current step from the context or null if none.
 
 The current step, if any.
 
+##### \_currentExperimentRunId()
+
+> **\_currentExperimentRunId**(): `null` \| `string`
+
+Returns the current experiment from the context or null if none.
+
+###### Returns
+
+`null` \| `string`
+
+The current experiment, if any.
+
 ##### getCurrentThread()
 
 > **getCurrentThread**(): `Thread`
@@ -347,6 +359,19 @@ WARNING : this will throw if run outside of a step context.
 `Step`
 
 The current step, if any.
+
+##### getCurrentExperimentRunId()
+
+> **getCurrentExperimentRunId**(): `string`
+
+Gets the current experiment run ID from the context.
+WARNING : this will throw if run outside of an experiment context.
+
+###### Returns
+
+`string`
+
+The current experiment, if any.
 
 ***
 
