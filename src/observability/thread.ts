@@ -108,7 +108,8 @@ export class Thread extends ThreadFields {
     const output = await this.client.store.run(
       {
         currentThread: this,
-        currentExperimentRunId: currentStore?.currentExperimentRunId ?? null,
+        currentExperimentItemRunId:
+          currentStore?.currentExperimentItemRunId ?? null,
         currentStep: null
       },
       () => cb(this)

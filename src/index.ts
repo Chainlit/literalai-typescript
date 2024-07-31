@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { API } from './api';
-import { ExperimentRun } from './evaluation/experiment-run';
+import { ExperimentItemRun } from './evaluation/experiment-item-run';
 import instrumentation from './instrumentation';
 import openai from './instrumentation/openai-syncer';
 import { Step, StepConstructor } from './observability/step';
@@ -16,7 +16,7 @@ export type * from './instrumentation';
 type StoredContext = {
   currentThread: Thread | null;
   currentStep: Step | null;
-  currentExperimentRunId: string | null;
+  currentExperimentItemRunId?: string | null;
 };
 
 const storage = new AsyncLocalStorage<StoredContext>();
@@ -87,13 +87,8 @@ export class LiteralClient {
     return this.step({ ...data, type: 'run' });
   }
 
-  /**
-   * Creates a new Experiment Run.
-   * @param data Optional initial data for the step.
-   * @returns A new step instance.
-   */
-  experimentRun(data?: Omit<StepConstructor, 'type' | 'name'>) {
-    return new ExperimentRun(this, {
+  experimentItemRun(data?: Omit<StepConstructor, 'type' | 'name'>) {
+    return new ExperimentItemRun(this, {
       ...(data || {}),
       name: 'Experiment Run',
       type: 'run'
@@ -124,10 +119,10 @@ export class LiteralClient {
    * Returns the current experiment from the context or null if none.
    * @returns The current experiment, if any.
    */
-  _currentExperimentRunId(): string | null {
+  _currentExperimentItemRunId(): string | null {
     const store = storage.getStore();
 
-    return store?.currentExperimentRunId || null;
+    return store?.currentExperimentItemRunId || null;
   }
 
   /**
@@ -169,15 +164,15 @@ export class LiteralClient {
    * WARNING : this will throw if run outside of an experiment context.
    * @returns The current experiment, if any.
    */
-  getCurrentExperimentRunId(): string {
+  getCurrentExperimentItemRunId(): string {
     const store = storage.getStore();
 
-    if (!store?.currentExperimentRunId) {
+    if (!store?.currentExperimentItemRunId) {
       throw new Error(
         'Literal AI SDK : tried to access current experiment outside of a context.'
       );
     }
 
-    return store.currentExperimentRunId;
+    return store?.currentExperimentItemRunId;
   }
 }

@@ -3,14 +3,14 @@ import { API } from '../api';
 import { Step, StepConstructor } from '../observability/step';
 
 /**
- * Represents a step in a process or workflow, extending the fields and methods from StepFields.
+ * Represents an item in an experiment.
  */
-export class ExperimentRun extends Step {
+export class ExperimentItemRun extends Step {
   api: API;
   client: LiteralClient;
 
   /**
-   * Constructs a new ExperimentRun instance.
+   * Constructs a new ExperimentItemRun instance.
    * @param api The API instance to be used for sending and managing steps.
    * @param data The initial data for the step, excluding utility properties.
    */
@@ -24,13 +24,6 @@ export class ExperimentRun extends Step {
     this.api = client.api;
   }
 
-  /**
-   * Wraps the provided callback in a new run with the environment set to "experiment".
-   * Experiment runs are filtered out of the Literal AI UI.
-   * @param cb The callback to wrap in a new step.
-   * @param updateStep Optional update to the step data after the callback is executed.
-   * @returns The output of the callback.
-   */
   async wrap<Output>(
     cb: (step: Step) => Output | Promise<Output>,
     updateStep?:
@@ -46,7 +39,7 @@ export class ExperimentRun extends Step {
       {
         currentThread: currentStore?.currentThread ?? null,
         currentStep: this,
-        currentExperimentRunId: this.id ?? null
+        currentExperimentItemRunId: this.id ?? null
       },
       async () => {
         try {
@@ -56,7 +49,7 @@ export class ExperimentRun extends Step {
           // Clear the currentExperimentRunId after execution
           const updatedStore = this.client.store.getStore();
           if (updatedStore) {
-            updatedStore.currentExperimentRunId = null;
+            updatedStore.currentExperimentItemRunId = null;
           }
         }
       }

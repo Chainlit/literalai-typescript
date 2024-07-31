@@ -219,7 +219,7 @@ export class DatasetExperiment extends Utils {
       'id' | 'datasetExperimentId'
     >
   ) {
-    const experimentRunId = this.api.client._currentExperimentRunId();
+    const experimentRunId = this.api.client._currentExperimentItemRunId();
 
     const datasetExperimentItem = new DatasetExperimentItem({
       ...itemFields,

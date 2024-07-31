@@ -165,7 +165,8 @@ export class Step extends StepFields {
     const output = await this.client.store.run(
       {
         currentThread: currentStore?.currentThread ?? null,
-        currentExperimentRunId: currentStore?.currentExperimentRunId ?? null,
+        currentExperimentItemRunId:
+          currentStore?.currentExperimentItemRunId ?? null,
         currentStep: this
       },
       () => cb(this)
