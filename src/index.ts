@@ -5,7 +5,7 @@ import instrumentation from './instrumentation';
 import openai from './openai';
 import {
   Environment,
-  ExperimentRun,
+  ExperimentItemRun,
   Step,
   StepConstructor,
   Thread,
@@ -20,7 +20,7 @@ export type * from './instrumentation';
 type StoredContext = {
   currentThread: Thread | null;
   currentStep: Step | null;
-  currentExperimentRunId?: string | null;
+  currentExperimentItemRunId?: string | null;
 };
 
 const storage = new AsyncLocalStorage<StoredContext>();
@@ -67,8 +67,8 @@ export class LiteralClient {
     return this.step({ ...data, type: 'run' });
   }
 
-  experimentRun(data?: Omit<StepConstructor, 'type' | 'name'>) {
-    return new ExperimentRun(this, {
+  experimentItemRun(data?: Omit<StepConstructor, 'type' | 'name'>) {
+    return new ExperimentItemRun(this, {
       ...(data || {}),
       name: 'Experiment Run',
       type: 'run'
