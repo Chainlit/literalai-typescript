@@ -229,7 +229,8 @@ export class Thread extends ThreadFields {
     const output = await this.client.store.run(
       {
         currentThread: this,
-        currentExperimentRunId: currentStore?.currentExperimentRunId ?? null,
+        currentExperimentItemRunId:
+          currentStore?.currentExperimentItemRunId ?? null,
         currentStep: null
       },
       () => cb(this)
@@ -418,7 +419,8 @@ export class Step extends StepFields {
     const output = await this.client.store.run(
       {
         currentThread: currentStore?.currentThread ?? null,
-        currentExperimentRunId: currentStore?.currentExperimentRunId ?? null,
+        currentExperimentItemRunId:
+          currentStore?.currentExperimentItemRunId ?? null,
         currentStep: this
       },
       () => cb(this)
@@ -457,14 +459,14 @@ export class Step extends StepFields {
 }
 
 /**
- * Represents a step in a process or workflow, extending the fields and methods from StepFields.
+ * Represents an item in an experiment.
  */
-export class ExperimentRun extends Step {
+export class ExperimentItemRun extends Step {
   api: API;
   client: LiteralClient;
 
   /**
-   * Constructs a new ExperimentRun instance.
+   * Constructs a new ExperimentItemRun instance.
    * @param api The API instance to be used for sending and managing steps.
    * @param data The initial data for the step, excluding utility properties.
    */
@@ -493,7 +495,7 @@ export class ExperimentRun extends Step {
       {
         currentThread: currentStore?.currentThread ?? null,
         currentStep: this,
-        currentExperimentRunId: this.id ?? null
+        currentExperimentItemRunId: this.id ?? null
       },
       async () => {
         try {
@@ -503,7 +505,7 @@ export class ExperimentRun extends Step {
           // Clear the currentExperimentRunId after execution
           const updatedStore = this.client.store.getStore();
           if (updatedStore) {
-            updatedStore.currentExperimentRunId = null;
+            updatedStore.currentExperimentItemRunId = null;
           }
         }
       }
@@ -737,7 +739,7 @@ export class DatasetExperiment extends Utils {
     >
   ) {
     const currentStore = this.api.client.store.getStore();
-    const experimentRunId = currentStore?.currentExperimentRunId;
+    const experimentRunId = currentStore?.currentExperimentItemRunId;
 
     const datasetExperimentItem = new DatasetExperimentItem({
       ...itemFields,

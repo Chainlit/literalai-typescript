@@ -358,7 +358,7 @@ describe('Wrapper', () => {
       let persistedExperimentItem: DatasetExperimentItem | undefined =
         undefined;
 
-      await client.experimentRun().wrap(async () => {
+      await client.experimentItemRun().wrap(async () => {
         const scores = [
           {
             name: 'context_relevancy',
