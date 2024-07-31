@@ -219,6 +219,7 @@ describe('OpenAI Instrumentation', () => {
           n: 1
         });
 
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         const {
           data: [step]
         } = await client.api.getSteps({
