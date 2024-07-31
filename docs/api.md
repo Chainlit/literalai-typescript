@@ -12,7 +12,7 @@
 
 ##### new LiteralClient(options)
 
-> **new LiteralClient**(`options`): [`LiteralClient`](README.md#literalclient)
+> **new LiteralClient**(`options`): [`LiteralClient`](api.md#literalclient)
 
 Initialize a new Literal AI Client.
 
@@ -26,9 +26,9 @@ The API key to use for the Literal AI API. Defaults to the LITERAL_API_KEY envir
 
 ▪ **options.apiUrl?**: `string`
 
-The URL of the Literal AI API. Defaults to the LITERAL_API_URL environment variable.
+The URL of the Literal AI API. Defaults to the LITERAL_API_URL env var, or https://cloud.getliteral.ai.
 
-▪ **options.environment?**: [`Environment`](README.md#environment)
+▪ **options.environment?**: [`Environment`](api.md#environment)
 
 The environment to use for the Literal AI API.
 
@@ -38,7 +38,7 @@ If set to true, no call will be made to the Literal AI API.
 
 ###### Returns
 
-[`LiteralClient`](README.md#literalclient)
+[`LiteralClient`](api.md#literalclient)
 
 A new LiteralClient instance.
 
@@ -86,7 +86,7 @@ Its functions will be augmented with `literalaiTags` and `literalaiMetadata` opt
 
 ###### Parameters
 
-▪ **options?**: [`OpenAIGlobalOptions`](README.md#openaiglobaloptions)
+▪ **options?**: [`OpenAIGlobalOptions`](api.md#openaiglobaloptions)
 
 ###### Returns
 
@@ -381,21 +381,21 @@ Represents a utility class with serialization capabilities.
 
 #### Extends
 
-- [`Utils`](README.md#utils)
+- [`Utils`](api.md#utils)
 
 #### Constructors
 
 ##### new BaseGeneration()
 
-> **new BaseGeneration**(): [`BaseGeneration`](README.md#basegeneration)
+> **new BaseGeneration**(): [`BaseGeneration`](api.md#basegeneration)
 
 ###### Returns
 
-[`BaseGeneration`](README.md#basegeneration)
+[`BaseGeneration`](api.md#basegeneration)
 
 ###### Inherited from
 
-[`Utils`](README.md#utils).[`constructor`](README.md#constructors-4)
+[`Utils`](api.md#utils).[`constructor`](api.md#constructors-4)
 
 #### Properties
 
@@ -405,59 +405,59 @@ Represents a utility class with serialization capabilities.
 
 ##### provider
 
-> **provider**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **provider**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ##### model
 
-> **model**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **model**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ##### id
 
-> **id**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **id**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ##### tags
 
-> **tags**?: [`Maybe`](README.md#maybet)\<`string`[]\>
+> **tags**?: [`Maybe`](api.md#maybet)\<`string`[]\>
 
 ##### error
 
-> **error**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **error**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ##### variables
 
-> **variables**?: [`Maybe`](README.md#maybet)\<`Record`\<`string`, `any`\>\>
+> **variables**?: [`Maybe`](api.md#maybet)\<`Record`\<`string`, `any`\>\>
 
 ##### settings
 
-> **settings**?: [`Maybe`](README.md#maybet)\<[`ILLMSettings`](README.md#illmsettings)\>
+> **settings**?: [`Maybe`](api.md#maybet)\<[`ILLMSettings`](api.md#illmsettings)\>
 
 ##### tools
 
-> **tools**?: [`Maybe`](README.md#maybet)\<[`ITool`](README.md#itool)[]\>
+> **tools**?: [`Maybe`](api.md#maybet)\<[`ITool`](api.md#itool)[]\>
 
 ##### tokenCount
 
-> **tokenCount**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **tokenCount**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ##### inputTokenCount
 
-> **inputTokenCount**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **inputTokenCount**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ##### outputTokenCount
 
-> **outputTokenCount**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **outputTokenCount**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ##### ttFirstToken
 
-> **ttFirstToken**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **ttFirstToken**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ##### tokenThroughputInSeconds
 
-> **tokenThroughputInSeconds**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **tokenThroughputInSeconds**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ##### duration
 
-> **duration**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **duration**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 #### Methods
 
@@ -476,7 +476,7 @@ A dictionary representing the serialized properties of the object.
 
 ###### Inherited from
 
-[`Utils`](README.md#utils).[`serialize`](README.md#serialize-3)
+[`Utils`](api.md#utils).[`serialize`](api.md#serialize-3)
 
 ***
 
@@ -486,25 +486,25 @@ Represents a utility class with serialization capabilities.
 
 #### Extends
 
-- [`BaseGeneration`](README.md#basegeneration)
+- [`BaseGeneration`](api.md#basegeneration)
 
 #### Constructors
 
 ##### new CompletionGeneration(data)
 
-> **new CompletionGeneration**(`data`): [`CompletionGeneration`](README.md#completiongeneration)
+> **new CompletionGeneration**(`data`): [`CompletionGeneration`](api.md#completiongeneration)
 
 ###### Parameters
 
-▪ **data**: [`OmitUtils`](README.md#omitutilst)\<[`CompletionGeneration`](README.md#completiongeneration)\>
+▪ **data**: [`OmitUtils`](api.md#omitutilst)\<[`CompletionGeneration`](api.md#completiongeneration)\>
 
 ###### Returns
 
-[`CompletionGeneration`](README.md#completiongeneration)
+[`CompletionGeneration`](api.md#completiongeneration)
 
 ###### Overrides
 
-[`BaseGeneration`](README.md#basegeneration).[`constructor`](README.md#constructors-1)
+[`BaseGeneration`](api.md#basegeneration).[`constructor`](api.md#constructors-1)
 
 #### Properties
 
@@ -514,131 +514,131 @@ Represents a utility class with serialization capabilities.
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`promptId`](README.md#promptid)
+[`BaseGeneration`](api.md#basegeneration).[`promptId`](api.md#promptid)
 
 ##### provider
 
-> **provider**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **provider**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`provider`](README.md#provider)
+[`BaseGeneration`](api.md#basegeneration).[`provider`](api.md#provider)
 
 ##### model
 
-> **model**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **model**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`model`](README.md#model)
+[`BaseGeneration`](api.md#basegeneration).[`model`](api.md#model)
 
 ##### id
 
-> **id**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **id**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`id`](README.md#id)
+[`BaseGeneration`](api.md#basegeneration).[`id`](api.md#id)
 
 ##### tags
 
-> **tags**?: [`Maybe`](README.md#maybet)\<`string`[]\>
+> **tags**?: [`Maybe`](api.md#maybet)\<`string`[]\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`tags`](README.md#tags)
+[`BaseGeneration`](api.md#basegeneration).[`tags`](api.md#tags)
 
 ##### error
 
-> **error**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **error**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`error`](README.md#error)
+[`BaseGeneration`](api.md#basegeneration).[`error`](api.md#error)
 
 ##### variables
 
-> **variables**?: [`Maybe`](README.md#maybet)\<`Record`\<`string`, `any`\>\>
+> **variables**?: [`Maybe`](api.md#maybet)\<`Record`\<`string`, `any`\>\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`variables`](README.md#variables)
+[`BaseGeneration`](api.md#basegeneration).[`variables`](api.md#variables)
 
 ##### settings
 
-> **settings**?: [`Maybe`](README.md#maybet)\<[`ILLMSettings`](README.md#illmsettings)\>
+> **settings**?: [`Maybe`](api.md#maybet)\<[`ILLMSettings`](api.md#illmsettings)\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`settings`](README.md#settings)
+[`BaseGeneration`](api.md#basegeneration).[`settings`](api.md#settings)
 
 ##### tools
 
-> **tools**?: [`Maybe`](README.md#maybet)\<[`ITool`](README.md#itool)[]\>
+> **tools**?: [`Maybe`](api.md#maybet)\<[`ITool`](api.md#itool)[]\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`tools`](README.md#tools)
+[`BaseGeneration`](api.md#basegeneration).[`tools`](api.md#tools)
 
 ##### tokenCount
 
-> **tokenCount**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **tokenCount**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`tokenCount`](README.md#tokencount)
+[`BaseGeneration`](api.md#basegeneration).[`tokenCount`](api.md#tokencount)
 
 ##### inputTokenCount
 
-> **inputTokenCount**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **inputTokenCount**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`inputTokenCount`](README.md#inputtokencount)
+[`BaseGeneration`](api.md#basegeneration).[`inputTokenCount`](api.md#inputtokencount)
 
 ##### outputTokenCount
 
-> **outputTokenCount**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **outputTokenCount**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`outputTokenCount`](README.md#outputtokencount)
+[`BaseGeneration`](api.md#basegeneration).[`outputTokenCount`](api.md#outputtokencount)
 
 ##### ttFirstToken
 
-> **ttFirstToken**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **ttFirstToken**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`ttFirstToken`](README.md#ttfirsttoken)
+[`BaseGeneration`](api.md#basegeneration).[`ttFirstToken`](api.md#ttfirsttoken)
 
 ##### tokenThroughputInSeconds
 
-> **tokenThroughputInSeconds**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **tokenThroughputInSeconds**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`tokenThroughputInSeconds`](README.md#tokenthroughputinseconds)
+[`BaseGeneration`](api.md#basegeneration).[`tokenThroughputInSeconds`](api.md#tokenthroughputinseconds)
 
 ##### duration
 
-> **duration**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **duration**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`duration`](README.md#duration)
+[`BaseGeneration`](api.md#basegeneration).[`duration`](api.md#duration)
 
 ##### type
 
-> **type**?: [`GenerationType`](README.md#generationtype) = `'COMPLETION'`
+> **type**?: [`GenerationType`](api.md#generationtype) = `'COMPLETION'`
 
 ##### prompt
 
-> **prompt**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **prompt**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ##### completion
 
-> **completion**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **completion**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 #### Methods
 
@@ -657,7 +657,7 @@ A dictionary representing the serialized properties of the object.
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`serialize`](README.md#serialize)
+[`BaseGeneration`](api.md#basegeneration).[`serialize`](api.md#serialize)
 
 ***
 
@@ -667,25 +667,25 @@ Represents a utility class with serialization capabilities.
 
 #### Extends
 
-- [`BaseGeneration`](README.md#basegeneration)
+- [`BaseGeneration`](api.md#basegeneration)
 
 #### Constructors
 
 ##### new ChatGeneration(data)
 
-> **new ChatGeneration**(`data`): [`ChatGeneration`](README.md#chatgeneration)
+> **new ChatGeneration**(`data`): [`ChatGeneration`](api.md#chatgeneration)
 
 ###### Parameters
 
-▪ **data**: [`OmitUtils`](README.md#omitutilst)\<[`ChatGeneration`](README.md#chatgeneration)\>
+▪ **data**: [`OmitUtils`](api.md#omitutilst)\<[`ChatGeneration`](api.md#chatgeneration)\>
 
 ###### Returns
 
-[`ChatGeneration`](README.md#chatgeneration)
+[`ChatGeneration`](api.md#chatgeneration)
 
 ###### Overrides
 
-[`BaseGeneration`](README.md#basegeneration).[`constructor`](README.md#constructors-1)
+[`BaseGeneration`](api.md#basegeneration).[`constructor`](api.md#constructors-1)
 
 #### Properties
 
@@ -695,131 +695,131 @@ Represents a utility class with serialization capabilities.
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`promptId`](README.md#promptid)
+[`BaseGeneration`](api.md#basegeneration).[`promptId`](api.md#promptid)
 
 ##### provider
 
-> **provider**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **provider**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`provider`](README.md#provider)
+[`BaseGeneration`](api.md#basegeneration).[`provider`](api.md#provider)
 
 ##### model
 
-> **model**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **model**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`model`](README.md#model)
+[`BaseGeneration`](api.md#basegeneration).[`model`](api.md#model)
 
 ##### id
 
-> **id**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **id**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`id`](README.md#id)
+[`BaseGeneration`](api.md#basegeneration).[`id`](api.md#id)
 
 ##### tags
 
-> **tags**?: [`Maybe`](README.md#maybet)\<`string`[]\>
+> **tags**?: [`Maybe`](api.md#maybet)\<`string`[]\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`tags`](README.md#tags)
+[`BaseGeneration`](api.md#basegeneration).[`tags`](api.md#tags)
 
 ##### error
 
-> **error**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **error**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`error`](README.md#error)
+[`BaseGeneration`](api.md#basegeneration).[`error`](api.md#error)
 
 ##### variables
 
-> **variables**?: [`Maybe`](README.md#maybet)\<`Record`\<`string`, `any`\>\>
+> **variables**?: [`Maybe`](api.md#maybet)\<`Record`\<`string`, `any`\>\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`variables`](README.md#variables)
+[`BaseGeneration`](api.md#basegeneration).[`variables`](api.md#variables)
 
 ##### settings
 
-> **settings**?: [`Maybe`](README.md#maybet)\<[`ILLMSettings`](README.md#illmsettings)\>
+> **settings**?: [`Maybe`](api.md#maybet)\<[`ILLMSettings`](api.md#illmsettings)\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`settings`](README.md#settings)
+[`BaseGeneration`](api.md#basegeneration).[`settings`](api.md#settings)
 
 ##### tools
 
-> **tools**?: [`Maybe`](README.md#maybet)\<[`ITool`](README.md#itool)[]\>
+> **tools**?: [`Maybe`](api.md#maybet)\<[`ITool`](api.md#itool)[]\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`tools`](README.md#tools)
+[`BaseGeneration`](api.md#basegeneration).[`tools`](api.md#tools)
 
 ##### tokenCount
 
-> **tokenCount**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **tokenCount**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`tokenCount`](README.md#tokencount)
+[`BaseGeneration`](api.md#basegeneration).[`tokenCount`](api.md#tokencount)
 
 ##### inputTokenCount
 
-> **inputTokenCount**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **inputTokenCount**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`inputTokenCount`](README.md#inputtokencount)
+[`BaseGeneration`](api.md#basegeneration).[`inputTokenCount`](api.md#inputtokencount)
 
 ##### outputTokenCount
 
-> **outputTokenCount**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **outputTokenCount**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`outputTokenCount`](README.md#outputtokencount)
+[`BaseGeneration`](api.md#basegeneration).[`outputTokenCount`](api.md#outputtokencount)
 
 ##### ttFirstToken
 
-> **ttFirstToken**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **ttFirstToken**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`ttFirstToken`](README.md#ttfirsttoken)
+[`BaseGeneration`](api.md#basegeneration).[`ttFirstToken`](api.md#ttfirsttoken)
 
 ##### tokenThroughputInSeconds
 
-> **tokenThroughputInSeconds**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **tokenThroughputInSeconds**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`tokenThroughputInSeconds`](README.md#tokenthroughputinseconds)
+[`BaseGeneration`](api.md#basegeneration).[`tokenThroughputInSeconds`](api.md#tokenthroughputinseconds)
 
 ##### duration
 
-> **duration**?: [`Maybe`](README.md#maybet)\<`number`\>
+> **duration**?: [`Maybe`](api.md#maybet)\<`number`\>
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`duration`](README.md#duration)
+[`BaseGeneration`](api.md#basegeneration).[`duration`](api.md#duration)
 
 ##### type
 
-> **type**?: [`GenerationType`](README.md#generationtype) = `'CHAT'`
+> **type**?: [`GenerationType`](api.md#generationtype) = `'CHAT'`
 
 ##### messages
 
-> **messages**?: [`Maybe`](README.md#maybet)\<[`IGenerationMessage`](README.md#igenerationmessage)[]\> = `[]`
+> **messages**?: [`Maybe`](api.md#maybet)\<[`IGenerationMessage`](api.md#igenerationmessage)[]\> = `[]`
 
 ##### messageCompletion
 
-> **messageCompletion**?: [`Maybe`](README.md#maybet)\<[`IGenerationMessage`](README.md#igenerationmessage)\>
+> **messageCompletion**?: [`Maybe`](api.md#maybet)\<[`IGenerationMessage`](api.md#igenerationmessage)\>
 
 #### Methods
 
@@ -838,7 +838,7 @@ A dictionary representing the serialized properties of the object.
 
 ###### Inherited from
 
-[`BaseGeneration`](README.md#basegeneration).[`serialize`](README.md#serialize)
+[`BaseGeneration`](api.md#basegeneration).[`serialize`](api.md#serialize)
 
 ***
 
@@ -848,18 +848,18 @@ Represents a utility class with serialization capabilities.
 
 #### Extended By
 
-- [`User`](README.md#user)
-- [`BaseGeneration`](README.md#basegeneration)
+- [`User`](api.md#user)
+- [`BaseGeneration`](api.md#basegeneration)
 
 #### Constructors
 
 ##### new Utils()
 
-> **new Utils**(): [`Utils`](README.md#utils)
+> **new Utils**(): [`Utils`](api.md#utils)
 
 ###### Returns
 
-[`Utils`](README.md#utils)
+[`Utils`](api.md#utils)
 
 #### Methods
 
@@ -884,31 +884,31 @@ Represents a user with optional metadata and identifier.
 
 #### Extends
 
-- [`Utils`](README.md#utils)
+- [`Utils`](api.md#utils)
 
 #### Constructors
 
 ##### new User(data)
 
-> **new User**(`data`): [`User`](README.md#user)
+> **new User**(`data`): [`User`](api.md#user)
 
 ###### Parameters
 
-▪ **data**: [`OmitUtils`](README.md#omitutilst)\<[`User`](README.md#user)\>
+▪ **data**: [`OmitUtils`](api.md#omitutilst)\<[`User`](api.md#user)\>
 
 ###### Returns
 
-[`User`](README.md#user)
+[`User`](api.md#user)
 
 ###### Overrides
 
-[`Utils`](README.md#utils).[`constructor`](README.md#constructors-4)
+[`Utils`](api.md#utils).[`constructor`](api.md#constructors-4)
 
 #### Properties
 
 ##### id
 
-> **id**?: [`Maybe`](README.md#maybet)\<`string`\>
+> **id**?: [`Maybe`](api.md#maybet)\<`string`\>
 
 ##### identifier
 
@@ -916,7 +916,7 @@ Represents a user with optional metadata and identifier.
 
 ##### metadata
 
-> **metadata**?: [`Maybe`](README.md#maybet)\<`Record`\<`string`, `any`\>\>
+> **metadata**?: [`Maybe`](api.md#maybet)\<`Record`\<`string`, `any`\>\>
 
 #### Methods
 
@@ -935,7 +935,7 @@ A dictionary representing the serialized properties of the object.
 
 ###### Inherited from
 
-[`Utils`](README.md#utils).[`serialize`](README.md#serialize-3)
+[`Utils`](api.md#utils).[`serialize`](api.md#serialize-3)
 
 ## Interfaces
 
@@ -981,11 +981,11 @@ A dictionary representing the serialized properties of the object.
 
 ##### content
 
-> **content**: `null` \| `string` \| ([`ITextContent`](README.md#itextcontent) \| [`IImageUrlContent`](README.md#iimageurlcontent))[]
+> **content**: `null` \| `string` \| ([`ITextContent`](api.md#itextcontent) \| [`IImageUrlContent`](api.md#iimageurlcontent))[]
 
 ##### role
 
-> **role**: [`GenerationMessageRole`](README.md#generationmessagerole)
+> **role**: [`GenerationMessageRole`](api.md#generationmessagerole)
 
 ##### name
 
@@ -1043,7 +1043,7 @@ A dictionary representing the serialized properties of the object.
 
 ##### function
 
-> **function**: [`IFunction`](README.md#ifunction)
+> **function**: [`IFunction`](api.md#ifunction)
 
 ## Type Aliases
 
@@ -1055,11 +1055,11 @@ A dictionary representing the serialized properties of the object.
 
 ##### tags
 
-> **tags**?: [`Maybe`](README.md#maybet)\<`string`[]\>
+> **tags**?: [`Maybe`](api.md#maybet)\<`string`[]\>
 
 ##### metadata
 
-> **metadata**?: [`Maybe`](README.md#maybet)\<`Record`\<`string`, `any`\>\>
+> **metadata**?: [`Maybe`](api.md#maybet)\<`Record`\<`string`, `any`\>\>
 
 ***
 
@@ -1083,13 +1083,13 @@ A dictionary representing the serialized properties of the object.
 
 ### Generation
 
-> **Generation**: [`OmitUtils`](README.md#omitutilst)\<[`CompletionGeneration`](README.md#completiongeneration)\> \| [`OmitUtils`](README.md#omitutilst)\<[`ChatGeneration`](README.md#chatgeneration)\>
+> **Generation**: [`OmitUtils`](api.md#omitutilst)\<[`CompletionGeneration`](api.md#completiongeneration)\> \| [`OmitUtils`](api.md#omitutilst)\<[`ChatGeneration`](api.md#chatgeneration)\>
 
 ***
 
 ### PersistedGeneration
 
-> **PersistedGeneration**: [`Generation`](README.md#generation) & `object`
+> **PersistedGeneration**: [`Generation`](api.md#generation) & `object`
 
 #### Type declaration
 
@@ -1113,7 +1113,7 @@ A dictionary representing the serialized properties of the object.
 
 ### OmitUtils`<T>`
 
-> **OmitUtils**\<`T`\>: `Omit`\<`T`, keyof [`Utils`](README.md#utils)\>
+> **OmitUtils**\<`T`\>: `Omit`\<`T`, keyof [`Utils`](api.md#utils)\>
 
 #### Type parameters
 
@@ -1167,7 +1167,7 @@ A dictionary representing the serialized properties of the object.
 
 ##### pageInfo
 
-> **pageInfo**: [`PageInfo`](README.md#pageinfo)
+> **pageInfo**: [`PageInfo`](api.md#pageinfo)
 
 ## Functions
 

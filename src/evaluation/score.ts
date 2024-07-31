@@ -8,8 +8,8 @@ class ScoreFields extends Utils {
   generationId?: Maybe<string>;
   datasetExperimentItemId?: Maybe<string>;
   name: string = 'user-feedback';
-  value: number = 0;
-  type: ScoreType = 'AI';
+  value: number = 1;
+  type: ScoreType = 'HUMAN';
   scorer?: Maybe<string>;
   comment?: Maybe<string>;
   tags?: Maybe<string[]>;

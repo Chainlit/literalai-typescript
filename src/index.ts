@@ -31,7 +31,7 @@ export class LiteralClient {
    * Initialize a new Literal AI Client.
    * @param options
    * @param options.apiKey The API key to use for the Literal AI API. Defaults to the LITERAL_API_KEY environment variable.
-   * @param options.apiUrl The URL of the Literal AI API. Defaults to the LITERAL_API_URL environment variable.
+   * @param options.apiUrl The URL of the Literal AI API. Defaults to the LITERAL_API_URL env var, or https://cloud.getliteral.ai.
    * @param options.environment The environment to use for the Literal AI API.
    * @param options.disabled If set to true, no call will be made to the Literal AI API.
    * @returns A new LiteralClient instance.
