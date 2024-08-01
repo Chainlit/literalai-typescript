@@ -82,7 +82,6 @@ export class Thread extends ThreadFields {
     await this.api.upsertThread({
       threadId: this.id,
       name: this.name,
-      environment: this.environment,
       metadata: this.metadata,
       participantId: this.participantId,
       tags: this.tags

@@ -868,7 +868,6 @@ export class API {
     metadata?: Maybe<Record<string, any>>;
     participantId?: Maybe<string>;
     tags?: Maybe<string[]>;
-    environment?: Maybe<Environment>;
   }): Promise<CleanThreadFields>;
 
   /**
@@ -887,8 +886,7 @@ export class API {
     name?: Maybe<string>,
     metadata?: Maybe<Record<string, any>>,
     participantId?: Maybe<string>,
-    tags?: Maybe<string[]>,
-    environment?: Maybe<Environment>
+    tags?: Maybe<string[]>
   ): Promise<CleanThreadFields>;
 
   async upsertThread(
@@ -896,8 +894,7 @@ export class API {
     name?: Maybe<string>,
     metadata?: Maybe<Record<string, any>>,
     participantId?: Maybe<string>,
-    tags?: Maybe<string[]>,
-    environment?: Maybe<Environment>
+    tags?: Maybe<string[]>
   ): Promise<CleanThreadFields> {
     let threadId = threadIdOrOptions;
     if (typeof threadIdOrOptions === 'object') {
@@ -906,13 +903,6 @@ export class API {
       metadata = threadIdOrOptions.metadata;
       participantId = threadIdOrOptions.participantId;
       tags = threadIdOrOptions.tags;
-      environment = threadIdOrOptions.environment;
-    }
-
-    const originalEnvironment = this.environment;
-
-    if (environment && environment !== originalEnvironment) {
-      this.environment = environment;
     }
 
     const query = `
@@ -944,10 +934,6 @@ export class API {
     };
 
     const response = await this.makeGqlCall(query, variables);
-
-    if (environment && environment !== originalEnvironment) {
-      this.environment = originalEnvironment;
-    }
 
     return new Thread(this.client, response.data.upsertThread);
   }
