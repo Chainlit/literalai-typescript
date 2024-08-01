@@ -1065,6 +1065,7 @@ export class API {
     const variables = { threadId: id };
 
     const response = await this.makeGqlCall(query, variables);
+
     return response.data.deleteThread.id;
   }
 

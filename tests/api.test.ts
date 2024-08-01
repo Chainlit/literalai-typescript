@@ -226,6 +226,7 @@ describe('End to end tests for the SDK', function () {
 
   it('should test steps', async function () {
     const thread = await client.thread({ id: uuidv4() });
+
     const step = await thread
       .step({
         name: 'test',
@@ -234,9 +235,7 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
-    if (!step.id) {
-      throw new Error('Step id is null');
-    }
+    expect(step.id).not.toBeNull();
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -245,7 +244,7 @@ describe('End to end tests for the SDK', function () {
         {
           field: 'id',
           operator: 'eq',
-          value: step.id
+          value: step.id!
         },
         {
           field: 'tags',
@@ -509,7 +508,7 @@ describe('End to end tests for the SDK', function () {
     });
 
     it('should add a step to a dataset', async () => {
-      const thread = await client.thread({ id: uuidv4() }).upsert();
+      const thread = await client.thread({ id: uuidv4() });
       const step = await thread
         .step({
           name: 'Run',
@@ -527,6 +526,8 @@ describe('End to end tests for the SDK', function () {
           output: { content: 'hello!' }
         })
         .send();
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       const datasetItem = await dataset.addStep(step.id!);
 
