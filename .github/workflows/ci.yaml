@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+    branches: ['main']
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js 19.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 19.x
+      - name: Install dependencies
+        run: npm i
+      - name: Prettier
+        run: npx prettier --check '**/*.{js,jsx,ts,tsx}'
+      - name: ESLint
+        run: npx eslint --ext .js,.jsx,.ts,.tsx .
+      - name: Type check
+        run: npx tsc --noEmit
+  e2e-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js 19.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 19.x
+      - name: Install dependencies
+        run: npm i
+      - name: Test with jest
+        env:
+          LITERAL_API_URL: ${{ secrets.LITERAL_API_URL }}
+          LITERAL_API_KEY: ${{ secrets.LITERAL_API_KEY }}
+        run: npm test
