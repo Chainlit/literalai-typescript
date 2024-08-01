@@ -1,0 +1,24 @@
+name: Publish Package to npmjs
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+jobs:
+  tests:
+    uses: ./.github/workflows/ci.yaml
+    secrets: inherit
+  publish:
+    runs-on: ubuntu-latest
+    needs: [tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '19.x'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install dependencies
+        run: npm i
+      - run: npm run build
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
