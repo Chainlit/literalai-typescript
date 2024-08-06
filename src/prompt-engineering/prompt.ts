@@ -46,6 +46,11 @@ class PromptFields extends Utils {
   variables!: IPromptVariableDefinition[];
 }
 
+export interface IPromptRollout {
+  version: number;
+  rollout: number;
+}
+
 export type PromptConstructor = OmitUtils<PromptFields>;
 
 export class Prompt extends PromptFields {

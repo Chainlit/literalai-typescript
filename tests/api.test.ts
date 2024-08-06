@@ -600,7 +600,7 @@ describe('End to end tests for the SDK', function () {
     it('should format a prompt with default values', async () => {
       const prompt = await client.api.getPrompt('Default');
 
-      const formatted = prompt!.format();
+      const formatted = prompt!.formatMessages();
 
       const expected = `Hello, this is a test value and this
 
@@ -617,7 +617,7 @@ is a templated list.`;
     it('should format a prompt with custom values', async () => {
       const prompt = await client.api.getPrompt('Default');
 
-      const formatted = prompt!.format({ test_var: 'Edited value' });
+      const formatted = prompt!.formatMessages({ test_var: 'Edited value' });
 
       const expected = `Hello, this is a Edited value and this
 
@@ -629,6 +629,17 @@ is a templated list.`;
 
       expect(formatted.length).toBe(1);
       expect(formatted[0].content).toBe(expected);
+    });
+
+    it('should get a prompt A/B testing configuration', async () => {
+      await client.api.updatePromptAbTesting('Default', [
+        { version: 0, rollout: 100 }
+      ]);
+      const rollouts = await client.api.getPromptAbTesting('Default');
+      expect(rollouts).not.toBeNull();
+      expect(rollouts?.length).toBe(1);
+      expect(rollouts![0].rollout).toBe(100);
+      expect(rollouts![0].version).toBe(0);
     });
   });
 });

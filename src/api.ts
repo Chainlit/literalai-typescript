@@ -32,7 +32,7 @@ import {
 } from './observability/generation';
 import { Step, StepType } from './observability/step';
 import { CleanThreadFields, Thread } from './observability/thread';
-import { Prompt } from './prompt-engineering/prompt';
+import { IPromptRollout, Prompt } from './prompt-engineering/prompt';
 import {
   Environment,
   Maybe,
@@ -2071,5 +2071,79 @@ export class API {
     }
 
     return new Prompt(this, promptData);
+  }
+
+  /**
+   * Retrieves a prompt A/B testing rollout by its name.
+   *
+   * @param name - The name of the prompt to retrieve.
+   * @returns A list of prompt rollout versions.
+   */
+  public async getPromptAbTesting(
+    name: string
+  ): Promise<IPromptRollout[] | null> {
+    const query = `
+   query getPromptLineageRollout($projectId: String, $lineageName: String!) {
+    promptLineageRollout(projectId: $projectId, lineageName: $lineageName) {
+      pageInfo {
+        startCursor
+        endCursor
+      }
+      edges {
+        node {
+          version
+          rollout
+        }
+      }
+    }
+  }
+   `;
+
+    const variables = { lineageName: name };
+    const result = await this.makeGqlCall(query, variables);
+
+    if (!result.data || !result.data.promptLineageRollout) {
+      return null;
+    }
+
+    const response = result.data.promptLineageRollout;
+
+    return response.edges.map((x: any) => x.node);
+  }
+
+  /**
+   * Update a prompt A/B testing rollout by its name.
+   *
+   * @param name - The name of the prompt to retrieve.
+   * @param rollouts - A list of prompt rollout versions.
+   * @returns A list of prompt rollout versions.
+   */
+  public async updatePromptAbTesting(name: string, rollouts: IPromptRollout[]) {
+    const mutation = `
+      mutation updatePromptLineageRollout(
+        $projectId: String
+        $name: String!
+        $rollouts: [PromptVersionRolloutInput!]!
+      ) {
+        updatePromptLineageRollout(
+          projectId: $projectId
+          name: $name
+          rollouts: $rollouts
+        ) {
+          ok
+          message
+          errorCode
+        }
+      }
+     `;
+
+    const variables = { name: name, rollouts };
+    const result = await this.makeGqlCall(mutation, variables);
+
+    if (!result.data || !result.data.updatePromptLineageRollout) {
+      return null;
+    }
+
+    return result.data.promptLineageRollout;
   }
 }
