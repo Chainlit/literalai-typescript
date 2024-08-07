@@ -164,9 +164,9 @@ describe('Wrapper', () => {
 
       await sleep(1000);
       const run = await client.api.getStep(runId!);
-      const retrieveStep = await client.api.getStep(stepId!);
+      const createdStep = await client.api.getStep(stepId!);
 
-      expect(retrieveStep!.rootRunId).toEqual(run!.id);
+      expect(createdStep!.rootRunId).toEqual(run!.id);
     });
 
     it('handles steps outside of a thread', async () => {
