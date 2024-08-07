@@ -143,6 +143,32 @@ describe('Wrapper', () => {
       });
     });
 
+    it('handles nested runs', async () => {
+      let runId: Maybe<string>;
+      let stepId: Maybe<string>;
+
+      const step = async (_query: string) =>
+        client.step({ name: 'foo', type: 'undefined' }).wrap(async () => {
+          stepId = client.getCurrentStep()!.id;
+        });
+
+      await client.thread({ name: 'Test Wrappers Thread' }).wrap(async () => {
+        return client.run({ name: 'Test Wrappers Run' }).wrap(async () => {
+          runId = client.getCurrentStep()!.id;
+
+          return client.run({ name: 'Test Nested Run' }).wrap(async () => {
+            await step('foo');
+          });
+        });
+      });
+
+      await sleep(1000);
+      const run = await client.api.getStep(runId!);
+      const retrieveStep = await client.api.getStep(stepId!);
+
+      expect(retrieveStep!.rootRunId).toEqual(run!.id);
+    });
+
     it('handles steps outside of a thread', async () => {
       let runId: Maybe<string>;
       let stepId: Maybe<string>;
@@ -172,6 +198,7 @@ describe('Wrapper', () => {
       expect(step!.name).toEqual('Test Wrappers Step');
       expect(step!.threadId).toBeNull();
       expect(step!.parentId).toEqual(run!.id);
+      expect(step!.rootRunId).toEqual(run!.id);
     });
 
     it("doesn't leak the current store when getting entities from the API", async () => {

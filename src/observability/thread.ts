@@ -109,7 +109,8 @@ export class Thread extends ThreadFields {
         currentThread: this,
         currentExperimentItemRunId:
           currentStore?.currentExperimentItemRunId ?? null,
-        currentStep: null
+        currentStep: null,
+        rootRun: null
       },
       () => cb(this)
     );
