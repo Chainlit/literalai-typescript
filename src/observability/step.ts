@@ -23,6 +23,7 @@ class StepFields extends Utils {
   name!: string;
   type!: StepType;
   threadId?: string;
+  rootRunId?: Maybe<string>;
   createdAt?: Maybe<string>;
   startTime?: Maybe<string>;
   id?: Maybe<string>;
@@ -73,9 +74,10 @@ export class Step extends StepFields {
       return;
     }
 
-    // Automatically assign parent thread & step if there are any in the store.
+    // Automatically assign parent thread & step & rootRun if there are any in the store.
     this.threadId = this.threadId ?? this.client._currentThread()?.id;
     this.parentId = this.parentId ?? this.client._currentStep()?.id;
+    this.rootRunId = this.rootRunId ?? this.client._rootRun()?.id;
 
     // Set the creation and start time to the current time if not provided.
     if (!this.createdAt) {
@@ -167,7 +169,12 @@ export class Step extends StepFields {
         currentThread: currentStore?.currentThread ?? null,
         currentExperimentItemRunId:
           currentStore?.currentExperimentItemRunId ?? null,
-        currentStep: this
+        currentStep: this,
+        rootRun: currentStore?.rootRun
+          ? currentStore?.rootRun
+          : this.type === 'run'
+          ? this
+          : null
       },
       () => cb(this)
     );
@@ -197,6 +204,7 @@ export class Step extends StepFields {
       this.scores = updatedStep.scores ?? this.scores;
       this.attachments = updatedStep.attachments ?? this.attachments;
       this.environment = updatedStep.environment ?? this.environment;
+      this.rootRunId = updatedStep.rootRunId ?? this.rootRunId;
     }
 
     this.send().catch(console.error);

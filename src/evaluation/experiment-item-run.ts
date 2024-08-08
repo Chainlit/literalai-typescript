@@ -39,7 +39,12 @@ export class ExperimentItemRun extends Step {
       {
         currentThread: currentStore?.currentThread ?? null,
         currentStep: this,
-        currentExperimentItemRunId: this.id ?? null
+        currentExperimentItemRunId: this.id ?? null,
+        rootRun: currentStore?.rootRun
+          ? currentStore?.rootRun
+          : this.type === 'run'
+          ? this
+          : null
       },
       async () => {
         try {
