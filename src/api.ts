@@ -49,6 +49,7 @@ const version = packageJson.version;
 const stepFields = `
     id
     threadId
+    rootRunId
     parentId
     startTime
     endTime
@@ -152,6 +153,7 @@ function ingestStepsFieldsBuilder(steps: Step[]) {
   for (let id = 0; id < steps.length; id++) {
     generated += `$id_${id}: String!
         $threadId_${id}: String
+        $rootRunId_${id}: String
         $type_${id}: StepType
         $startTime_${id}: DateTime
         $endTime_${id}: DateTime
@@ -177,6 +179,7 @@ function ingestStepsArgsBuilder(steps: Step[]) {
       step${id}: ingestStep(
         id: $id_${id}
         threadId: $threadId_${id}
+        rootRunId: $rootRunId_${id}
         startTime: $startTime_${id}
         endTime: $endTime_${id}
         type: $type_${id}
@@ -1651,6 +1654,7 @@ export class API {
           input
           expectedOutput
           intermediarySteps
+          stepId
         }
       }
     `;
@@ -1676,6 +1680,7 @@ export class API {
           input
           expectedOutput
           intermediarySteps
+          stepId
         }
       }
     `;
@@ -1701,6 +1706,7 @@ export class API {
           input
           expectedOutput
           intermediarySteps
+          stepId
         }
       }
     `;
@@ -1732,6 +1738,7 @@ export class API {
           input
           expectedOutput
           intermediarySteps
+          stepId
         }
       }
     `;
@@ -1767,6 +1774,7 @@ export class API {
           input
           expectedOutput
           intermediarySteps
+          stepId
         }
       }
     `;

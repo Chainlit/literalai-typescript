@@ -17,6 +17,7 @@ type StoredContext = {
   currentThread: Thread | null;
   currentStep: Step | null;
   currentExperimentItemRunId?: string | null;
+  rootRun: Step | null;
 };
 
 const storage = new AsyncLocalStorage<StoredContext>();
@@ -126,6 +127,16 @@ export class LiteralClient {
   }
 
   /**
+   * Returns the root run from the context or null if none.
+   * @returns The root run, if any.
+   */
+  _rootRun(): Step | null {
+    const store = storage.getStore();
+
+    return store?.rootRun || null;
+  }
+
+  /**
    * Gets the current thread from the context.
    * WARNING : this will throw if run outside of a thread context.
    * @returns The current thread, if any.
@@ -174,5 +185,22 @@ export class LiteralClient {
     }
 
     return store?.currentExperimentItemRunId;
+  }
+
+  /**
+   * Gets the root run from the context.
+   * WARNING : this will throw if run outside of a step context.
+   * @returns The current step, if any.
+   */
+  getRootRun(): Step {
+    const store = storage.getStore();
+
+    if (!store?.rootRun) {
+      throw new Error(
+        'Literal AI SDK : tried to access root run outside of a context.'
+      );
+    }
+
+    return store.rootRun;
   }
 }
