@@ -204,44 +204,43 @@ describe('Vercel SDK Instrumentation', () => {
     it('should observe on a given thread', async () => {
       const spy = jest.spyOn(client.api, 'sendSteps');
 
-      const thread = await client.thread({ name: 'VercelSDK Test' }).upsert();
+      await client.thread({ name: 'VercelSDK Test' }).wrap(async () => {
+        const generateTextWithLiteralAI =
+          client.instrumentation.vercel.instrument(generateText);
 
-      const generateTextWithLiteralAI =
-        client.instrumentation.vercel.instrument(generateText);
+        const result = await generateTextWithLiteralAI({
+          model: openai('gpt-3.5-turbo'),
+          prompt: 'Write a vegetarian lasagna recipe for 4 people.'
+        });
 
-      const result = await generateTextWithLiteralAI({
-        model: openai('gpt-3.5-turbo'),
-        prompt: 'Write a vegetarian lasagna recipe for 4 people.',
-        literalAiParent: thread
+        expect(result.text).toBeTruthy();
+
+        // Sending message is done asynchronously
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(spy).toHaveBeenCalledWith([
+          expect.objectContaining({
+            type: 'llm',
+            name: 'gpt-3.5-turbo',
+            threadId: client._currentThread()?.id,
+            generation: expect.any(Object),
+            input: {
+              content: [
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      text: 'Write a vegetarian lasagna recipe for 4 people.',
+                      type: 'text'
+                    }
+                  ]
+                }
+              ]
+            },
+            output: { role: 'assistant', content: result.text }
+          })
+        ]);
       });
-
-      expect(result.text).toBeTruthy();
-
-      // Sending message is done asynchronously
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(spy).toHaveBeenCalledWith([
-        expect.objectContaining({
-          type: 'llm',
-          name: 'gpt-3.5-turbo',
-          threadId: thread.id,
-          generation: expect.any(Object),
-          input: {
-            content: [
-              {
-                role: 'user',
-                content: [
-                  {
-                    text: 'Write a vegetarian lasagna recipe for 4 people.',
-                    type: 'text'
-                  }
-                ]
-              }
-            ]
-          },
-          output: { role: 'assistant', content: result.text }
-        })
-      ]);
     });
 
     it('should monitor tools', async () => {
