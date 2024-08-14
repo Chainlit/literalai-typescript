@@ -257,9 +257,8 @@ export const makeInstrumentVercelSDK = (
     type TResult = Result<TFunction>;
 
     return async (options: TOptions): Promise<TResult> => {
-      const { ...originalOptions } = options;
       const startTime = Date.now();
-      const result: TResult = await (fn as any)(originalOptions);
+      const result: TResult = await (fn as any)(options);
 
       const threadFromStore = client._currentThread();
       const stepFromStore = client._currentStep();
