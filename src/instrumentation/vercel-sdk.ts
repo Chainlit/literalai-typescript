@@ -256,12 +256,14 @@ export const makeInstrumentVercelSDK = (
     type TOptions = Options<TFunction>;
     type TResult = Result<TFunction>;
 
-    return async (
-      options: TOptions & { literalAiParent?: Step | Thread }
-    ): Promise<TResult> => {
-      const { literalAiParent: parent, ...originalOptions } = options;
+    return async (options: TOptions): Promise<TResult> => {
       const startTime = Date.now();
-      const result: TResult = await (fn as any)(originalOptions);
+      const result: TResult = await (fn as any)(options);
+
+      const threadFromStore = client._currentThread();
+      const stepFromStore = client._currentStep();
+
+      const parent = stepFromStore || threadFromStore;
 
       // Fork the stream to compute metrics
       let stream: ReadableStream<OriginalStreamPart>;
