@@ -19,7 +19,14 @@ class ThreadFields extends Utils {
   tags?: Maybe<string[]>;
 }
 
+/**
+ * @ignore
+ */
 export type CleanThreadFields = OmitUtils<ThreadFields>;
+
+/**
+ * @ignore
+ */
 export type ThreadConstructor = Omit<CleanThreadFields, 'id' | 'steps'> &
   Partial<Pick<CleanThreadFields, 'id'>>;
 
