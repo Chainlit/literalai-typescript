@@ -10,8 +10,7 @@ import {
   AIMessage,
   BaseMessage,
   HumanMessage,
-  SystemMessage,
-  ToolMessage
+  SystemMessage
 } from '@langchain/core/messages';
 import { LLMResult } from '@langchain/core/outputs';
 import {
@@ -28,12 +27,11 @@ import { v5 as uuidv5 } from 'uuid';
 import {
   ChatGeneration,
   CompletionGeneration,
-  GenerationMessageRole,
   IGenerationMessage,
   ITool,
   LiteralClient
 } from '..';
-import { Step, StepType } from '../observability/step';
+import { Step } from '../observability/step';
 
 function addToolCallIdToMessages(messages: IGenerationMessage[]) {
   let lastToolCallId: string | null;
@@ -255,16 +253,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     metadata?: Record<string, unknown> | undefined,
     name?: string | undefined
   ) {
-    console.log('handleLLMStart', {
-      llm,
-      prompts,
-      runId,
-      parentRunId,
-      extraParams,
-      tags,
-      metadata,
-      name
-    });
     const provider = llm.id[llm.id.length - 1];
     const settings: Record<string, any> = extraParams?.invocation_params || {};
     // make sure there is no api key specification
@@ -308,14 +296,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     tags?: string[] | undefined,
     fields?: HandleLLMNewTokenCallbackFields | undefined
   ) {
-    console.log('handleLLMNewToken', {
-      token,
-      idx,
-      runId,
-      parentRunId,
-      tags,
-      fields
-    });
     const start =
       this.completionGenerations[runId] || this.chatGenerations[runId];
     start.outputTokenCount += 1;
@@ -330,12 +310,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     parentRunId?: string | undefined,
     tags?: string[] | undefined
   ) {
-    console.log('handleLLMError', {
-      err,
-      runId,
-      parentRunId,
-      tags
-    });
     this.steps[runId].error = err;
     this.steps[runId].endTime = new Date().toISOString();
     await this.steps[runId].send();
@@ -346,12 +320,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     parentRunId?: string | undefined,
     tags?: string[] | undefined
   ) {
-    console.log('handleLLMEnd', {
-      output: JSON.stringify(output, null, 2),
-      runId,
-      parentRunId,
-      tags
-    });
     const completionGeneration = this.completionGenerations[runId];
     const chatGeneration = this.chatGenerations[runId];
 
@@ -500,16 +468,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     metadata?: Record<string, unknown> | undefined,
     name?: string | undefined
   ) {
-    console.log('handleChatModelStart', {
-      llm,
-      messages,
-      runId,
-      parentRunId,
-      extraParams,
-      tags,
-      metadata,
-      name
-    });
     const provider = llm.id[llm.id.length - 1];
     const settings: Record<string, any> = extraParams?.invocation_params || {};
 
@@ -574,17 +532,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     name?: string | undefined
   ) {
     const chainType = chain.id[chain.id.length - 1];
-
-    console.log('handleChainStart', {
-      chain,
-      inputs,
-      runId,
-      parentRunId,
-      tags,
-      // metadata,
-      runType,
-      name
-    });
 
     const currentThread = this.client._currentThread();
     if (currentThread) {
@@ -670,21 +617,14 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   async handleChainError(
     err: any,
     runId: string,
-    parentRunId?: string | undefined,
-    tags?: string[] | undefined,
-    kwargs?:
+    _parentRunId?: string | undefined,
+    _tags?: string[] | undefined,
+    _kwargs?:
       | {
           inputs?: Record<string, unknown> | undefined;
         }
       | undefined
   ) {
-    console.log('handleChainError', {
-      err,
-      runId,
-      parentRunId,
-      tags,
-      kwargs
-    });
     if (!this.steps[runId]) {
       return;
     }
@@ -695,21 +635,14 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   async handleChainEnd(
     outputs: ChainValues,
     runId: string,
-    parentRunId?: string | undefined,
-    tags?: string[] | undefined,
-    kwargs?:
+    _parentRunId?: string | undefined,
+    _tags?: string[] | undefined,
+    _kwargs?:
       | {
           inputs?: Record<string, unknown> | undefined;
         }
       | undefined
   ) {
-    console.log('handleChainEnd', {
-      outputs,
-      runId,
-      parentRunId,
-      tags,
-      kwargs
-    });
     if (!this.steps[runId]) {
       return;
     }
@@ -756,15 +689,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     metadata?: Record<string, unknown> | undefined,
     name?: string | undefined
   ) {
-    console.log('handleToolStart', {
-      tool,
-      input,
-      runId,
-      parentRunId,
-      tags,
-      metadata,
-      name
-    });
     const step = await this.client
       .step({
         name: name || tool.id[tool.id.length - 1],
@@ -786,12 +710,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     parentRunId?: string | undefined,
     tags?: string[] | undefined
   ) {
-    console.log('handleToolError', {
-      err,
-      runId,
-      parentRunId,
-      tags
-    });
     await this.handleChainError(err, runId, parentRunId, tags);
   }
   async handleToolEnd(
@@ -800,12 +718,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     parentRunId?: string | undefined,
     tags?: string[] | undefined
   ) {
-    console.log('handleToolEnd', {
-      output,
-      runId,
-      parentRunId,
-      tags
-    });
     await this.handleChainEnd(output as any, runId, parentRunId, tags);
   }
 
@@ -818,15 +730,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     metadata?: Record<string, unknown> | undefined,
     name?: string | undefined
   ) {
-    console.log('handleRetrieverStart', {
-      retriever,
-      query,
-      runId,
-      parentRunId,
-      tags,
-      metadata,
-      name
-    });
     const step = await this.client.step({
       name: name || retriever.id[retriever.id.length - 1],
       type: 'retrieval',
@@ -846,21 +749,11 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     parentRunId?: string | undefined,
     tags?: string[] | undefined
   ) {
-    try {
-      console.log('handleRetrieverEnd', {
-        documents,
-        runId,
-        parentRunId,
-        tags
-      });
-      this.steps[runId].output = { documents };
+    this.steps[runId].output = { documents };
 
-      this.steps[runId].endTime = new Date().toISOString();
+    this.steps[runId].endTime = new Date().toISOString();
 
-      await this.steps[runId].send();
-    } catch (e) {
-      console.error(e);
-    }
+    await this.steps[runId].send();
   }
   async handleRetrieverError(
     err: any,
@@ -868,12 +761,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     parentRunId?: string | undefined,
     tags?: string[] | undefined
   ) {
-    console.log('handleRetrieverError', {
-      err,
-      runId,
-      parentRunId,
-      tags
-    });
     await this.handleChainError(err, runId, parentRunId, tags);
   }
 }

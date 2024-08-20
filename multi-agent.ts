@@ -223,17 +223,6 @@ async function main() {
     // select the first one
     .pipe((x) => (x as Array<any>)[0].args);
 
-  // await supervisorChain.invoke(
-  //   {
-  //     messages: [
-  //       new HumanMessage({
-  //         content: 'write a report on birds.'
-  //       })
-  //     ]
-  //   },
-  //   { callbacks: [cb], runName: 'Birds report' }
-  // );
-
   // Recall llm was defined as ChatOpenAI above
   // It could be any other language model
   const researcherAgent = await createAgent(
