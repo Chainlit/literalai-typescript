@@ -19,7 +19,16 @@
     "outputFileStrategy": "modules",
     "hideInPageTOC": true,
     "githubPages": false,
-    "excludePrivate": true
+    "excludePrivate": true,
+    "name": "api-reference",
+    "hidePageHeader": true,
+    "hideBreadcrumbs": true,
+    "hidePageTitle": true,
+    "useCodeBlocks": true,
+    "parametersFormat": "table",
+    "propertiesFormat": "table",
+    "enumMembersFormat": "table",
+    "indexFormat":"table",
   },
   "exclude": ["eval-promptfoo/*"]
 }
