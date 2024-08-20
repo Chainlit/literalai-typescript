@@ -28,7 +28,6 @@
     "@ai-sdk/openai": "^0.0.24",
     "@jest/types": "^29.6.3",
     "@trivago/prettier-plugin-sort-imports": "^4.2.0",
-    "@types/d3": "^7.4.3",
     "@types/jest": "^29.5.11",
     "@types/mustache": "^4.2.5",
     "@types/uuid": "^9.0.7",
@@ -53,16 +52,8 @@
     "zod-to-json-schema": "^3.23.0"
   },
   "dependencies": {
-    "@langchain/core": "^0.2.23",
-    "@langchain/langgraph": "^0.0.34",
-    "@langchain/openai": "^0.2.6",
-    "@types/cli-color": "^2.0.6",
     "axios": "^1.6.2",
-    "canvas": "^2.11.2",
-    "cli-color": "^2.0.4",
-    "d3": "^7.9.0",
     "form-data": "^4.0.0",
-    "hnswlib-node": "^1.4.2",
     "mustache": "^4.2.0",
     "uuid": "^9.0.1"
   },
