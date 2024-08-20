@@ -44,7 +44,7 @@ describe('End to end tests for the SDK', function () {
 
     const deletedUser = await client.api.getUser(identifier);
     expect(deletedUser).toBeUndefined();
-  });
+  }, 30000);
 
   it('should test generation', async function () {
     const generation = await client.api.createGeneration({
@@ -91,7 +91,7 @@ describe('End to end tests for the SDK', function () {
 
     const deletedThread = await client.api.getThread(thread.id);
     expect(deletedThread).toBeNull();
-  });
+  }, 30000);
 
   it('should test thread (deprecated)', async function () {
     const thread = await client.api.upsertThread(
@@ -222,7 +222,7 @@ describe('End to end tests for the SDK', function () {
 
     const deletedStep = await client.api.getStep(step.id!);
     expect(deletedStep).toBeNull();
-  });
+  }, 30000);
 
   it('should test steps', async function () {
     const thread = await client.thread({ id: uuidv4() });

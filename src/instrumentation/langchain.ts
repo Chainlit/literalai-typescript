@@ -270,6 +270,8 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
 
     const parent = parentId ? this.steps[parentId] : null;
 
+    // In certain cases we get the thread_id after steps have been created
+    // We need to update the thread_id for the parent and children steps
     if (parent && parent.threadId !== thread.id) {
       parent.threadId = thread.id;
       await parent.send();
@@ -560,13 +562,14 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
 
     const parentId = this.getParentId(parentRunId);
 
-    const messages = inputs.messages?.map(convertMessage) ?? null;
     let stepInput;
 
     if (inputs instanceof BaseMessage) {
       stepInput = convertMessage(inputs);
     } else {
       if (inputs.messages) {
+        const messages = inputs.messages.map(convertMessage) ?? null;
+
         stepInput = { messages };
 
         const lastMessage = messages[messages.length - 1];
