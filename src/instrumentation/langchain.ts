@@ -33,22 +33,22 @@ import {
 } from '..';
 import { Step } from '../observability/step';
 
+// For some reason, the tool call-id is present in the assistant message but not the tool one
+// We patch this for proper display in Literal AI
 function addToolCallIdToMessages(messages: IGenerationMessage[]) {
   let lastToolCallId: string | null;
 
   return messages.map((message) => {
-    if (message.role === 'tool' && lastToolCallId) {
-      message.tool_call_id = lastToolCallId;
-      lastToolCallId = null;
-      return message;
-    }
-
     if (message.role === 'assistant') {
       if (message.tool_call_id) {
         lastToolCallId = message.tool_call_id;
       }
 
       return message;
+    }
+
+    if (message.role === 'tool' && lastToolCallId) {
+      message.tool_call_id = lastToolCallId;
     }
 
     lastToolCallId = null;
@@ -207,16 +207,17 @@ const defaultChainTypesToIgnore: string[] = [
 
 export class LiteralCallbackHandler extends BaseCallbackHandler {
   private NAMESPACE_UUID = '53864724-0779-41aa-ab6e-7246395aafcd';
-
   name = 'literal_handler';
+
+  client: LiteralClient;
+
+  threadId?: string;
+  chainTypesToIgnore: string[] = defaultChainTypesToIgnore;
+
   steps: Record<string, Step> = {};
   completionGenerations: Record<string, CompletionGenerationStart> = {};
   chatGenerations: Record<string, ChatGenerationStart> = {};
   parentIdMap: Record<string, string> = {};
-  chainTypesToIgnore: string[] = defaultChainTypesToIgnore;
-
-  client: LiteralClient;
-  threadId?: string;
 
   constructor(
     client: LiteralClient,
@@ -243,6 +244,53 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     }
   }
 
+  async createThread(threadName: string, parentId?: string) {
+    if (this.threadId) {
+      return;
+    }
+
+    if (this.client._currentThread()) {
+      return;
+    }
+
+    const newThreadId = uuidv5(threadName as string, this.NAMESPACE_UUID);
+
+    if (this.threadId === newThreadId) {
+      return;
+    }
+
+    const thread = await this.client
+      .thread({
+        id: uuidv5(threadName as string, this.NAMESPACE_UUID),
+        name: threadName as string
+      })
+      .upsert();
+
+    this.threadId = thread.id;
+
+    const parent = parentId ? this.steps[parentId] : null;
+
+    if (parent && parent.threadId !== thread.id) {
+      parent.threadId = thread.id;
+      await parent.send();
+
+      const childrenSteps = Object.values(this.steps).filter(
+        (step) => step.parentId === parent.id
+      );
+
+      await Promise.all(
+        childrenSteps.map(async (step) => {
+          step.threadId = thread.id;
+          await step.send();
+        })
+      );
+    }
+  }
+
+  /**
+   * LLM Callbacks
+   */
+
   async handleLLMStart(
     llm: Serialized,
     prompts: string[],
@@ -255,10 +303,12 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   ) {
     const provider = llm.id[llm.id.length - 1];
     const settings: Record<string, any> = extraParams?.invocation_params || {};
-    // make sure there is no api key specification
+
+    const model = settings.model || settings.modelName;
+
     delete settings.apiKey;
     delete settings.api_key;
-    const model = settings.model || settings.modelName;
+
     this.completionGenerations[runId] = {
       provider,
       model,
@@ -289,12 +339,12 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   }
 
   handleLLMNewToken(
-    token: string,
-    idx: NewTokenIndices,
+    _token: string,
+    _idx: NewTokenIndices,
     runId: string,
-    parentRunId?: string | undefined,
-    tags?: string[] | undefined,
-    fields?: HandleLLMNewTokenCallbackFields | undefined
+    _parentRunId?: string | undefined,
+    _tags?: string[] | undefined,
+    _fields?: HandleLLMNewTokenCallbackFields | undefined
   ) {
     const start =
       this.completionGenerations[runId] || this.chatGenerations[runId];
@@ -307,8 +357,8 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   async handleLLMError(
     err: any,
     runId: string,
-    parentRunId?: string | undefined,
-    tags?: string[] | undefined
+    _parentRunId?: string | undefined,
+    _tags?: string[] | undefined
   ) {
     this.steps[runId].error = err;
     this.steps[runId].endTime = new Date().toISOString();
@@ -317,8 +367,8 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   async handleLLMEnd(
     output: LLMResult,
     runId: string,
-    parentRunId?: string | undefined,
-    tags?: string[] | undefined
+    _parentRunId?: string | undefined,
+    _tags?: string[] | undefined
   ) {
     const completionGeneration = this.completionGenerations[runId];
     const chatGeneration = this.chatGenerations[runId];
@@ -416,48 +466,11 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       }
     }
   }
-  async createThread(threadName: string, parentId?: string) {
-    if (this.threadId) {
-      return;
-    }
 
-    if (this.client._currentThread()) {
-      return;
-    }
+  /**
+   * Chat Model Callbacks
+   */
 
-    const newThreadId = uuidv5(threadName as string, this.NAMESPACE_UUID);
-
-    if (this.threadId === newThreadId) {
-      return;
-    }
-
-    const thread = await this.client
-      .thread({
-        id: uuidv5(threadName as string, this.NAMESPACE_UUID),
-        name: threadName as string
-      })
-      .upsert();
-
-    this.threadId = thread.id;
-
-    const parent = parentId ? this.steps[parentId] : null;
-
-    if (parent && parent.threadId !== thread.id) {
-      parent.threadId = thread.id;
-      await parent.send();
-
-      const childrenSteps = Object.values(this.steps).filter(
-        (step) => step.parentId === parent.id
-      );
-
-      await Promise.all(
-        childrenSteps.map(async (step) => {
-          step.threadId = thread.id;
-          await step.send();
-        })
-      );
-    }
-  }
   async handleChatModelStart(
     llm: Serialized,
     messages: BaseMessage[][],
@@ -495,9 +508,8 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
 
     const parentId = this.getParentId(parentRunId);
 
-    // If a thread_id has been passed in the metadata, we only get it at the LLMStart level
-    // So that is when we create the corresponding thread (ignore it if we have set a thread
-    // at the Literal Client level)
+    // If a thread_id has been passed in the metadata, we only get it at the ChatModelStart level
+    // So that is when we create the corresponding thread
     if (metadata?.thread_id) {
       await this.createThread(metadata.thread_id as string, parentId);
     }
@@ -521,6 +533,10 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     }
   }
 
+  /**
+   * Chain Callbacks
+   */
+
   async handleChainStart(
     chain: Serialized,
     inputs: ChainValues,
@@ -528,7 +544,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     parentRunId?: string | undefined,
     tags?: string[] | undefined,
     metadata?: Record<string, unknown> | undefined,
-    runType?: string | undefined,
+    _runType?: string | undefined,
     name?: string | undefined
   ) {
     const chainType = chain.id[chain.id.length - 1];
@@ -614,6 +630,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       this.steps[runId] = step;
     }
   }
+
   async handleChainError(
     err: any,
     runId: string,
@@ -632,6 +649,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     this.steps[runId].endTime = new Date().toISOString();
     await this.steps[runId].send();
   }
+
   async handleChainEnd(
     outputs: ChainValues,
     runId: string,
@@ -680,6 +698,11 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
 
     await this.steps[runId].send();
   }
+
+  /**
+   * Tool Callbacks
+   */
+
   async handleToolStart(
     tool: Serialized,
     input: string,
@@ -704,6 +727,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       .send();
     this.steps[runId] = step;
   }
+
   async handleToolError(
     err: any,
     runId: string,
@@ -712,6 +736,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   ) {
     await this.handleChainError(err, runId, parentRunId, tags);
   }
+
   async handleToolEnd(
     output: string,
     runId: string,
@@ -720,6 +745,10 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   ) {
     await this.handleChainEnd(output as any, runId, parentRunId, tags);
   }
+
+  /**
+   * Retrieval Callbacks
+   */
 
   async handleRetrieverStart(
     retriever: Serialized,
@@ -743,11 +772,12 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     });
     this.steps[runId] = step;
   }
+
   async handleRetrieverEnd(
     documents: DocumentInterface[],
     runId: string,
-    parentRunId?: string | undefined,
-    tags?: string[] | undefined
+    _parentRunId?: string | undefined,
+    _tags?: string[] | undefined
   ) {
     this.steps[runId].output = { documents };
 
@@ -755,6 +785,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
 
     await this.steps[runId].send();
   }
+
   async handleRetrieverError(
     err: any,
     runId: string,
