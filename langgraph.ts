@@ -1,6 +1,6 @@
 import { AIMessage, BaseMessage, HumanMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
-import { StateGraph, StateGraphArgs } from '@langchain/langgraph';
+import { MemorySaver, StateGraph, StateGraphArgs } from '@langchain/langgraph';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
 import { ChatOpenAI } from '@langchain/openai';
 import { green, yellow } from 'cli-color';
@@ -88,9 +88,12 @@ const workflow = new StateGraph<AgentState>({ channels: graphState })
   .addConditionalEdges('agent', shouldContinue)
   .addEdge('tools', 'agent');
 
+// Initialize memory to persist state between graph runs
+const checkpointer = new MemorySaver();
+
 // Finally, we compile it!
 // This compiles it into a LangChain Runnable.
-const app = workflow.compile();
+const app = workflow.compile({ checkpointer });
 
 async function main() {
   console.log(green('> what is an LLM'));
@@ -99,29 +102,35 @@ async function main() {
   });
   console.log(yellow(response.content));
 
-  try {
-    console.log(green('> what is the weather in sf'));
-    // Use the Runnable
-    const firstState = await app.invoke(
-      { messages: [new HumanMessage('what is the weather in sf')] },
-      { configurable: { thread_id: '42' }, runName: 'weather', callbacks: [cb] }
-    );
+  // try {
+  //   console.log(green('> what is the weather in sf'));
+  //   // Use the Runnable
+  //   const firstState = await app.invoke(
+  //     { messages: [new HumanMessage('what is the weather in sf')] },
+  //     {
+  //       configurable: { thread_id: 'Weather Thread Standalone' },
+  //       runName: 'weather',
+  //       callbacks: [cb]
+  //     }
+  //   );
 
-    console.log(
-      yellow(firstState.messages[firstState.messages.length - 1].content)
-    );
-  } catch (e) {
-    console.error(e);
-  }
+  //   console.log(
+  //     yellow(firstState.messages[firstState.messages.length - 1].content)
+  //   );
+  // } catch (e) {
+  //   console.error(e);
+  // }
 
-  app.checkpointer;
-
-  literalClient.thread({ name: 'Weather conversation' }).wrap(async () => {
+  literalClient.thread({ name: 'Weather Wrap' }).wrap(async () => {
     console.log(green('> what is the weather in sf'));
     // Use the Runnable
     const finalState = await app.invoke(
       { messages: [new HumanMessage('what is the weather in sf')] },
-      { configurable: { thread_id: '42' }, runName: 'weather', callbacks: [cb] }
+      {
+        configurable: { thread_id: 'Weather Thread' },
+        runName: 'weather',
+        callbacks: [cb]
+      }
     );
 
     console.log(
@@ -131,7 +140,11 @@ async function main() {
     console.log(green('> what about ny'));
     const nextState = await app.invoke(
       { messages: [new HumanMessage('what about ny')] },
-      { configurable: { thread_id: '42' }, runName: 'weather', callbacks: [cb] }
+      {
+        configurable: { thread_id: 'Weather Thread' },
+        runName: 'weather',
+        callbacks: [cb]
+      }
     );
     console.log(
       yellow(nextState.messages[nextState.messages.length - 1].content)
