@@ -107,7 +107,7 @@ export class Prompt extends PromptFields {
               };
             }
             return content;
-          });
+          }) as ChatCompletionMessageParam['content'];
         } else if (typeof formattedMessage.content === 'string') {
           formattedMessage.content = mustache.render(
             formattedMessage.content,

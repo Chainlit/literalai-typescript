@@ -23,9 +23,16 @@ export default (client: LiteralClient) => ({
   openai: (options?: OpenAIGlobalOptions) => instrumentOpenAI(client, options),
 
   langchain: {
-    literalCallback: (threadId?: string) => {
+    literalCallback: (params?: {
+      threadId?: string;
+      chainTypesToIgnore?: string[];
+    }) => {
       try {
-        return new LiteralCallbackHandler(client, threadId);
+        return new LiteralCallbackHandler(
+          client,
+          params?.threadId,
+          params?.chainTypesToIgnore
+        );
       } catch (error) {
         throw new Error(
           'Failed to load langchain. Please ensure langchain is installed.'
