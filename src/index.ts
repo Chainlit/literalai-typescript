@@ -21,7 +21,21 @@ type StoredContext = {
 };
 
 const storage = new AsyncLocalStorage<StoredContext>();
-
+/**
+ * The LiteralClient class provides an interface to interact with the Literal AI API.
+ * It offers methods for creating threads and steps, as well as instrumentation for various AI services.
+ *
+ * @example
+ * ```typescript
+ * const client = new LiteralClient({
+ *   apiKey: 'your-api-key',
+ *   environment: 'production'
+ * });
+ *
+ * const thread = client.thread();
+ * const step = client.step({ name: 'Example Step', type: 'llm' });
+ * ```
+ */
 export class LiteralClient {
   api: API;
   openai: ReturnType<typeof openai>;
