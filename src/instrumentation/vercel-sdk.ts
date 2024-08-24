@@ -61,6 +61,7 @@ const extractMessages = (
 const extractSettings = (options: Options<AllVercelFn>): ILLMSettings => {
   const settings = { ...options } as any;
   delete settings.model;
+  delete settings.messages;
   delete settings.prompt;
   delete settings.abortSignal;
   if ('tools' in settings) {
