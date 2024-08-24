@@ -93,6 +93,22 @@ const extractTools = (options: Options<AllVercelFn>): ITool[] | undefined => {
   }));
 };
 
+const extractPrompt = (
+  options: Options<AllVercelFn>
+):
+  | { uuid: string; promptId: string; variables: Record<string, any> }
+  | undefined => {
+  if (!options.messages) return undefined;
+
+  for (const message of options.messages) {
+    if (typeof (message as any).literalMetadata === 'function') {
+      return (message as any).literalMetadata();
+    }
+  }
+
+  return undefined;
+};
+
 const computeMetricsSync = (
   options: Options<GenerateFn>,
   result: Result<GenerateFn>,
@@ -142,7 +158,16 @@ const computeMetricsSync = (
 
   const messageCompletion = messages.pop();
 
+  const promptData = extractPrompt(options);
+  const promptId = promptData?.promptId;
+  const variables = promptData?.variables;
+  if (messages.length > 0) {
+    messages[0].uuid = promptData?.uuid;
+  }
+
   return {
+    promptId,
+    variables,
     duration,
     tokenThroughputInSeconds,
     outputTokenCount,
@@ -218,7 +243,16 @@ const computeMetricsStream = async (
   if (textMessage.content) messages.push(textMessage);
   const messageCompletion = messages.pop();
 
+  const promptData = extractPrompt(options);
+  const promptId = promptData?.promptId;
+  const variables = promptData?.variables;
+  if (messages.length > 0) {
+    messages[0].uuid = promptData?.uuid;
+  }
+
   return {
+    promptId,
+    variables,
     duration,
     tokenThroughputInSeconds,
     outputTokenCount,
