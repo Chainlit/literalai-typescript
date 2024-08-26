@@ -8,7 +8,6 @@ import type {
   streamObject,
   streamText
 } from 'ai';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import {
   ChatGeneration,
@@ -70,14 +69,12 @@ const extractSettings = (options: Options<AllVercelFn>): ILLMSettings => {
         key,
         {
           description: tool.description,
-          parameters: zodToJsonSchema(tool.parameters)
+          parameters: tool.parameters
         }
       ])
     );
   }
-  if ('schema' in settings) {
-    settings.schema = zodToJsonSchema(settings.schema);
-  }
+
   return settings;
 };
 
@@ -88,7 +85,7 @@ const extractTools = (options: Options<AllVercelFn>): ITool[] | undefined => {
     function: {
       name: key,
       description: tool.description!,
-      parameters: zodToJsonSchema(tool.parameters) as any
+      parameters: tool.parameters
     }
   }));
 };
