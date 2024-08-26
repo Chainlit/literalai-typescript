@@ -52,6 +52,7 @@
     "zod-to-json-schema": "^3.23.0"
   },
   "dependencies": {
+    "@langchain/openai": "^0.2.7",
     "axios": "^1.6.2",
     "form-data": "^4.0.0",
     "mustache": "^4.2.0",

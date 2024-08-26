@@ -118,15 +118,19 @@ function instrumentOpenAI(
   OpenAI.Images.prototype.generate = wrappedImagesGenerate as any;
 
   return {
+    ...options.client,
     chat: {
       completions: {
+        _client: options.client,
         create: wrappedChatCompletionsCreate
       }
     },
     completions: {
+      _client: options.client,
       create: wrappedCompletionsCreate
     },
     images: {
+      _client: options.client,
       generate: wrappedImagesGenerate
     }
   };
