@@ -8,7 +8,6 @@ import type {
   streamObject,
   streamText
 } from 'ai';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import {
   ChatGeneration,
@@ -61,6 +60,7 @@ const extractMessages = (
 const extractSettings = (options: Options<AllVercelFn>): ILLMSettings => {
   const settings = { ...options } as any;
   delete settings.model;
+  delete settings.messages;
   delete settings.prompt;
   delete settings.abortSignal;
   if ('tools' in settings) {
@@ -69,14 +69,12 @@ const extractSettings = (options: Options<AllVercelFn>): ILLMSettings => {
         key,
         {
           description: tool.description,
-          parameters: zodToJsonSchema(tool.parameters)
+          parameters: tool.parameters
         }
       ])
     );
   }
-  if ('schema' in settings) {
-    settings.schema = zodToJsonSchema(settings.schema);
-  }
+
   return settings;
 };
 
@@ -87,9 +85,25 @@ const extractTools = (options: Options<AllVercelFn>): ITool[] | undefined => {
     function: {
       name: key,
       description: tool.description!,
-      parameters: zodToJsonSchema(tool.parameters) as any
+      parameters: tool.parameters
     }
   }));
+};
+
+const extractPrompt = (
+  options: Options<AllVercelFn>
+):
+  | { uuid: string; promptId: string; variables: Record<string, any> }
+  | undefined => {
+  if (!options.messages) return undefined;
+
+  for (const message of options.messages) {
+    if (typeof (message as any).literalMetadata === 'function') {
+      return (message as any).literalMetadata();
+    }
+  }
+
+  return undefined;
 };
 
 const computeMetricsSync = (
@@ -141,7 +155,16 @@ const computeMetricsSync = (
 
   const messageCompletion = messages.pop();
 
+  const promptData = extractPrompt(options);
+  const promptId = promptData?.promptId;
+  const variables = promptData?.variables;
+  if (messages.length > 0) {
+    messages[0].uuid = promptData?.uuid;
+  }
+
   return {
+    promptId,
+    variables,
     duration,
     tokenThroughputInSeconds,
     outputTokenCount,
@@ -217,7 +240,16 @@ const computeMetricsStream = async (
   if (textMessage.content) messages.push(textMessage);
   const messageCompletion = messages.pop();
 
+  const promptData = extractPrompt(options);
+  const promptId = promptData?.promptId;
+  const variables = promptData?.variables;
+  if (messages.length > 0) {
+    messages[0].uuid = promptData?.uuid;
+  }
+
   return {
+    promptId,
+    variables,
     duration,
     tokenThroughputInSeconds,
     outputTokenCount,
