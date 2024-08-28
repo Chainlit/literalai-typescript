@@ -27,13 +27,13 @@ const storage = new AsyncLocalStorage<StoredContext>();
  *
  * @example
  * ```typescript
- * const client = new LiteralClient({
+ * const literalAiClient = new LiteralClient({
  *   apiKey: 'your-api-key',
  *   environment: 'production'
  * });
  *
- * const thread = client.thread();
- * const step = client.step({ name: 'Example Step', type: 'llm' });
+ * const thread = literalAiClient.thread();
+ * const step = literalAiClient.step({ name: 'Example Step', type: 'llm' });
  * ```
  */
 export class LiteralClient {
