@@ -325,6 +325,20 @@ type CreateAttachmentParams = {
   metadata?: Maybe<Record<string, any>>;
 };
 
+/**
+ * Represents the API client for interacting with the Literal service.
+ * This class handles API requests, authentication, and provides methods
+ * for various operations supported by the Literal API.
+ *
+ * To use this API, you need to initialize a LiteralClient and access the API through it:
+ *
+ * ```typescript
+ * const literalAiClient = new LiteralClient({apiKey: process.env["LITERAL_API_KEY"]});
+ * const api = literalAiClient.api;
+ * ```
+ *
+ * Then you can use the `api` object to make calls to the Literal service.
+ */
 export class API {
   /** @ignore */
   public client: LiteralClient;
