@@ -72,7 +72,7 @@ describe('Decorator', () => {
   });
 
   // Skip for the CI
-  describe('Integrations', () => {
+  describe.skip('Integrations', () => {
     it('logs Langchain generations with the given ID, metadata and tags', async () => {
       const cb = client.instrumentation.langchain.literalCallback();
       const model = new ChatOpenAI({});

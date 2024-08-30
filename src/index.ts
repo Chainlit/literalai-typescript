@@ -235,8 +235,8 @@ export class LiteralClient {
             currentThread: currentStore?.currentThread ?? null,
             currentExperimentItemRunId:
               currentStore?.currentExperimentItemRunId ?? null,
-            currentStep: null,
-            rootRun: null,
+            currentStep: currentStore?.currentStep ?? null,
+            rootRun: currentStore?.rootRun ?? null,
             metadata: options?.metadata ?? null,
             tags: options?.tags ?? null,
             stepId: options?.stepId ?? null

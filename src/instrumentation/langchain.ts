@@ -342,18 +342,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     delete settings.apiKey;
     delete settings.api_key;
 
-    // console.log(
-    //   'handleLLMStart',
-    //   llm,
-    //   prompts,
-    //   runId,
-    //   parentRunId,
-    //   extraParams,
-    //   tags,
-    //   metadata,
-    //   name
-    // );
-
     this.completionGenerations[runId] = {
       provider,
       model,
@@ -419,8 +407,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
   ) {
     const completionGeneration = this.completionGenerations[runId];
     const chatGeneration = this.chatGenerations[runId];
-
-    // console.log('handleLLMEnd', output, runId);
 
     try {
       if (completionGeneration) {
@@ -555,18 +541,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     // make sure there is no api key specification
     delete settings.apiKey;
     delete settings.api_key;
-
-    // console.log(
-    //   'handleChatModelStart',
-    //   llm,
-    //   messages,
-    //   runId,
-    //   parentRunId,
-    //   extraParams,
-    //   tags,
-    //   metadata,
-    //   name
-    // );
 
     const messageList = messages[0];
 

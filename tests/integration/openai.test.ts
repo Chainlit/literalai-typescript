@@ -15,7 +15,6 @@ if (!apiUrl || !apiKey) {
 
 const openai = new OpenAI({ apiKey: 'an-ocean-of-noise' });
 
-// Skip for the CI
 describe('OpenAI Instrumentation', () => {
   // Mock OpenAI Calls
   beforeAll(() => {
