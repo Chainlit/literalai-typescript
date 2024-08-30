@@ -54,6 +54,20 @@ export class Thread extends ThreadFields {
       data.id = uuidv4();
     }
 
+    const currentStore = this.client.store.getStore();
+
+    if (currentStore) {
+      if (currentStore.metadata) {
+        data.metadata = {
+          ...data.metadata,
+          ...currentStore.metadata
+        };
+      }
+      if (currentStore.tags) {
+        data.tags = [...(data.tags ?? []), ...currentStore.tags];
+      }
+    }
+
     Object.assign(this, data);
   }
 
@@ -117,7 +131,10 @@ export class Thread extends ThreadFields {
         currentExperimentItemRunId:
           currentStore?.currentExperimentItemRunId ?? null,
         currentStep: null,
-        rootRun: null
+        rootRun: null,
+        metadata: currentStore?.metadata ?? null,
+        tags: currentStore?.tags ?? null,
+        stepId: currentStore?.stepId ?? null
       },
       () => cb(this)
     );

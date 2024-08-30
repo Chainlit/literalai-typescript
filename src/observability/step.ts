@@ -63,6 +63,26 @@ export class Step extends StepFields {
     this.api = client.api;
     this.client = client;
 
+    const currentStore = this.client.store.getStore();
+
+    if (currentStore) {
+      if (currentStore.metadata) {
+        data.metadata = {
+          ...data.metadata,
+          ...currentStore.metadata
+        };
+      }
+
+      if (currentStore.tags) {
+        data.tags = [...(data.tags ?? []), ...currentStore.tags];
+      }
+
+      if (currentStore.stepId) {
+        data.id = currentStore.stepId;
+        currentStore.stepId = null;
+      }
+    }
+
     Object.assign(this, data);
 
     // Automatically generate an ID if not provided.
@@ -174,7 +194,10 @@ export class Step extends StepFields {
           ? currentStore?.rootRun
           : this.type === 'run'
           ? this
-          : null
+          : null,
+        metadata: currentStore?.metadata ?? null,
+        tags: currentStore?.tags ?? null,
+        stepId: currentStore?.stepId ?? null
       },
       () => cb(this)
     );

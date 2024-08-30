@@ -410,7 +410,6 @@ export class API {
           variables: variables
         }
       });
-
       if (response.data.errors) {
         throw new Error(JSON.stringify(response.data.errors));
       }
@@ -860,6 +859,26 @@ export class API {
   }
     `;
 
+    const currentStore = this.client.store.getStore();
+
+    if (currentStore) {
+      if (currentStore.metadata) {
+        generation.metadata = {
+          ...generation.metadata,
+          ...currentStore.metadata
+        };
+      }
+
+      if (currentStore.tags) {
+        generation.tags = [...(generation.tags ?? []), ...currentStore.tags];
+      }
+
+      if (currentStore.stepId) {
+        generation.id = currentStore.stepId;
+        currentStore.stepId = null;
+      }
+    }
+
     const variables = {
       stepId,
       generation
@@ -930,13 +949,13 @@ export class API {
       $metadata: Json,
       $participantId: String,
       $tags: [String!],
-  ) {
+    ) {
       upsertThread(
-          id: $threadId
-          name: $name
-          metadata: $metadata
-          participantId: $participantId
-          tags: $tags
+        id: $threadId
+        name: $name
+        metadata: $metadata
+        participantId: $participantId
+        tags: $tags
       ) {
         ${threadFields}
       }

@@ -30,7 +30,7 @@ describe('Llama Index Instrumentation', () => {
   });
 
   // Skip for the CI
-  describe.skip('with OpenAI', () => {
+  describe('with OpenAI', () => {
     it('should create generation when using SimpleChatEngine', async () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 

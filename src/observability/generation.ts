@@ -73,6 +73,7 @@ export class CompletionGeneration extends BaseGeneration {
   constructor(data: OmitUtils<CompletionGeneration>) {
     super();
     this.type = 'COMPLETION';
+
     Object.assign(this, data);
   }
 }

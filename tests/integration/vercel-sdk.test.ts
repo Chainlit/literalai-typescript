@@ -17,7 +17,7 @@ const client = new LiteralClient({ apiKey, apiUrl });
 
 describe('Vercel SDK Instrumentation', () => {
   // Skip for the CI
-  describe.skip('With OpenAI', () => {
+  describe('With OpenAI', () => {
     afterEach(() => jest.restoreAllMocks());
 
     it('should work a simple text generation', async () => {
