@@ -1,24 +1,21 @@
 import { openai } from '@ai-sdk/openai';
 import { generateObject, generateText, streamObject, streamText } from 'ai';
 import 'dotenv/config';
+import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
 import { LiteralClient } from '../../src';
 
+const apiUrl = process.env.LITERAL_API_URL;
+const apiKey = process.env.LITERAL_API_KEY;
+
+if (!apiUrl || !apiKey) {
+  throw new Error('Missing environment variables');
+}
+
+const client = new LiteralClient({ apiKey, apiUrl });
+
 describe('Vercel SDK Instrumentation', () => {
-  let client: LiteralClient;
-
-  beforeAll(function () {
-    const apiUrl = process.env.LITERAL_API_URL;
-    const apiKey = process.env.LITERAL_API_KEY;
-
-    if (!apiUrl || !apiKey) {
-      throw new Error('Missing environment variables');
-    }
-
-    client = new LiteralClient({ apiKey, apiUrl });
-  });
-
   // Skip for the CI
   describe.skip('With OpenAI', () => {
     afterEach(() => jest.restoreAllMocks());
@@ -430,5 +427,48 @@ describe('Vercel SDK Instrumentation', () => {
         })
       );
     });
+  });
+
+  describe.skip('Literal AI metadata', () => {
+    const generateTextWithLiteralAI =
+      client.instrumentation.vercel.instrument(generateText);
+
+    it('should create a generation with the provided ID', async () => {
+      const literalaiStepId = uuidv4();
+
+      await generateTextWithLiteralAI({
+        model: openai('gpt-3.5-turbo'),
+        prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+        literalaiStepId
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      const step = await client.api.getStep(literalaiStepId);
+
+      expect(step!.id).toEqual(literalaiStepId);
+      expect(step!.type).toEqual('llm');
+    }, 30_000);
+
+    it('should create a generation with the provided tags and metadata', async () => {
+      const literalaiStepId = uuidv4();
+
+      await generateTextWithLiteralAI({
+        model: openai('gpt-3.5-turbo'),
+        prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+        literalaiStepId,
+        literalaiTags: ['tag1', 'tag2'],
+        literalaiMetadata: { otherKey: 'otherValue' }
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      const step = await client.api.getStep(literalaiStepId);
+
+      expect(step!.metadata).toEqual(
+        expect.objectContaining({ otherKey: 'otherValue' })
+      );
+      expect(step!.tags).toEqual(expect.arrayContaining(['tag1', 'tag2']));
+    }, 30_000);
   });
 });

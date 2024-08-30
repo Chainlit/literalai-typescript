@@ -345,6 +345,35 @@ describe('OpenAI Instrumentation', () => {
   });
 
   describe('Handling tags and metadata', () => {
+    it('should assign a specific ID to the generation if provided', async () => {
+      const openai_ = new OpenAI({ apiKey: 'an-ocean-of-noise' });
+
+      const client = new LiteralClient({ apiKey, apiUrl });
+      const literalaiStepId = uuidv4();
+
+      const instrumentedOpenAi = client.instrumentation.openai({
+        client: openai_
+      });
+
+      await instrumentedOpenAi.chat.completions.create(
+        {
+          model: 'gpt-3.5-turbo',
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant.' },
+            { role: 'user', content: 'What is the capital of Canada?' }
+          ]
+        },
+        { literalaiStepId }
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      const step = await client.api.getStep(literalaiStepId);
+
+      expect(step!.id).toEqual(literalaiStepId);
+      expect(step!.type).toEqual('llm');
+    });
+
     it('handles tags and metadata on the instrumentation call', async () => {
       const client = new LiteralClient({ apiKey, apiUrl });
       client.instrumentation.openai({
@@ -385,6 +414,7 @@ describe('OpenAI Instrumentation', () => {
       const client = new LiteralClient({ apiKey, apiUrl });
 
       const instrumentedOpenAi = client.instrumentation.openai({
+        client: openai,
         tags: ['tag1', 'tag2'],
         metadata: { key: 'value' }
       });

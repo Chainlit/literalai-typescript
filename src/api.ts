@@ -850,7 +850,7 @@ export class API {
    * @param generation - The `Generation` object to be created and sent to the platform.
    * @returns A Promise resolving to the newly created `Generation` object.
    */
-  async createGeneration(generation: Generation) {
+  async createGeneration(generation: Generation, stepId: string | null = null) {
     const mutation = `
     mutation CreateGeneration($generation: GenerationPayloadInput!) {
       createGeneration(generation: $generation) {
@@ -861,6 +861,7 @@ export class API {
     `;
 
     const variables = {
+      stepId,
       generation
     };
 

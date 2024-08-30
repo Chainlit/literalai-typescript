@@ -15,10 +15,9 @@ import {
   IGenerationMessage,
   ILLMSettings,
   ITool,
-  LiteralClient
+  LiteralClient,
+  Maybe
 } from '..';
-import { Step } from '../observability/step';
-import { Thread } from '../observability/thread';
 
 export type VercelLanguageModel = LanguageModel;
 
@@ -260,7 +259,9 @@ const computeMetricsStream = async (
 };
 
 type VercelExtraOptions = {
-  literalAiParent?: Step | Thread;
+  literalaiTags?: Maybe<string[]>;
+  literalaiMetadata?: Maybe<Record<string, any>>;
+  literalaiStepId?: Maybe<string>;
 };
 
 export type InstrumentationVercelMethod = {
@@ -288,7 +289,7 @@ export const makeInstrumentVercelSDK = (
     type TOptions = Options<TFunction>;
     type TResult = Result<TFunction>;
 
-    return async (options: TOptions): Promise<TResult> => {
+    return async (options: TOptions & VercelExtraOptions): Promise<TResult> => {
       const startTime = Date.now();
       const result: TResult = await (fn as any)(options);
 
@@ -318,6 +319,9 @@ export const makeInstrumentVercelSDK = (
           );
 
           const generation = new ChatGeneration({
+            ...(options.literalaiStepId && { id: options.literalaiStepId }),
+            metadata: options.literalaiMetadata,
+            tags: options.literalaiTags,
             provider: options.model.provider,
             model: options.model.modelId,
             settings: extractSettings(options),
@@ -346,6 +350,9 @@ export const makeInstrumentVercelSDK = (
           const metrics = computeMetricsSync(options, result, startTime);
 
           const generation = new ChatGeneration({
+            ...(options.literalaiStepId && { id: options.literalaiStepId }),
+            metadata: options.literalaiMetadata,
+            tags: options.literalaiTags,
             provider: options.model.provider,
             model: options.model.modelId,
             settings: extractSettings(options),

@@ -26,6 +26,7 @@ type OriginalFunction<Output> = (
 type OpenAICallOptions = {
   literalaiTags?: Maybe<string[]>;
   literalaiMetadata?: Maybe<Record<string, any>>;
+  literalaiStepId?: Maybe<string>;
 };
 
 function cleanOpenAIArgs(
@@ -87,8 +88,11 @@ function instrumentOpenAI(
   client: LiteralClient,
   options: OpenAIGlobalOptions = {}
 ) {
+  const originalMethods = (OpenAI.prototype as any).__literalai_originalMethods;
+
   // Patching the chat.completions.create function
   const originalChatCompletionsCreate =
+    originalMethods?.originalChatCompletionsCreate ??
     OpenAI.Chat.Completions.prototype.create;
   const wrappedChatCompletionsCreate = wrapFunction(
     originalChatCompletionsCreate,
@@ -97,7 +101,9 @@ function instrumentOpenAI(
   );
 
   // Patching the completions.create function
-  const originalCompletionsCreate = OpenAI.Completions.prototype.create;
+  const originalCompletionsCreate =
+    originalMethods?.originalCompletionsCreate ??
+    OpenAI.Completions.prototype.create;
   const wrappedCompletionsCreate = wrapFunction(
     originalCompletionsCreate,
     client,
@@ -105,7 +111,8 @@ function instrumentOpenAI(
   );
 
   // Patching the images.generate function
-  const originalImagesGenerate = OpenAI.Images.prototype.generate;
+  const originalImagesGenerate =
+    originalMethods?.originalImagesGenerate ?? OpenAI.Images.prototype.generate;
   const wrappedImagesGenerate = wrapFunction(
     originalImagesGenerate,
     client,
@@ -116,6 +123,12 @@ function instrumentOpenAI(
     wrappedChatCompletionsCreate as any;
   OpenAI.Completions.prototype.create = wrappedCompletionsCreate as any;
   OpenAI.Images.prototype.generate = wrappedImagesGenerate as any;
+
+  (OpenAI.prototype as any).__literalai_originalMethods = {
+    originalChatCompletionsCreate,
+    originalCompletionsCreate,
+    originalImagesGenerate
+  };
 
   return {
     ...options.client,
@@ -361,10 +374,12 @@ const processOpenAIOutput = async (
   };
 
   const baseGeneration = {
+    ...(callOptions?.literalaiStepId && { id: callOptions.literalaiStepId }),
     provider: 'openai',
     model: inputs.model,
     settings: getSettings(inputs),
-    tags
+    tags,
+    metadata
   };
 
   const threadFromStore = client._currentThread();

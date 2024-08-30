@@ -23,6 +23,7 @@ import {
 import { ChainValues, InputValues } from '@langchain/core/utils/types';
 import mustache from 'mustache';
 import { v5 as uuidv5 } from 'uuid';
+import { validate as uuidValidate } from 'uuid';
 
 import {
   ChatGeneration,
@@ -121,6 +122,8 @@ interface ChatGenerationStart {
   start: number;
   outputTokenCount: number;
   ttFirstToken?: number;
+  metadata?: Record<string, unknown>;
+  tags?: string[];
 }
 
 interface CompletionGenerationStart {
@@ -131,6 +134,8 @@ interface CompletionGenerationStart {
   start: number;
   outputTokenCount: number;
   ttFirstToken?: number;
+  metadata?: Record<string, unknown>;
+  tags?: string[];
 }
 
 function convertMessageRole(role: string) {
@@ -289,6 +294,32 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     }
   }
 
+  getGenerationStepId(
+    runId: string,
+    metadata?: Record<string, unknown> | undefined
+  ) {
+    const generationStepIdFromMetadata = metadata?.literalaiStepId;
+
+    if (typeof generationStepIdFromMetadata !== 'string') {
+      return runId;
+    }
+
+    if (!uuidValidate(generationStepIdFromMetadata)) {
+      return runId;
+    }
+
+    // The stepId from metadata can only be used on one generation
+    if (
+      Object.values(this.steps).find(
+        (step) => step.id === generationStepIdFromMetadata
+      )
+    ) {
+      return runId;
+    }
+
+    return generationStepIdFromMetadata;
+  }
+
   /**
    * LLM Callbacks
    */
@@ -311,13 +342,27 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     delete settings.apiKey;
     delete settings.api_key;
 
+    // console.log(
+    //   'handleLLMStart',
+    //   llm,
+    //   prompts,
+    //   runId,
+    //   parentRunId,
+    //   extraParams,
+    //   tags,
+    //   metadata,
+    //   name
+    // );
+
     this.completionGenerations[runId] = {
       provider,
       model,
       settings,
       prompt: prompts[0],
       start: Date.now(),
-      outputTokenCount: 0
+      outputTokenCount: 0,
+      metadata,
+      tags
     };
 
     const parentId = this.getParentId(parentRunId);
@@ -329,7 +374,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
           type: 'llm',
           tags: tags,
           threadId: this.threadId,
-          id: runId,
+          id: this.getGenerationStepId(runId, metadata),
           startTime: new Date().toISOString(),
           parentId: this.getParentId(parentRunId),
           metadata: metadata,
@@ -375,97 +420,118 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     const completionGeneration = this.completionGenerations[runId];
     const chatGeneration = this.chatGenerations[runId];
 
-    if (completionGeneration) {
-      const {
-        start,
-        outputTokenCount,
-        ttFirstToken,
-        prompt,
-        model,
-        provider,
-        settings
-      } = this.completionGenerations[runId];
-      const duration = (Date.now() - start) / 1000;
-      const tokenThroughputInSeconds =
-        duration && outputTokenCount
-          ? outputTokenCount / (duration / 1000)
-          : undefined;
+    // console.log('handleLLMEnd', output, runId);
 
-      const generation = new CompletionGeneration({
-        provider,
-        model,
-        settings,
-        completion: output.generations[0][0].text,
-        prompt: prompt,
-        duration,
-        ttFirstToken,
-        outputTokenCount,
-        tokenThroughputInSeconds: tokenThroughputInSeconds
-      });
+    try {
+      if (completionGeneration) {
+        const {
+          start,
+          outputTokenCount,
+          ttFirstToken,
+          prompt,
+          model,
+          provider,
+          settings,
+          metadata,
+          tags
+        } = this.completionGenerations[runId];
+        const duration = (Date.now() - start) / 1000;
+        const tokenThroughputInSeconds =
+          duration && outputTokenCount
+            ? outputTokenCount / (duration / 1000)
+            : undefined;
 
-      if (this.steps[runId]) {
-        this.steps[runId].generation = generation;
-        this.steps[runId].output = output.generations[0][0];
-        this.steps[runId].endTime = new Date().toISOString();
+        const generation = new CompletionGeneration({
+          metadata,
+          tags,
+          provider,
+          model,
+          settings,
+          completion: output.generations[0][0].text,
+          prompt: prompt,
+          duration,
+          ttFirstToken,
+          outputTokenCount,
+          tokenThroughputInSeconds: tokenThroughputInSeconds
+        });
 
-        await this.steps[runId].send();
-      } else {
-        await this.client.api.createGeneration(generation);
+        if (this.steps[runId]) {
+          this.steps[runId].generation = generation;
+          this.steps[runId].output = output.generations[0][0];
+          this.steps[runId].endTime = new Date().toISOString();
+
+          await this.steps[runId].send();
+        } else {
+          await this.client.api.createGeneration({
+            ...generation,
+            id: this.getGenerationStepId(runId, metadata)
+          });
+        }
+      } else if (chatGeneration) {
+        const {
+          promptId,
+          variables,
+          start,
+          outputTokenCount,
+          ttFirstToken,
+          inputMessages,
+          model,
+          provider,
+          settings,
+          tools,
+          metadata,
+          tags
+        } = this.chatGenerations[runId];
+
+        const duration = (Date.now() - start) / 1000;
+        const tokenThroughputInSeconds =
+          duration && outputTokenCount
+            ? outputTokenCount / (duration / 1000)
+            : undefined;
+        const messageCompletion = convertMessage(
+          (output.generations[0][0] as any).message
+        );
+
+        const generation = new ChatGeneration({
+          metadata,
+          tags,
+          promptId,
+          variables,
+          provider,
+          model,
+          settings,
+          tools,
+          messageCompletion,
+          messages: addToolCallIdToMessages(inputMessages),
+          duration,
+          ttFirstToken,
+          outputTokenCount,
+          tokenThroughputInSeconds: tokenThroughputInSeconds
+        });
+
+        if (this.steps[runId]) {
+          this.steps[runId].generation = generation;
+          this.steps[runId].generation!.inputTokenCount =
+            output.llmOutput?.estimatedTokenUsage?.promptTokens;
+          this.steps[runId].generation!.outputTokenCount =
+            output.llmOutput?.estimatedTokenUsage?.completionTokens;
+          this.steps[runId].generation!.tokenCount =
+            output.llmOutput?.estimatedTokenUsage?.totalTokens;
+
+          this.steps[runId].output = messageCompletion;
+          this.steps[runId].endTime = new Date().toISOString();
+
+          await this.steps[runId].send();
+        } else {
+          await this.client.api.createGeneration({
+            ...generation,
+            id: this.getGenerationStepId(runId, metadata)
+          });
+        }
       }
-    } else if (chatGeneration) {
-      const {
-        promptId,
-        variables,
-        start,
-        outputTokenCount,
-        ttFirstToken,
-        inputMessages,
-        model,
-        provider,
-        settings,
-        tools
-      } = this.chatGenerations[runId];
-
-      const duration = (Date.now() - start) / 1000;
-      const tokenThroughputInSeconds =
-        duration && outputTokenCount
-          ? outputTokenCount / (duration / 1000)
-          : undefined;
-      const messageCompletion = convertMessage(
-        (output.generations[0][0] as any).message
-      );
-
-      const generation = new ChatGeneration({
-        promptId,
-        variables,
-        provider,
-        model,
-        settings,
-        tools,
-        messageCompletion,
-        messages: addToolCallIdToMessages(inputMessages),
-        duration,
-        ttFirstToken,
-        outputTokenCount,
-        tokenThroughputInSeconds: tokenThroughputInSeconds
-      });
-
-      if (this.steps[runId]) {
-        this.steps[runId].generation = generation;
-        this.steps[runId].generation!.inputTokenCount =
-          output.llmOutput?.estimatedTokenUsage?.promptTokens;
-        this.steps[runId].generation!.outputTokenCount =
-          output.llmOutput?.estimatedTokenUsage?.completionTokens;
-        this.steps[runId].generation!.tokenCount =
-          output.llmOutput?.estimatedTokenUsage?.totalTokens;
-
-        this.steps[runId].output = messageCompletion;
-        this.steps[runId].endTime = new Date().toISOString();
-
-        await this.steps[runId].send();
-      } else {
-        await this.client.api.createGeneration(generation);
-      }
+    } catch (e) {
+      console.error(e);
+      console.log('Error in handleLLMEnd', e);
     }
   }
 
@@ -490,6 +556,18 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     delete settings.apiKey;
     delete settings.api_key;
 
+    // console.log(
+    //   'handleChatModelStart',
+    //   llm,
+    //   messages,
+    //   runId,
+    //   parentRunId,
+    //   extraParams,
+    //   tags,
+    //   metadata,
+    //   name
+    // );
+
     const messageList = messages[0];
 
     const { promptId, variables } = checkForLiteralPrompt(messageList);
@@ -505,7 +583,9 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       tools,
       inputMessages: messageList.map(convertMessage),
       start: Date.now(),
-      outputTokenCount: 0
+      outputTokenCount: 0,
+      metadata,
+      tags
     };
 
     const parentId = this.getParentId(parentRunId);
@@ -523,10 +603,10 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
           type: 'llm',
           tags: tags,
           threadId: this.threadId,
-          id: runId,
+          id: this.getGenerationStepId(runId, metadata),
           startTime: new Date().toISOString(),
           parentId: parentId,
-          metadata: metadata,
+          metadata,
           input: { content: messages[0] }
         })
         .send();
@@ -598,12 +678,12 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
       const step = await this.client
         .run({
           name: name || chainType,
-          tags: tags,
           threadId: this.threadId,
           id: runId,
           input: stepInput,
           startTime: new Date().toISOString(),
-          metadata: metadata
+          metadata,
+          tags
         })
         .send();
 
@@ -623,6 +703,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
           type: 'tool',
           parentId,
           tags: tags,
+          metadata,
           threadId: this.threadId,
           id: runId,
           input: stepInput,
