@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { v4 as uuidv4 } from 'uuid';
 
 import { LiteralClient } from '../../src';
+import { sleep } from '../utils';
 
 const url = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
@@ -24,18 +25,12 @@ describe('Langchain integration', function () {
       metadata: { literalaiStepId }
     });
 
-    const { data } = await client.api.getGenerations({
-      filters: [
-        {
-          field: 'id',
-          operator: 'eq',
-          value: literalaiStepId
-        }
-      ]
-    });
+    await sleep(1000);
 
-    expect(data.length).toBe(1);
-  }, 30000);
+    const step = await client.api.getStep(literalaiStepId);
+
+    expect(step!.type).toBe('llm');
+  });
 
   it('should copy tags and metadata to the generation', async function () {
     const literalaiStepId = uuidv4();
@@ -55,10 +50,11 @@ describe('Langchain integration', function () {
       tags
     });
 
+    await sleep(1000);
+
     const step = await client.api.getStep(literalaiStepId);
 
-    expect(step!.type).toBe('llm');
     expect(step!.metadata).toEqual(expect.objectContaining(metadata));
     expect(step!.tags).toEqual(expect.arrayContaining(tags));
-  }, 30000);
+  });
 });

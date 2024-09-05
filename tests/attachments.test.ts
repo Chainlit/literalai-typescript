@@ -3,6 +3,7 @@ import { createReadStream, readFileSync } from 'fs';
 
 import { LiteralClient, Maybe } from '../src';
 import { Attachment } from '../src/observability/attachment';
+import { sleep } from './utils';
 
 const apiUrl = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
@@ -33,7 +34,7 @@ describe('Attachments', () => {
       { type: 'ArrayBuffer', content: arrayBuffer! },
       { type: 'Blob', content: blob! },
       { type: 'File', content: file! }
-    ])('handles $type objects', async function ({ type, content }) {
+    ])('handles $type objects', async function({ type, content }) {
       const attachment = await client.api.createAttachment({
         content,
         mime,
@@ -48,7 +49,7 @@ describe('Attachments', () => {
         })
         .send();
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await sleep(2000);
 
       const fetchedStep = await client.api.getStep(step.id!);
 
@@ -86,7 +87,7 @@ describe('Attachments', () => {
         });
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await sleep(2000);
 
       const fetchedStep = await client.api.getStep(stepId!);
 

@@ -221,6 +221,15 @@ const computeMetricsStream = async (
           });
           break;
         }
+        case 'object': {
+          console.log({ chunk });
+          const { object } = chunk as ObjectStreamPart<any>;
+          messages[messages.length - 1] = {
+            role: 'assistant',
+            content: JSON.stringify({})
+          };
+          break;
+        }
       }
     }
 
@@ -235,6 +244,8 @@ const computeMetricsStream = async (
     duration && outputTokenCount
       ? outputTokenCount / (duration / 1000)
       : undefined;
+
+  console.log(messages, textMessage);
 
   if (textMessage.content) messages.push(textMessage);
   const messageCompletion = messages.pop();

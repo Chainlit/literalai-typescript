@@ -7,6 +7,7 @@ import OpenAI from 'openai';
 import { v4 as uuidv4 } from 'uuid';
 
 import { LiteralClient, Maybe } from '../src';
+import { sleep } from './utils';
 
 const url = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
@@ -16,10 +17,6 @@ if (!url || !apiKey) {
 }
 
 const client = new LiteralClient({ apiKey, apiUrl: url });
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 describe('Decorator', () => {
   describe('Manual logging', () => {
@@ -72,7 +69,7 @@ describe('Decorator', () => {
   });
 
   // Skip for the CI
-  describe.skip('Integrations', () => {
+  describe('Integrations', () => {
     it('logs Langchain generations with the given ID, metadata and tags', async () => {
       const cb = client.instrumentation.langchain.literalCallback();
       const model = new ChatOpenAI({});
@@ -87,7 +84,7 @@ describe('Decorator', () => {
         });
       });
 
-      await sleep(1000);
+      await sleep(2000);
 
       const step = await client.api.getStep(stepId);
 
@@ -119,7 +116,7 @@ describe('Decorator', () => {
       expect(step?.id).toBe(stepId);
       expect(step?.metadata).toEqual(expect.objectContaining(metadata));
       expect(step?.tags).toEqual(expect.arrayContaining(tags));
-    }, 30_000);
+    });
 
     it('logs OpenAI generations with the given ID, metadata and tags', async () => {
       const openai = new OpenAI();
@@ -172,6 +169,6 @@ describe('Decorator', () => {
       expect(step?.id).toBe(stepId);
       expect(step?.metadata).toEqual(expect.objectContaining(metadata));
       expect(step?.tags).toEqual(expect.arrayContaining(tags));
-    }, 30_000);
+    });
   });
 });

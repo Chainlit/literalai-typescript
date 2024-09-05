@@ -79,3 +79,8 @@ export class User extends Utils {
     Object.assign(this, data);
   }
 }
+
+export function omitLiteralAiMetadata(obj: Record<string, unknown>) {
+  const { literalaiTags, literalaiMetadata, literalaiStepId, ...rest } = obj;
+  return rest;
+}

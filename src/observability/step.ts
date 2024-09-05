@@ -3,7 +3,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { LiteralClient } from '..';
 import { API } from '../api';
 import { Score } from '../evaluation/score';
-import { Environment, Maybe, OmitUtils, Utils, isPlainObject } from '../utils';
+import {
+  Environment,
+  Maybe,
+  OmitUtils,
+  Utils,
+  isPlainObject,
+  omitLiteralAiMetadata
+} from '../utils';
 import { Attachment } from './attachment';
 import { Generation } from './generation';
 
@@ -63,41 +70,13 @@ export class Step extends StepFields {
     this.api = client.api;
     this.client = client;
 
-    const currentStore = this.client.store.getStore();
-
-    if (currentStore) {
-      if (currentStore.metadata) {
-        data.metadata = {
-          ...data.metadata,
-          ...currentStore.metadata
-        };
-      }
-
-      if (currentStore.tags) {
-        data.tags = [...(data.tags ?? []), ...currentStore.tags];
-      }
-
-      if (currentStore.stepId) {
-        data.id = currentStore.stepId;
-        currentStore.stepId = null;
-      }
-    }
-
     Object.assign(this, data);
+    this.enrichFromStore(ignoreContext);
 
     // Automatically generate an ID if not provided.
     if (!this.id) {
       this.id = uuidv4();
     }
-
-    if (ignoreContext) {
-      return;
-    }
-
-    // Automatically assign parent thread & step & rootRun if there are any in the store.
-    this.threadId = this.threadId ?? this.client._currentThread()?.id;
-    this.parentId = this.parentId ?? this.client._currentStep()?.id;
-    this.rootRunId = this.rootRunId ?? this.client._rootRun()?.id;
 
     // Set the creation and start time to the current time if not provided.
     if (!this.createdAt) {
@@ -111,6 +90,37 @@ export class Step extends StepFields {
     if (this.isMessage()) {
       this.endTime = this.startTime;
     }
+  }
+
+  private enrichFromStore(ignoreContext?: true) {
+    if (ignoreContext) {
+      return;
+    }
+
+    const currentStore = this.client.store.getStore();
+
+    if (currentStore) {
+      if (currentStore.metadata) {
+        this.metadata = omitLiteralAiMetadata({
+          ...this.metadata,
+          ...currentStore.metadata
+        });
+      }
+
+      if (currentStore.tags) {
+        this.tags = [...(this.tags ?? []), ...currentStore.tags];
+      }
+
+      if (currentStore.stepId && !this.id) {
+        this.id = currentStore.stepId;
+        currentStore.stepId = null;
+      }
+    }
+
+    // Automatically assign parent thread & step & rootRun if there are any in the store.
+    this.threadId = this.threadId ?? this.client._currentThread()?.id;
+    this.parentId = this.parentId ?? this.client._currentStep()?.id;
+    this.rootRunId = this.rootRunId ?? this.client._rootRun()?.id;
   }
 
   /**

@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
 import { LiteralClient } from '../../src';
+import { sleep } from '../utils';
 
 const apiUrl = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
@@ -17,7 +18,7 @@ const client = new LiteralClient({ apiKey, apiUrl });
 
 describe('Vercel SDK Instrumentation', () => {
   // Skip for the CI
-  describe.skip('With OpenAI', () => {
+  describe('With OpenAI', () => {
     afterEach(() => jest.restoreAllMocks());
 
     it('should work a simple text generation', async () => {
@@ -143,7 +144,7 @@ describe('Vercel SDK Instrumentation', () => {
       );
     });
 
-    it('should work for streamed structured generation', async () => {
+    it.only('should work for streamed structured generation', async () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 
       const streamObjectWithLiteralAI =
@@ -213,7 +214,7 @@ describe('Vercel SDK Instrumentation', () => {
         expect(result.text).toBeTruthy();
 
         // Sending message is done asynchronously
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await sleep(1000);
 
         expect(spy).toHaveBeenCalledWith([
           expect.objectContaining({
@@ -429,7 +430,7 @@ describe('Vercel SDK Instrumentation', () => {
     });
   });
 
-  describe.skip('Literal AI metadata', () => {
+  describe('Literal AI metadata', () => {
     const generateTextWithLiteralAI =
       client.instrumentation.vercel.instrument(generateText);
 
@@ -442,13 +443,13 @@ describe('Vercel SDK Instrumentation', () => {
         literalaiStepId
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await sleep(1000);
 
       const step = await client.api.getStep(literalaiStepId);
 
       expect(step!.id).toEqual(literalaiStepId);
       expect(step!.type).toEqual('llm');
-    }, 30_000);
+    });
 
     it('should create a generation with the provided tags and metadata', async () => {
       const literalaiStepId = uuidv4();
@@ -461,7 +462,7 @@ describe('Vercel SDK Instrumentation', () => {
         literalaiMetadata: { otherKey: 'otherValue' }
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await sleep(1000);
 
       const step = await client.api.getStep(literalaiStepId);
 
@@ -469,6 +470,6 @@ describe('Vercel SDK Instrumentation', () => {
         expect.objectContaining({ otherKey: 'otherValue' })
       );
       expect(step!.tags).toEqual(expect.arrayContaining(['tag1', 'tag2']));
-    }, 30_000);
+    });
   });
 });

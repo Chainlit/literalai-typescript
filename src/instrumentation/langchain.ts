@@ -294,18 +294,15 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
     }
   }
 
-  getGenerationStepId(
-    runId: string,
-    metadata?: Record<string, unknown> | undefined
-  ) {
+  getGenerationStepId(metadata?: Record<string, unknown> | undefined) {
     const generationStepIdFromMetadata = metadata?.literalaiStepId;
 
     if (typeof generationStepIdFromMetadata !== 'string') {
-      return runId;
+      return null;
     }
 
     if (!uuidValidate(generationStepIdFromMetadata)) {
-      return runId;
+      return null;
     }
 
     // The stepId from metadata can only be used on one generation
@@ -314,7 +311,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         (step) => step.id === generationStepIdFromMetadata
       )
     ) {
-      return runId;
+      return null;
     }
 
     return generationStepIdFromMetadata;
@@ -362,7 +359,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
           type: 'llm',
           tags: tags,
           threadId: this.threadId,
-          id: this.getGenerationStepId(runId, metadata),
+          id: this.getGenerationStepId(metadata),
           startTime: new Date().toISOString(),
           parentId: this.getParentId(parentRunId),
           metadata: metadata,
@@ -450,7 +447,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         } else {
           await this.client.api.createGeneration({
             ...generation,
-            id: this.getGenerationStepId(runId, metadata)
+            id: this.getGenerationStepId(metadata)
           });
         }
       } else if (chatGeneration) {
@@ -511,7 +508,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         } else {
           await this.client.api.createGeneration({
             ...generation,
-            id: this.getGenerationStepId(runId, metadata)
+            id: this.getGenerationStepId(metadata)
           });
         }
       }
@@ -577,7 +574,7 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
           type: 'llm',
           tags: tags,
           threadId: this.threadId,
-          id: this.getGenerationStepId(runId, metadata),
+          id: this.getGenerationStepId(metadata),
           startTime: new Date().toISOString(),
           parentId: parentId,
           metadata,

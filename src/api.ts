@@ -849,43 +849,23 @@ export class API {
    * @param generation - The `Generation` object to be created and sent to the platform.
    * @returns A Promise resolving to the newly created `Generation` object.
    */
-  async createGeneration(generation: Generation, stepId: string | null = null) {
-    const mutation = `
-    mutation CreateGeneration($generation: GenerationPayloadInput!) {
-      createGeneration(generation: $generation) {
-          id,
-          type
-      }
-  }
-    `;
+  async createGeneration(generation: Generation) {
+    const stepId = generation.id;
+    const stepMetadata = generation.metadata;
+    const stepTags = generation.tags;
 
-    const currentStore = this.client.store.getStore();
+    delete generation.id;
 
-    if (currentStore) {
-      if (currentStore.metadata) {
-        generation.metadata = {
-          ...generation.metadata,
-          ...currentStore.metadata
-        };
-      }
+    const generationAsStep = this.client.step({
+      id: stepId,
+      metadata: stepMetadata,
+      tags: stepTags,
+      generation,
+      name: generation.type ?? '',
+      type: 'llm'
+    });
 
-      if (currentStore.tags) {
-        generation.tags = [...(generation.tags ?? []), ...currentStore.tags];
-      }
-
-      if (currentStore.stepId) {
-        generation.id = currentStore.stepId;
-        currentStore.stepId = null;
-      }
-    }
-
-    const variables = {
-      stepId,
-      generation
-    };
-
-    const response = await this.makeGqlCall(mutation, variables);
-    return response.data.createGeneration as PersistedGeneration;
+    return generationAsStep.send();
   }
 
   /**
