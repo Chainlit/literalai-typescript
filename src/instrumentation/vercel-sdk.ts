@@ -187,6 +187,10 @@ const computeMetricsStream = async (
 
   let outputTokenCount = 0;
   let ttFirstToken: number | undefined = undefined;
+
+  let accumulatedStreamObjectResponse: IGenerationMessage | undefined =
+    undefined;
+
   for await (const chunk of stream as unknown as AsyncIterable<OriginalStreamPart>) {
     if (typeof chunk === 'string') {
       textMessage.content += chunk;
@@ -222,11 +226,10 @@ const computeMetricsStream = async (
           break;
         }
         case 'object': {
-          console.log({ chunk });
-          const { object } = chunk as ObjectStreamPart<any>;
-          messages[messages.length - 1] = {
+          const { object } = chunk as any;
+          accumulatedStreamObjectResponse = {
             role: 'assistant',
-            content: JSON.stringify({})
+            content: JSON.stringify(object)
           };
           break;
         }
@@ -239,13 +242,15 @@ const computeMetricsStream = async (
     outputTokenCount += 1;
   }
 
+  if (accumulatedStreamObjectResponse) {
+    messages.push(accumulatedStreamObjectResponse);
+  }
+
   const duration = (Date.now() - startTime) / 1000;
   const tokenThroughputInSeconds =
     duration && outputTokenCount
       ? outputTokenCount / (duration / 1000)
       : undefined;
-
-  console.log(messages, textMessage);
 
   if (textMessage.content) messages.push(textMessage);
   const messageCompletion = messages.pop();

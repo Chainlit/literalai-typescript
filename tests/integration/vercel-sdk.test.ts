@@ -144,7 +144,7 @@ describe('Vercel SDK Instrumentation', () => {
       );
     });
 
-    it.only('should work for streamed structured generation', async () => {
+    it('should work for streamed structured generation', async () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 
       const streamObjectWithLiteralAI =
