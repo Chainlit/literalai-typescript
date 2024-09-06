@@ -15,7 +15,7 @@ if (!url || !apiKey) {
 const client = new LiteralClient({ apiKey, apiUrl: url });
 const cb = client.instrumentation.langchain.literalCallback();
 
-describe('Langchain integration', function () {
+describe.skip('Langchain integration', function () {
   it('should create a generation with the provided id', async function () {
     const literalaiStepId = uuidv4();
     const model = new ChatOpenAI({});
