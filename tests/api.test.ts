@@ -597,6 +597,15 @@ describe('End to end tests for the SDK', function () {
       expect(fetchedPrompt?.version).toBe(0);
     });
 
+    it('should get the URL for the prompt', async () => {
+      const prompt = await client.api.getPrompt('Default', 0);
+      const projectId = await client.api.getProjectId();
+
+      expect(prompt?.url).toContain(
+        `projects/${projectId}/playground?name=Default&version=0`
+      );
+    });
+
     it('should format a prompt with default values', async () => {
       const prompt = await client.api.getPrompt('Default');
 

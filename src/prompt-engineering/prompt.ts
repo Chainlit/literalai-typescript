@@ -35,6 +35,7 @@ class PromptFields extends Utils {
   createdAt!: string;
   name!: string;
   version!: number;
+  url?: Maybe<string>;
   versionDesc?: Maybe<string>;
   metadata!: Record<string, any>;
   items!: Array<OmitUtils<DatasetItem>>;

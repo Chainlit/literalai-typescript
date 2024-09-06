@@ -2033,6 +2033,7 @@ export class API {
         variables
         variablesDefaultValues
         version
+        url
         lineage {
           name
         }
@@ -2064,6 +2065,7 @@ export class API {
         variables
         variablesDefaultValues
         version
+        url
         lineage {
           name
         }
