@@ -90,6 +90,9 @@ describe('End to end tests for the SDK', function() {
 
     await client.api.deleteThread(thread.id);
 
+    // We have to await 5 seconds for the thread to disappear from the cache
+    await sleep(5000);
+
     const deletedThread = await client.api.getThread(thread.id);
     expect(deletedThread).toBeNull();
   });
@@ -119,6 +122,9 @@ describe('End to end tests for the SDK', function() {
     expect(updatedThread.tags).toStrictEqual(['hello:world']);
 
     await client.api.deleteThread(thread.id);
+
+    // We have to await 5 seconds for the thread to disappear from the cache
+    await sleep(5000);
 
     const deletedThread = await client.api.getThread(thread.id);
     expect(deletedThread).toBeNull();
