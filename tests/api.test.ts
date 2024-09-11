@@ -175,7 +175,7 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const fetchedStep = await client.api.getStep(step.id!);
     expect(fetchedStep?.id).toBe(step.id);
@@ -209,7 +209,7 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const fetchedStep = await client.api.getStep(step.id!);
     expect(fetchedStep?.id).toBe(step.id);
@@ -237,7 +237,7 @@ describe('End to end tests for the SDK', function () {
 
     expect(step.id).not.toBeNull();
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const steps = await client.api.getSteps({
       filters: [
@@ -269,7 +269,7 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const score = await client.api.createScore({
       stepId: step.id!,

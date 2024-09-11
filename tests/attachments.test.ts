@@ -48,7 +48,7 @@ describe('Attachments', () => {
         })
         .send();
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const fetchedStep = await client.api.getStep(step.id!);
 
@@ -86,7 +86,7 @@ describe('Attachments', () => {
         });
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const fetchedStep = await client.api.getStep(stepId!);
 

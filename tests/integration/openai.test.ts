@@ -318,6 +318,8 @@ describe('OpenAI Instrumentation', () => {
           })
       ]);
 
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
       const {
         data: [firstGeneration]
       } = await client.api.getSteps({
@@ -366,7 +368,7 @@ describe('OpenAI Instrumentation', () => {
         });
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 4000));
 
       const {
         data: [step]
@@ -409,7 +411,7 @@ describe('OpenAI Instrumentation', () => {
         });
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
 
       const {
         data: [step]
