@@ -20,7 +20,6 @@ type StoredContext = {
   rootRun: Step | null;
 };
 
-const storage = new AsyncLocalStorage<StoredContext>();
 /**
  * The LiteralClient class provides an interface to interact with the Literal AI API.
  * It offers methods for creating threads and steps, as well as instrumentation for various AI services.
@@ -40,7 +39,8 @@ export class LiteralClient {
   api: API;
   openai: ReturnType<typeof openai>;
   instrumentation: ReturnType<typeof instrumentation>;
-  store: AsyncLocalStorage<StoredContext> = storage;
+  store: AsyncLocalStorage<StoredContext> =
+    new AsyncLocalStorage<StoredContext>();
 
   /**
    * Initialize a new Literal AI Client.
@@ -115,7 +115,7 @@ export class LiteralClient {
    * @returns The current thread, if any.
    */
   _currentThread(): Thread | null {
-    const store = storage.getStore();
+    const store = this.store.getStore();
 
     return store?.currentThread || null;
   }
@@ -125,7 +125,7 @@ export class LiteralClient {
    * @returns The current step, if any.
    */
   _currentStep(): Step | null {
-    const store = storage.getStore();
+    const store = this.store.getStore();
 
     return store?.currentStep || null;
   }
@@ -135,7 +135,7 @@ export class LiteralClient {
    * @returns The current experiment, if any.
    */
   _currentExperimentItemRunId(): string | null {
-    const store = storage.getStore();
+    const store = this.store.getStore();
 
     return store?.currentExperimentItemRunId || null;
   }
@@ -145,7 +145,7 @@ export class LiteralClient {
    * @returns The root run, if any.
    */
   _rootRun(): Step | null {
-    const store = storage.getStore();
+    const store = this.store.getStore();
 
     return store?.rootRun || null;
   }
@@ -156,7 +156,7 @@ export class LiteralClient {
    * @returns The current thread, if any.
    */
   getCurrentThread(): Thread {
-    const store = storage.getStore();
+    const store = this.store.getStore();
 
     if (!store?.currentThread) {
       throw new Error(
@@ -173,7 +173,7 @@ export class LiteralClient {
    * @returns The current step, if any.
    */
   getCurrentStep(): Step {
-    const store = storage.getStore();
+    const store = this.store.getStore();
 
     if (!store?.currentStep) {
       throw new Error(
@@ -190,7 +190,7 @@ export class LiteralClient {
    * @returns The current experiment, if any.
    */
   getCurrentExperimentItemRunId(): string {
-    const store = storage.getStore();
+    const store = this.store.getStore();
 
     if (!store?.currentExperimentItemRunId) {
       throw new Error(
@@ -207,7 +207,7 @@ export class LiteralClient {
    * @returns The current step, if any.
    */
   getRootRun(): Step {
-    const store = storage.getStore();
+    const store = this.store.getStore();
 
     if (!store?.rootRun) {
       throw new Error(
