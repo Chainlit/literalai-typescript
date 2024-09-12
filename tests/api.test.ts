@@ -175,7 +175,7 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const fetchedStep = await client.api.getStep(step.id!);
     expect(fetchedStep?.id).toBe(step.id);
@@ -209,7 +209,7 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const fetchedStep = await client.api.getStep(step.id!);
     expect(fetchedStep?.id).toBe(step.id);
@@ -237,7 +237,7 @@ describe('End to end tests for the SDK', function () {
 
     expect(step.id).not.toBeNull();
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const steps = await client.api.getSteps({
       filters: [
@@ -269,7 +269,7 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const score = await client.api.createScore({
       stepId: step.id!,
@@ -595,6 +595,15 @@ describe('End to end tests for the SDK', function () {
       expect(fetchedPrompt).not.toBeNull();
       expect(fetchedPrompt?.name).toBe('Default');
       expect(fetchedPrompt?.version).toBe(0);
+    });
+
+    it('should get the URL for the prompt', async () => {
+      const prompt = await client.api.getPrompt('Default', 0);
+      const projectId = await client.api.getProjectId();
+
+      expect(prompt?.url).toContain(
+        `projects/${projectId}/playground?name=Default&version=0`
+      );
     });
 
     it('should format a prompt with default values', async () => {
