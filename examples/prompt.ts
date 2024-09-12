@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-import { LiteralClient } from './src';
+import { LiteralClient } from '../src';
 
 const literalClient = new LiteralClient();
 

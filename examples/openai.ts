@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
 
-import { LiteralClient } from './src';
+import { LiteralClient } from '../src';
 
 const literalClient = new LiteralClient();
 

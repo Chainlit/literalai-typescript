@@ -513,7 +513,6 @@ export class LiteralCallbackHandler extends BaseCallbackHandler {
         }
       }
     } catch (e) {
-      console.error(e);
       console.log('Error in handleLLMEnd', e);
     }
   }

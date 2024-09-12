@@ -34,7 +34,7 @@ describe('Attachments', () => {
       { type: 'ArrayBuffer', content: arrayBuffer! },
       { type: 'Blob', content: blob! },
       { type: 'File', content: file! }
-    ])('handles $type objects', async function({ type, content }) {
+    ])('handles $type objects', async function ({ type, content }) {
       const attachment = await client.api.createAttachment({
         content,
         mime,
