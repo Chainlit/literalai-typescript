@@ -52,6 +52,7 @@ export class BaseGeneration extends Utils {
   model?: Maybe<string>;
   id?: Maybe<string>;
   tags?: Maybe<string[]>;
+  metadata?: Maybe<Record<string, any>>;
   error?: Maybe<string>;
   variables?: Maybe<Record<string, any>>;
   settings?: Maybe<ILLMSettings>;
@@ -72,6 +73,7 @@ export class CompletionGeneration extends BaseGeneration {
   constructor(data: OmitUtils<CompletionGeneration>) {
     super();
     this.type = 'COMPLETION';
+
     Object.assign(this, data);
   }
 }

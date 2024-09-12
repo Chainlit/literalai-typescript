@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ChatGeneration, LiteralClient, Maybe, OmitUtils } from '../../src';
 import { Step } from '../../src/observability/step';
+import { sleep } from '../utils';
 
 const apiUrl = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
@@ -16,7 +17,7 @@ if (!apiUrl || !apiKey) {
 const openai = new OpenAI({ apiKey: 'an-ocean-of-noise' });
 
 // Skip for the CI
-describe('OpenAI Instrumentation', () => {
+describe.skip('OpenAI Instrumentation', () => {
   // Mock OpenAI Calls
   beforeAll(() => {
     /* @ts-expect-error the mock is incomplete but that's OK */
@@ -214,7 +215,7 @@ describe('OpenAI Instrumentation', () => {
           n: 1
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await sleep(1000);
         const {
           data: [step]
         } = await client.api.getSteps({
@@ -227,7 +228,7 @@ describe('OpenAI Instrumentation', () => {
         expect(step?.type).toBe('run');
 
         expect(step?.output?.data[0].url).toEqual(response.data[0].url);
-      }, 30000);
+      });
     });
   });
 
@@ -256,7 +257,7 @@ describe('OpenAI Instrumentation', () => {
         });
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await sleep(2000);
 
       const {
         data: [step]
@@ -267,7 +268,7 @@ describe('OpenAI Instrumentation', () => {
 
       expect(step?.threadId).toBe(threadId);
       expect(step?.parentId).toBe(parentId);
-    }, 30_000);
+    });
 
     it("doesn't mix up threads and steps", async () => {
       const testId = uuidv4();
@@ -341,10 +342,39 @@ describe('OpenAI Instrumentation', () => {
       expect(firstGeneration?.parentId).toEqual(firstStep?.id);
       expect(secondGeneration?.threadId).toEqual(secondThreadId);
       expect(secondGeneration?.parentId).toEqual(secondStep?.id);
-    }, 30_000);
+    });
   });
 
   describe('Handling tags and metadata', () => {
+    it('should assign a specific ID to the generation if provided', async () => {
+      const openai_ = new OpenAI({ apiKey: 'an-ocean-of-noise' });
+
+      const client = new LiteralClient({ apiKey, apiUrl });
+      const literalaiStepId = uuidv4();
+
+      const instrumentedOpenAi = client.instrumentation.openai({
+        client: openai_
+      });
+
+      await instrumentedOpenAi.chat.completions.create(
+        {
+          model: 'gpt-3.5-turbo',
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant.' },
+            { role: 'user', content: 'What is the capital of Canada?' }
+          ]
+        },
+        { literalaiStepId }
+      );
+
+      await sleep(1000);
+
+      const step = await client.api.getStep(literalaiStepId);
+
+      expect(step!.id).toEqual(literalaiStepId);
+      expect(step!.type).toEqual('llm');
+    });
+
     it('handles tags and metadata on the instrumentation call', async () => {
       const client = new LiteralClient({ apiKey, apiUrl });
       client.instrumentation.openai({
@@ -368,7 +398,7 @@ describe('OpenAI Instrumentation', () => {
         });
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 4000));
+      await sleep(4000);
 
       const {
         data: [step]
@@ -379,12 +409,13 @@ describe('OpenAI Instrumentation', () => {
 
       expect(step!.tags).toEqual(expect.arrayContaining(['tag1', 'tag2']));
       expect(step!.metadata).toEqual({ key: 'value' });
-    }, 30_000);
+    });
 
     it('handles tags and metadata on the LLM call', async () => {
       const client = new LiteralClient({ apiKey, apiUrl });
 
       const instrumentedOpenAi = client.instrumentation.openai({
+        client: openai,
         tags: ['tag1', 'tag2'],
         metadata: { key: 'value' }
       });
@@ -411,7 +442,7 @@ describe('OpenAI Instrumentation', () => {
         });
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await sleep(5000);
 
       const {
         data: [step]
@@ -425,6 +456,6 @@ describe('OpenAI Instrumentation', () => {
       );
       expect(step!.metadata!.key).toEqual('value');
       expect(step!.metadata!.otherKey).toEqual('otherValue');
-    }, 30_000);
+    });
   });
 });

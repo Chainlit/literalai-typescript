@@ -18,6 +18,9 @@ type StoredContext = {
   currentStep: Step | null;
   currentExperimentItemRunId?: string | null;
   rootRun: Step | null;
+  metadata: Record<string, any> | null;
+  tags: string[] | null;
+  stepId: string | null;
 };
 
 /**
@@ -216,5 +219,31 @@ export class LiteralClient {
     }
 
     return store.rootRun;
+  }
+
+  decorate(options: {
+    metadata?: Record<string, any>;
+    tags?: string[];
+    stepId?: string;
+  }) {
+    return {
+      wrap: async <T>(cb: () => T) => {
+        const currentStore = this.store.getStore();
+
+        return this.store.run(
+          {
+            currentThread: currentStore?.currentThread ?? null,
+            currentExperimentItemRunId:
+              currentStore?.currentExperimentItemRunId ?? null,
+            currentStep: currentStore?.currentStep ?? null,
+            rootRun: currentStore?.rootRun ?? null,
+            metadata: options?.metadata ?? null,
+            tags: options?.tags ?? null,
+            stepId: options?.stepId ?? null
+          },
+          () => cb()
+        );
+      }
+    };
   }
 }

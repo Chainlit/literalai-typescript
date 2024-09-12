@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ChatGeneration, LiteralClient } from '../src';
 import { Dataset } from '../src/evaluation/dataset';
 import { Score } from '../src/evaluation/score';
+import { sleep } from './utils';
 
 describe('End to end tests for the SDK', function () {
   let client: LiteralClient;
@@ -44,7 +45,7 @@ describe('End to end tests for the SDK', function () {
 
     const deletedUser = await client.api.getUser(identifier);
     expect(deletedUser).toBeUndefined();
-  }, 30000);
+  });
 
   it('should test generation', async function () {
     const generation = await client.api.createGeneration({
@@ -91,7 +92,7 @@ describe('End to end tests for the SDK', function () {
 
     const deletedThread = await client.api.getThread(thread.id);
     expect(deletedThread).toBeNull();
-  }, 30000);
+  });
 
   it('should test thread (deprecated)', async function () {
     const thread = await client.api.upsertThread(
@@ -118,6 +119,9 @@ describe('End to end tests for the SDK', function () {
     expect(updatedThread.tags).toStrictEqual(['hello:world']);
 
     await client.api.deleteThread(thread.id);
+
+    // We have to await 5 seconds for the thread to disappear from the cache
+    await sleep(5000);
 
     const deletedThread = await client.api.getThread(thread.id);
     expect(deletedThread).toBeNull();
@@ -175,7 +179,7 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await sleep(2000);
 
     const fetchedStep = await client.api.getStep(step.id!);
     expect(fetchedStep?.id).toBe(step.id);
@@ -209,7 +213,7 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await sleep(2000);
 
     const fetchedStep = await client.api.getStep(step.id!);
     expect(fetchedStep?.id).toBe(step.id);
@@ -222,7 +226,7 @@ describe('End to end tests for the SDK', function () {
 
     const deletedStep = await client.api.getStep(step.id!);
     expect(deletedStep).toBeNull();
-  }, 30000);
+  });
 
   it('should test steps', async function () {
     const thread = await client.thread({ id: uuidv4() });
@@ -237,7 +241,7 @@ describe('End to end tests for the SDK', function () {
 
     expect(step.id).not.toBeNull();
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await sleep(2000);
 
     const steps = await client.api.getSteps({
       filters: [
@@ -269,7 +273,7 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await sleep(2000);
 
     const score = await client.api.createScore({
       stepId: step.id!,
@@ -309,7 +313,7 @@ describe('End to end tests for the SDK', function () {
       })
       .send();
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await sleep(1000);
 
     const firstScoreValue = 0.9234;
     const scores = await client.api.createScores([
@@ -527,7 +531,7 @@ describe('End to end tests for the SDK', function () {
         })
         .send();
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await sleep(1000);
 
       const datasetItem = await dataset.addStep(step.id!);
 

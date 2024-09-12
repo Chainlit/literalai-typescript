@@ -2,7 +2,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { LiteralClient } from '..';
 import { API } from '../api';
-import { Environment, Maybe, OmitUtils, Utils } from '../utils';
+import {
+  Environment,
+  Maybe,
+  OmitUtils,
+  Utils,
+  omitLiteralAiMetadata
+} from '../utils';
 import { Step, StepConstructor } from './step';
 
 /**
@@ -55,6 +61,24 @@ export class Thread extends ThreadFields {
     }
 
     Object.assign(this, data);
+
+    this.enrichFromStore();
+  }
+
+  private enrichFromStore() {
+    const currentStore = this.client.store.getStore();
+
+    if (currentStore) {
+      if (currentStore.metadata) {
+        this.metadata = omitLiteralAiMetadata({
+          ...this.metadata,
+          ...currentStore.metadata
+        });
+      }
+      if (currentStore.tags) {
+        this.tags = [...(this.tags ?? []), ...currentStore.tags];
+      }
+    }
   }
 
   /**
@@ -117,7 +141,10 @@ export class Thread extends ThreadFields {
         currentExperimentItemRunId:
           currentStore?.currentExperimentItemRunId ?? null,
         currentStep: null,
-        rootRun: null
+        rootRun: null,
+        metadata: currentStore?.metadata ?? null,
+        tags: currentStore?.tags ?? null,
+        stepId: currentStore?.stepId ?? null
       },
       () => cb(this)
     );

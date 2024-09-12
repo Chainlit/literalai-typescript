@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { LiteralClient, Maybe } from '../src';
 import { DatasetExperimentItem } from '../src/evaluation/dataset';
 import { Step } from '../src/observability/step';
+import { sleep } from './utils';
 
 const url = process.env.LITERAL_API_URL;
 const apiKey = process.env.LITERAL_API_KEY;
@@ -12,10 +13,6 @@ if (!url || !apiKey) {
 }
 
 const client = new LiteralClient({ apiKey, apiUrl: url });
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 describe('Wrapper', () => {
   it('handles failing step', async () => {

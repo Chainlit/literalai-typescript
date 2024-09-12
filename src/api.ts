@@ -410,7 +410,6 @@ export class API {
           variables: variables
         }
       });
-
       if (response.data.errors) {
         throw new Error(JSON.stringify(response.data.errors));
       }
@@ -851,21 +850,22 @@ export class API {
    * @returns A Promise resolving to the newly created `Generation` object.
    */
   async createGeneration(generation: Generation) {
-    const mutation = `
-    mutation CreateGeneration($generation: GenerationPayloadInput!) {
-      createGeneration(generation: $generation) {
-          id,
-          type
-      }
-  }
-    `;
+    const stepId = generation.id;
+    const stepMetadata = generation.metadata;
+    const stepTags = generation.tags;
 
-    const variables = {
-      generation
-    };
+    delete generation.id;
 
-    const response = await this.makeGqlCall(mutation, variables);
-    return response.data.createGeneration as PersistedGeneration;
+    const generationAsStep = this.client.step({
+      id: stepId,
+      metadata: stepMetadata,
+      tags: stepTags,
+      generation,
+      name: generation.type ?? '',
+      type: 'llm'
+    });
+
+    return generationAsStep.send();
   }
 
   /**
@@ -929,13 +929,13 @@ export class API {
       $metadata: Json,
       $participantId: String,
       $tags: [String!],
-  ) {
+    ) {
       upsertThread(
-          id: $threadId
-          name: $name
-          metadata: $metadata
-          participantId: $participantId
-          tags: $tags
+        id: $threadId
+        name: $name
+        metadata: $metadata
+        participantId: $participantId
+        tags: $tags
       ) {
         ${threadFields}
       }

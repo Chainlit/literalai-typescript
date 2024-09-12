@@ -1,3 +1,5 @@
+import OpenAI from 'openai';
+
 import { LiteralClient, Maybe } from '..';
 import { LiteralCallbackHandler } from './langchain';
 import { instrumentLlamaIndex, withThread } from './llamaindex';
@@ -7,6 +9,7 @@ import { makeInstrumentVercelSDK } from './vercel-sdk';
 export type OpenAIGlobalOptions = {
   tags?: Maybe<string[]>;
   metadata?: Maybe<Record<string, any>>;
+  client?: OpenAI;
 };
 
 export default (client: LiteralClient) => ({

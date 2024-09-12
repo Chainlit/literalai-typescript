@@ -11,6 +11,7 @@ import {
 import { resolve } from 'path';
 
 import { LiteralClient } from '../../src';
+import { sleep } from '../utils';
 
 describe('Llama Index Instrumentation', () => {
   let client: LiteralClient;
@@ -119,7 +120,7 @@ describe('Llama Index Instrumentation', () => {
       expect(response).toBeTruthy();
 
       // Sending message is done asynchronously
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await sleep(1000);
 
       expect(spy).toHaveBeenCalledWith([
         expect.objectContaining({
@@ -168,7 +169,7 @@ describe('Llama Index Instrumentation', () => {
       expect(response).toBeTruthy();
 
       // Sending message is done asynchronously
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await sleep(1000);
 
       expect(spy).toHaveBeenCalledWith([
         expect.objectContaining({
