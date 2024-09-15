@@ -1,15 +1,11 @@
-import OpenAI from 'openai';
-
 import { LiteralClient, Maybe } from '..';
-import { LiteralCallbackHandler } from './langchain';
-import { instrumentLlamaIndex, withThread } from './llamaindex';
-import instrumentOpenAI from './openai';
-import { makeInstrumentVercelSDK } from './vercel-sdk';
+import { Thread } from '../observability/thread';
+import type { AllVercelFn } from './vercel-sdk';
 
 export type OpenAIGlobalOptions = {
   tags?: Maybe<string[]>;
   metadata?: Maybe<Record<string, any>>;
-  client?: OpenAI;
+  client?: any;
 };
 
 export default (client: LiteralClient) => ({
@@ -23,7 +19,17 @@ export default (client: LiteralClient) => ({
    * @param options.metadata Metadata to attach to all generations.
    * @returns
    */
-  openai: (options?: OpenAIGlobalOptions) => instrumentOpenAI(client, options),
+  openai: (options?: OpenAIGlobalOptions) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { default: instrumentOpenAI } = require('./openai');
+      return instrumentOpenAI(client, options);
+    } catch (error) {
+      throw new Error(
+        'Failed to load OpenAI. Please ensure openai is installed.'
+      );
+    }
+  },
 
   langchain: {
     literalCallback: (params?: {
@@ -31,6 +37,8 @@ export default (client: LiteralClient) => ({
       chainTypesToIgnore?: string[];
     }) => {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { LiteralCallbackHandler } = require('./langchain');
         return new LiteralCallbackHandler(
           client,
           params?.threadId,
@@ -45,23 +53,41 @@ export default (client: LiteralClient) => ({
   },
 
   vercel: {
-    /**
-     * Instrument a Vercel SDK function to log all invocations to the Literal AI API.
-     * It will be augmented with a `literalAiParent` option that allows you to specify a parent step or thread.
-     * @param fn The function to instrument. This can be Vercel SDK's `generateText` or `streamText` functions.
-     * @returns A new function that logs all invocations to the Literal AI API.
-     */
-    instrument: makeInstrumentVercelSDK(client)
+    instrument: <TFunction extends AllVercelFn>(fn: TFunction) => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { makeInstrumentVercelSDK } = require('./vercel-sdk');
+        return makeInstrumentVercelSDK(client)(fn);
+      } catch (error) {
+        throw new Error(
+          'Failed to load Vercel SDK. Please ensure @vercel/ai is installed.'
+        );
+      }
+    }
   },
 
   llamaIndex: {
-    /**
-     * Instrument the LlamaIndex client to log all generations to the Literal AI API.
-     */
-    instrument: () => instrumentLlamaIndex(client),
-    /**
-     * Run a callback with a thread context.
-     */
-    withThread
+    instrument: () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { instrumentLlamaIndex } = require('./llamaindex');
+        return instrumentLlamaIndex(client);
+      } catch (error) {
+        throw new Error(
+          'Failed to load LlamaIndex. Please ensure llamaindex is installed.'
+        );
+      }
+    },
+    withThread: <R>(thread: Thread, callback: () => R) => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { withThread } = require('./llamaindex');
+        return withThread(thread, callback);
+      } catch (error) {
+        throw new Error(
+          'Failed to load LlamaIndex. Please ensure llamaindex is installed.'
+        );
+      }
+    }
   }
 });
