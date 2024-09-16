@@ -257,7 +257,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
             parameters: z.object({
               value: z.number().describe('The value in celsius')
             }),
-            execute: async ({ value }) => {
+            execute: async ({ value }: any) => {
               const celsius = parseFloat(value);
               const fahrenheit = celsius * (9 / 5) + 32;
               return fahrenheit;
@@ -345,7 +345,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
             parameters: z.object({
               value: z.number().describe('The value in celsius')
             }),
-            execute: async ({ value }) => {
+            execute: async ({ value }: any) => {
               const celsius = parseFloat(value);
               const fahrenheit = celsius * (9 / 5) + 32;
               return fahrenheit;

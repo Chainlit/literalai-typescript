@@ -26,7 +26,7 @@ type Result<T extends (...args: any[]) => any> = Awaited<ReturnType<T>>;
 
 type GenerateFn = typeof generateObject | typeof generateText;
 type StreamFn = typeof streamObject | typeof streamText;
-type AllVercelFn = GenerateFn | StreamFn;
+export type AllVercelFn = GenerateFn | StreamFn;
 
 type OriginalStreamPart = string | ObjectStreamPart<any> | TextStreamPart<any>;
 
@@ -289,7 +289,7 @@ export type InstrumentationVercelMethod = {
     options: Parameters<typeof streamText<TOOLS>>[0] & VercelExtraOptions
   ) => ReturnType<typeof streamText<TOOLS>>;
 
-  (fn: typeof generateObject): <T>(
+  (fn: typeof generateObject): <T extends string>(
     options: Parameters<typeof generateObject<T>>[0] & VercelExtraOptions
   ) => ReturnType<typeof generateObject<T>>;
 
