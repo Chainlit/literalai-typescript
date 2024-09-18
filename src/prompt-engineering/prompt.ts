@@ -6,7 +6,6 @@ import {
 
 import { API } from '../api';
 import { DatasetItem } from '../evaluation/dataset';
-import { CustomChatPromptTemplate } from '../instrumentation/langchain';
 import {
   GenerationType,
   IGenerationMessage
@@ -133,6 +132,10 @@ export class Prompt extends PromptFields {
    * @returns A custom chat prompt template configured with the prompt's data.
    */
   toLangchainChatPromptTemplate() {
+    const {
+      CustomChatPromptTemplate
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+    } = require('../instrumentation/langchain');
     const lcMessages: [string, string][] = this.templateMessages.map((m) => [
       m.role,
       m.content as string
