@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { v4 as uuidv4 } from 'uuid';
 
-import { ChatGeneration, LiteralClient } from '../src';
+import { ChatGeneration, IGenerationMessage, LiteralClient } from '../src';
 import { Dataset } from '../src/evaluation/dataset';
 import { Score } from '../src/evaluation/score';
 import { sleep } from './utils';
@@ -583,16 +583,15 @@ describe('End to end tests for the SDK', function () {
   });
 
   describe('Prompt api', () => {
-    it('should get a prompt', async () => {
+    it('should get a prompt by name', async () => {
       const prompt = await client.api.getPrompt('Default');
 
       expect(prompt).not.toBeNull();
       expect(prompt?.name).toBe('Default');
-      expect(prompt?.version).toBe(0);
     });
 
     it('should get a prompt by id', async () => {
-      const prompt = await client.api.getPrompt('Default');
+      const prompt = await client.api.getPrompt('Default', 0);
 
       const fetchedPrompt = await client.api.getPromptById(prompt!.id);
 
@@ -611,7 +610,7 @@ describe('End to end tests for the SDK', function () {
     });
 
     it('should format a prompt with default values', async () => {
-      const prompt = await client.api.getPrompt('Default');
+      const prompt = await client.api.getPrompt('Default', 0);
 
       const formatted = prompt!.formatMessages();
 
@@ -628,7 +627,7 @@ is a templated list.`;
     });
 
     it('should format a prompt with custom values', async () => {
-      const prompt = await client.api.getPrompt('Default');
+      const prompt = await client.api.getPrompt('Default', 0);
 
       const formatted = prompt!.formatMessages({ test_var: 'Edited value' });
 
@@ -645,14 +644,47 @@ is a templated list.`;
     });
 
     it('should get a prompt A/B testing configuration', async () => {
-      await client.api.updatePromptAbTesting('Default', [
+      const promptName = 'TypeScript SDK E2E Tests';
+
+      const v0: IGenerationMessage[] = [{ role: 'user', content: 'Hello' }];
+      const v1: IGenerationMessage[] = [{ role: 'user', content: 'Hello 2' }];
+
+      const promptV0 = await client.api.getOrCreatePrompt(promptName, v0);
+
+      await client.api.updatePromptAbTesting(promptV0.name, [
         { version: 0, rollout: 100 }
       ]);
-      const rollouts = await client.api.getPromptAbTesting('Default');
-      expect(rollouts).not.toBeNull();
-      expect(rollouts?.length).toBe(1);
-      expect(rollouts![0].rollout).toBe(100);
-      expect(rollouts![0].version).toBe(0);
+
+      let abTesting = await client.api.getPromptAbTesting(promptName);
+
+      if (!abTesting) {
+        throw new Error('Prompt AB testing not found');
+      }
+
+      expect(abTesting.length).toBe(1);
+      expect(abTesting[0].version).toBe(0);
+      expect(abTesting[0].rollout).toBe(100);
+
+      const promptV1 = await client.api.getOrCreatePrompt(promptName, v1);
+
+      await client.api.updatePromptAbTesting(promptV1.name, [
+        { version: 0, rollout: 60 },
+        { version: 1, rollout: 40 }
+      ]);
+
+      abTesting = await client.api.getPromptAbTesting(promptV1.name);
+
+      if (!abTesting) {
+        throw new Error('Prompt AB testing not found');
+      }
+
+      abTesting.sort((a, b) => a.version - b.version);
+
+      expect(abTesting.length).toBe(2);
+      expect(abTesting[0].version).toBe(0);
+      expect(abTesting[0].rollout).toBe(60);
+      expect(abTesting[1].version).toBe(1);
+      expect(abTesting[1].rollout).toBe(40);
     });
   });
 });
