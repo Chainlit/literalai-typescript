@@ -44,6 +44,9 @@ export class LiteralClient {
   instrumentation: ReturnType<typeof instrumentation>;
   store: AsyncLocalStorage<StoredContext> =
     new AsyncLocalStorage<StoredContext>();
+  globalMetadata: {
+    release?: string;
+  } = {};
 
   /**
    * Initialize a new Literal AI Client.
@@ -52,18 +55,21 @@ export class LiteralClient {
    * @param options.apiUrl The URL of the Literal AI API. Defaults to the LITERAL_API_URL env var, or https://cloud.getliteral.ai.
    * @param options.environment The environment to use for the Literal AI API.
    * @param options.disabled If set to true, no call will be made to the Literal AI API.
+   * @param options.release The release version of your application. This helps track which release an event came from.
    * @returns A new LiteralClient instance.
    */
   constructor({
     apiKey,
     apiUrl,
     environment,
-    disabled
+    disabled,
+    release
   }: {
     apiKey?: string;
     apiUrl?: string;
     environment?: Environment;
     disabled?: boolean;
+    release?: string;
   } = {}) {
     if (!apiKey) {
       apiKey = process.env.LITERAL_API_KEY;
@@ -76,6 +82,11 @@ export class LiteralClient {
     this.api = new API(this, apiKey, apiUrl, environment, disabled);
     this.openai = openai(this);
     this.instrumentation = instrumentation(this);
+    const formattedRelease = release?.trim();
+
+    if (formattedRelease) {
+      this.globalMetadata.release = formattedRelease;
+    }
   }
 
   /**
@@ -229,6 +240,7 @@ export class LiteralClient {
     return {
       wrap: async <T>(cb: () => T) => {
         const currentStore = this.store.getStore();
+        const metadata = { ...this.globalMetadata, ...options?.metadata };
 
         return this.store.run(
           {
@@ -237,7 +249,7 @@ export class LiteralClient {
               currentStore?.currentExperimentItemRunId ?? null,
             currentStep: currentStore?.currentStep ?? null,
             rootRun: currentStore?.rootRun ?? null,
-            metadata: options?.metadata ?? null,
+            metadata,
             tags: options?.tags ?? null,
             stepId: options?.stepId ?? null
           },

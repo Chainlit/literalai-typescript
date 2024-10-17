@@ -16,14 +16,14 @@ if (!url || !apiKey) {
   throw new Error('Missing environment variables');
 }
 
-const client = new LiteralClient({ apiKey, apiUrl: url });
+const client = new LiteralClient({ apiKey, apiUrl: url, release: 'test' });
 
 describe('Decorator', () => {
   describe('Manual logging', () => {
     it('adds metadata and tags to everything logged inside the wrapper', async () => {
       let threadId: Maybe<string>;
       let stepId: Maybe<string>;
-      const metadata = { key: 'value' };
+      const metadata = { key: 'value', release: 'test' };
       const tags = ['tag1', 'tag2'];
 
       await client.decorate({ metadata, tags }).wrap(async () => {
