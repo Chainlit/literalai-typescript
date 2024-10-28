@@ -2023,17 +2023,20 @@ export class API {
     const query = `
     query GetPrompt($id: String!) {
       promptVersion(id: $id) {
-        id
         createdAt
-        updatedAt
-        type
+        id
+        label
+        settings
+        status
+        tags
         templateMessages
         tools
-        settings
+        type
+        updatedAt
+        url
         variables
         variablesDefaultValues
         version
-        url
         lineage {
           name
         }
