@@ -1368,6 +1368,11 @@ export class API {
    * @returns A promise that resolves to an array of `Score` instances populated with the created scores' data.
    */
   async createScores(scores: Score[]): Promise<Score[]> {
+    if (scores.some((score) => score.generationId)) {
+      console.warn(
+        'generationId is deprecated and will be removed in a future version, please use stepId instead'
+      );
+    }
     const query = createScoresQueryBuilder(scores);
     const variables = variablesBuilder(scores);
 
@@ -1426,7 +1431,11 @@ export class API {
       }
   }
     `;
-
+    if (variables.generationId) {
+      console.warn(
+        'generationId is deprecated and will be removed in a future version, please use stepId instead'
+      );
+    }
     const result = await this.makeGqlCall(query, variables);
     return new Score(result.data.createScore);
   }
