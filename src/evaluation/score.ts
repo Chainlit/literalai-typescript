@@ -1,6 +1,6 @@
 import { Maybe, OmitUtils, Utils } from '../utils';
 
-export type ScoreType = 'HUMAN' | 'AI';
+export type ScoreType = 'HUMAN' | 'CODE' | 'AI';
 
 class ScoreFields extends Utils {
   id?: Maybe<string>;
