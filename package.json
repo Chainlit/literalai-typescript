@@ -1,6 +1,6 @@
 {
   "name": "@literalai/client",
-  "version": "0.0.6",
+  "version": "0.0.601",
   "description": "",
   "exports": {
     ".": {
@@ -62,7 +62,7 @@
     "@langchain/openai": "0.x",
     "ai": "3.x",
     "langchain": "0.x",
-    "llamaindex": "0.8.x",
+    "llamaindex": "0.3",
     "openai": "4.x",
     "zod-to-json-schema": "3.x"
   }
