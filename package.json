@@ -59,7 +59,7 @@
   },
   "peerDependencies": {
     "@ai-sdk/openai": "0.0.x",
-    "@langchain/openai": "^0.3.x",
+    "@langchain/openai": "0.x",
     "ai": "3.x",
     "langchain": "0.x",
     "llamaindex": "0.8.x",
