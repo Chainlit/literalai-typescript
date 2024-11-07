@@ -1,6 +1,6 @@
 {
   "name": "@literalai/client",
-  "version": "0.0.520",
+  "version": "0.0.6",
   "description": "",
   "exports": {
     ".": {
@@ -59,10 +59,10 @@
   },
   "peerDependencies": {
     "@ai-sdk/openai": "0.0.x",
-    "@langchain/openai": "^0.2.7",
+    "@langchain/openai": "0.x",
     "ai": "3.x",
-    "langchain": "0.1.x",
-    "llamaindex": "0.3.x",
+    "langchain": "0.x",
+    "llamaindex": "0.8.x",
     "openai": "4.x",
     "zod-to-json-schema": "3.x"
   }
