@@ -449,7 +449,7 @@ describe('End to end tests for the SDK', function () {
       dataset.delete();
     });
 
-    it.only('should create a dataset experiment with a prompt variant', async () => {
+    it('should create a dataset experiment with a prompt variant', async () => {
       const promptVariantId = await client.api.createPromptVariant(
         'Default',
         [{ role: 'user', content: 'hello' }],
