@@ -96,13 +96,13 @@ export class Dataset extends DatasetFields {
    */
   async createExperiment(experiment: {
     name: string;
-    promptId?: string;
+    promptVariantId?: string;
     params?: Record<string, any> | Array<Record<string, any>>;
   }) {
     const datasetExperiment = await this.api.createExperiment({
       name: experiment.name,
       datasetId: this.id,
-      promptId: experiment.promptId,
+      promptVariantId: experiment.promptVariantId,
       params: experiment.params
     });
     return new DatasetExperiment(this.api, datasetExperiment);

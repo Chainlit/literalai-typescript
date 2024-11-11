@@ -1829,6 +1829,65 @@ export class API {
   }
 
   /**
+   * Creates a prompt variation for an experiment.
+   * This variation is not an official version until manually saved.
+   *
+   * @param name The name of the prompt to retrieve or create.
+   * @param templateMessages A list of template messages for the prompt.
+   * @param settings Optional settings for the prompt.
+   * @param tools Optional tools for the prompt.
+   * @returns The prompt that was retrieved or created.
+   */
+  public async createPromptVariant(
+    name: string,
+    templateMessages: IGenerationMessage[],
+    settings?: Maybe<Record<string, any>>,
+    tools?: Maybe<Record<string, any>>
+  ): Promise<string | undefined> {
+    const mutation = `mutation createPromptExperiment(
+        $fromLineageId: String
+        $fromVersion: Int
+        $scoreTemplateId: String
+        $templateMessages: Json
+        $settings: Json
+        $tools: Json
+        $variables: Json
+      ) {
+        createPromptExperiment(
+          fromLineageId: $fromLineageId
+          fromVersion: $fromVersion
+          scoreTemplateId: $scoreTemplateId
+          templateMessages: $templateMessages
+          settings: $settings
+          tools: $tools
+          variables: $variables
+        ) {
+          id
+          fromLineageId
+          fromVersion
+          scoreTemplateId
+          projectId
+          projectUserId
+          tools
+          settings
+          variables
+          templateMessages
+        }
+      }
+    `;
+
+    const lineage = await this.getPromptLineageByName(name);
+    const result = await this.makeGqlCall(mutation, {
+      fromLineageId: lineage?.id,
+      templateMessages,
+      settings,
+      tools
+    });
+
+    return result.data.createPromptExperiment?.id;
+  }
+
+  /**
    * Creates a new dataset experiment.
    * @param datasetExperiment
    * @param datasetExperiment.name The name of the dataset experiment.
@@ -1840,12 +1899,12 @@ export class API {
   public async createExperiment(datasetExperiment: {
     name: string;
     datasetId?: string;
-    promptId?: string;
+    promptVariantId?: string;
     params?: Record<string, any> | Array<Record<string, any>>;
   }) {
     const query = `
-      mutation CreateDatasetExperiment($name: String!, $datasetId: String $promptId: String, $params: Json) {
-        createDatasetExperiment(name: $name, datasetId: $datasetId, promptId: $promptId, params: $params) {
+      mutation CreateDatasetExperiment($name: String!, $datasetId: String, $promptExperimentId: String, $params: Json) {
+        createDatasetExperiment(name: $name, datasetId: $datasetId, promptExperimentId: $promptExperimentId, params: $params) {
           id
         }
       }
@@ -1853,7 +1912,7 @@ export class API {
     const datasetExperimentInput = {
       name: datasetExperiment.name,
       datasetId: datasetExperiment.datasetId,
-      promptId: datasetExperiment.promptId,
+      promptExperimentId: datasetExperiment.promptVariantId,
       params: datasetExperiment.params
     };
     const result = await this.makeGqlCall(query, datasetExperimentInput);
@@ -1945,6 +2004,34 @@ export class API {
     }
 
     return result.data.createPromptLineage;
+  }
+
+  /**
+   * Get an existing prompt lineage by name.
+   *
+   * @param name - The name of the prompt lineage. This parameter is required.
+   * @returns The existing prompt lineage object, or null.
+   */
+  public async getPromptLineageByName(name: string) {
+    const query = `query promptLineage(
+        $name: String!
+      ) {
+        promptLineage(
+          name: $name
+        ) {
+          id
+        }
+      }`;
+
+    const result = await this.makeGqlCall(query, {
+      name
+    });
+
+    if (!result.data || !result.data.promptLineage) {
+      return null;
+    }
+
+    return result.data.promptLineage;
   }
 
   /**
