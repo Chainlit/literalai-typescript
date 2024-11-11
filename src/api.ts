@@ -1836,7 +1836,7 @@ export class API {
    * @param templateMessages A list of template messages for the prompt.
    * @param settings Optional settings for the prompt.
    * @param tools Optional tools for the prompt.
-   * @returns The prompt that was retrieved or created.
+   * @returns The prompt variant id to link with the experiment.
    */
   public async createPromptVariant(
     name: string,
