@@ -448,6 +448,20 @@ describe('End to end tests for the SDK', function () {
       expect(experiment.id).not.toBeNull();
       dataset.delete();
     });
+
+    it('should create a dataset experiment with a prompt variant', async () => {
+      const promptVariantId = await client.api.createPromptVariant(
+        'Default',
+        [{ role: 'user', content: 'hello' }],
+        { temperature: 0.5 }
+      );
+      const experiment = await client.api.createExperiment({
+        name: `test_${uuidv4()}`,
+        promptVariantId: promptVariantId
+      });
+      expect(promptVariantId).toBeDefined();
+      expect(experiment.id).not.toBeNull();
+    });
   });
 
   describe('dataset item api', () => {
