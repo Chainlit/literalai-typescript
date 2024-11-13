@@ -9,7 +9,17 @@ import { Thread, ThreadConstructor } from './observability/thread';
 import { Environment } from './utils';
 
 export * from './utils';
+
+export * from './observability/attachment';
 export * from './observability/generation';
+export * from './observability/step';
+export * from './observability/thread';
+
+export * from './evaluation/dataset';
+export * from './evaluation/score';
+export * from './evaluation/experiment-item-run';
+
+export * from './prompt-engineering/prompt';
 
 export type * from './instrumentation';
 
