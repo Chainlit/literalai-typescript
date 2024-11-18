@@ -325,6 +325,87 @@ type CreateAttachmentParams = {
   metadata?: Maybe<Record<string, any>>;
 };
 
+// TODO: Move this code to a separate file
+interface QueryPromptParams {
+  id?: string;
+  name?: string;
+  version?: number;
+}
+
+export class PromptCache {
+  private static instance: PromptCache | null = null;
+  private prompts: Map<string, Prompt>;
+  private nameIndex: Map<string, string>;
+  private nameVersionIndex: Map<string, string>;
+  private lock: { locked: boolean };
+
+  private constructor() {
+    this.prompts = new Map();
+    this.nameIndex = new Map();
+    this.nameVersionIndex = new Map();
+    this.lock = { locked: false };
+  }
+
+  static getInstance(): PromptCache {
+    if (!PromptCache.instance) {
+      PromptCache.instance = new PromptCache();
+    }
+    return PromptCache.instance;
+  }
+
+  private async withLock<T>(fn: () => Promise<T> | T): Promise<T> {
+    while (this.lock.locked) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    this.lock.locked = true;
+    try {
+      return await fn();
+    } finally {
+      this.lock.locked = false;
+    }
+  }
+
+  private getNameVersionKey(name: string, version: number): string {
+    return `${name}:${version}`;
+  }
+
+  async get(params: QueryPromptParams): Promise<Prompt | undefined> {
+    return this.withLock(async () => {
+      const { id, name, version } = params;
+      let promptId: string | undefined;
+
+      if (id) {
+        promptId = id;
+      } else if (name && version) {
+        promptId = this.getNameVersionKey(name, version);
+      } else if (name) {
+        promptId = this.nameIndex.get(name);
+      }
+
+      return promptId ? this.prompts.get(promptId) : undefined;
+    });
+  }
+
+  async put(prompt: Prompt): Promise<void> {
+    return this.withLock(async () => {
+      this.prompts.set(prompt.id, prompt);
+      this.nameIndex.set(prompt.name, prompt.id);
+      this.nameVersionIndex.set(
+        this.getNameVersionKey(prompt.name, prompt.version),
+        prompt.id
+      );
+    });
+  }
+
+  async clear(): Promise<void> {
+    return this.withLock(() => {
+      this.prompts.clear();
+      this.nameIndex.clear();
+      this.nameVersionIndex.clear();
+    });
+  }
+}
+
 /**
  * Represents the API client for interacting with the Literal service.
  * This class handles API requests, authentication, and provides methods
