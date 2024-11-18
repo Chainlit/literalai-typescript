@@ -332,8 +332,8 @@ interface QueryPromptParams {
   version?: number;
 }
 
-export class PromptCache {
-  private static instance: PromptCache | null = null;
+export class SharedCachePrompt {
+  private static instance: SharedCachePrompt | null = null;
   private prompts: Map<string, Prompt>;
   private nameIndex: Map<string, string>;
   private nameVersionIndex: Map<string, string>;
@@ -346,11 +346,11 @@ export class PromptCache {
     this.lock = { locked: false };
   }
 
-  static getInstance(): PromptCache {
-    if (!PromptCache.instance) {
-      PromptCache.instance = new PromptCache();
+  static getInstance(): SharedCachePrompt {
+    if (!SharedCachePrompt.instance) {
+      SharedCachePrompt.instance = new SharedCachePrompt();
     }
-    return PromptCache.instance;
+    return SharedCachePrompt.instance;
   }
 
   private async withLock<T>(fn: () => Promise<T> | T): Promise<T> {
@@ -422,6 +422,8 @@ export class PromptCache {
  */
 export class API {
   /** @ignore */
+  private promptCache: SharedCachePrompt;
+  /** @ignore */
   public client: LiteralClient;
   /** @ignore */
   private apiKey: string;
@@ -452,6 +454,8 @@ export class API {
     if (!url) {
       throw new Error('LITERAL_API_URL not set');
     }
+
+    this.promptCache = SharedCachePrompt.getInstance();
 
     this.apiKey = apiKey;
     this.url = url;
@@ -2191,69 +2195,96 @@ export class API {
   }
 
   /**
-   * Retrieves a prompt by its id.
+   * Retrieves a prompt by its id. If the request fails, it will try to get the prompt from the cache.
    *
    * @param id ID of the prompt to retrieve.
    * @returns The prompt with given ID.
    */
   public async getPromptById(id: string) {
-    const query = `
-    query GetPrompt($id: String!) {
-      promptVersion(id: $id) {
-        createdAt
-        id
-        label
-        settings
-        status
-        tags
-        templateMessages
-        tools
-        type
-        updatedAt
-        url
-        variables
-        variablesDefaultValues
-        version
-        lineage {
-          name
+    try {
+      const query = `
+      query GetPrompt($id: String!) {
+        promptVersion(id: $id) {
+          createdAt
+          id
+          label
+          settings
+          status
+          tags
+          templateMessages
+          tools
+          type
+          updatedAt
+          url
+          variables
+          variablesDefaultValues
+          version
+          lineage {
+            name
+          }
         }
       }
-    }
-    `;
+      `;
 
-    return await this.getPromptWithQuery(query, { id });
+      const prompt = await this.getPromptWithQuery(query, { id });
+      if (prompt) {
+        await this.promptCache.put(prompt);
+        return prompt;
+      }
+      return null;
+    } catch (error) {
+      console.warn(
+        `Failed to get prompt from DB, trying cache. Error: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      return await this.promptCache.get({ id });
+    }
   }
 
   /**
-   * Retrieves a prompt by its name and optionally by its version.
+   * Retrieves a prompt by its name and optionally by its version. If the request fails, it will try to get the prompt from the cache.
    *
    * @param name - The name of the prompt to retrieve.
    * @param version - The version number of the prompt (optional).
    * @returns An instance of `Prompt` containing the prompt data, or `null` if not found.
    */
   public async getPrompt(name: string, version?: number) {
-    const query = `
-    query GetPrompt($name: String!, $version: Int) {
-      promptVersion(name: $name, version: $version) {
-        id
-        createdAt
-        updatedAt
-        type
-        templateMessages
-        tools
-        settings
-        variables
-        variablesDefaultValues
-        version
-        url
-        lineage {
-          name
+    try {
+      const query = `
+      query GetPrompt($name: String!, $version: Int) {
+        promptVersion(name: $name, version: $version) {
+          id
+          createdAt
+          updatedAt
+          type
+          templateMessages
+          tools
+          settings
+          variables
+          variablesDefaultValues
+          version
+          url
+          lineage {
+            name
+          }
         }
       }
+      `;
+      const prompt = await this.getPromptWithQuery(query, { name, version });
+      if (prompt) {
+        await this.promptCache.put(prompt);
+        return prompt;
+      }
+      return null;
+    } catch (error) {
+      console.warn(
+        `Failed to get prompt from DB, trying cache. Error: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      return await this.promptCache.get({ name, version });
     }
-    `;
-
-    return await this.getPromptWithQuery(query, { name, version });
   }
 
   private async getPromptWithQuery(
