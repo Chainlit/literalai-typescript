@@ -2242,7 +2242,7 @@ export class API {
       const result = await this.makeGqlCall(query, variables);
 
       if (!result.data || !result.data.promptVersion) {
-        return null;
+        return await this.promptCache.get(variables);
       }
 
       const promptData = result.data.promptVersion;
