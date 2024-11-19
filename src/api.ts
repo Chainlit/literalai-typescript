@@ -377,7 +377,9 @@ export class SharedCachePrompt {
       if (id) {
         promptId = id;
       } else if (name && version) {
-        promptId = this.getNameVersionKey(name, version);
+        promptId = this.nameVersionIndex.get(
+          this.getNameVersionKey(name, version)
+        );
       } else if (name) {
         promptId = this.nameIndex.get(name);
       }
@@ -422,7 +424,7 @@ export class SharedCachePrompt {
  */
 export class API {
   /** @ignore */
-  private promptCache: SharedCachePrompt;
+  public promptCache: SharedCachePrompt;
   /** @ignore */
   public client: LiteralClient;
   /** @ignore */
@@ -2233,11 +2235,6 @@ export class API {
       }
       return null;
     } catch (error) {
-      console.warn(
-        `Failed to get prompt from DB, trying cache. Error: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
       return await this.promptCache.get({ id });
     }
   }
@@ -2278,11 +2275,6 @@ export class API {
       }
       return null;
     } catch (error) {
-      console.warn(
-        `Failed to get prompt from DB, trying cache. Error: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
       return await this.promptCache.get({ name, version });
     }
   }
