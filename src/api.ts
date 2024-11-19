@@ -2238,11 +2238,13 @@ export class API {
     query: string,
     variables: Record<string, any>
   ) {
+    const cachedPrompt = await this.promptCache.get(variables);
+    const timeout = cachedPrompt ? 1000 : 10000;
     try {
-      const result = await this.makeGqlCall(query, variables);
+      const result = await this.makeGqlCall(query, variables, timeout);
 
       if (!result.data || !result.data.promptVersion) {
-        return await this.promptCache.get(variables);
+        return cachedPrompt;
       }
 
       const promptData = result.data.promptVersion;
@@ -2257,7 +2259,7 @@ export class API {
       await this.promptCache.put(prompt);
       return prompt;
     } catch (error) {
-      return await this.promptCache.get(variables);
+      return cachedPrompt;
     }
   }
 
