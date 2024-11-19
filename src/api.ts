@@ -325,7 +325,6 @@ type CreateAttachmentParams = {
   metadata?: Maybe<Record<string, any>>;
 };
 
-// TODO: Move this code to a separate file
 interface QueryPromptParams {
   id?: string;
   name?: string;
@@ -486,7 +485,11 @@ export class API {
    * @returns The data part of the response from the GraphQL endpoint.
    * @throws Will throw an error if the GraphQL call returns errors or if the request fails.
    */
-  private async makeGqlCall(query: string, variables: any) {
+  private async makeGqlCall(
+    query: string,
+    variables: any,
+    timeout: number = 10000
+  ) {
     try {
       const response = await axios({
         url: this.graphqlEndpoint,
@@ -495,7 +498,8 @@ export class API {
         data: {
           query: query,
           variables: variables
-        }
+        },
+        timeout
       });
       if (response.data.errors) {
         throw new Error(JSON.stringify(response.data.errors));
@@ -2198,13 +2202,9 @@ export class API {
 
   /**
    * Retrieves a prompt by its id. If the request fails, it will try to get the prompt from the cache.
-   *
-   * @param id ID of the prompt to retrieve.
-   * @returns The prompt with given ID.
    */
   public async getPromptById(id: string) {
-    try {
-      const query = `
+    const query = `
       query GetPrompt($id: String!) {
         promptVersion(id: $id) {
           createdAt
@@ -2226,16 +2226,38 @@ export class API {
           }
         }
       }
-      `;
+    `;
 
-      const prompt = await this.getPromptWithQuery(query, { id });
-      if (prompt) {
-        await this.promptCache.put(prompt);
-        return prompt;
+    return this.getPromptWithQuery(query, { id });
+  }
+
+  /**
+   * Private helper method to execute prompt queries with error handling and caching
+   */
+  private async getPromptWithQuery(
+    query: string,
+    variables: Record<string, any>
+  ) {
+    try {
+      const result = await this.makeGqlCall(query, variables);
+
+      if (!result.data || !result.data.promptVersion) {
+        return null;
       }
-      return null;
+
+      const promptData = result.data.promptVersion;
+      promptData.provider = promptData.settings?.provider;
+      promptData.name = promptData.lineage?.name;
+      delete promptData.lineage;
+      if (promptData.settings) {
+        delete promptData.settings.provider;
+      }
+
+      const prompt = new Prompt(this, promptData);
+      await this.promptCache.put(prompt);
+      return prompt;
     } catch (error) {
-      return await this.promptCache.get({ id });
+      return await this.promptCache.get(variables);
     }
   }
 
@@ -2247,57 +2269,27 @@ export class API {
    * @returns An instance of `Prompt` containing the prompt data, or `null` if not found.
    */
   public async getPrompt(name: string, version?: number) {
-    try {
-      const query = `
-      query GetPrompt($name: String!, $version: Int) {
-        promptVersion(name: $name, version: $version) {
-          id
-          createdAt
-          updatedAt
-          type
-          templateMessages
-          tools
-          settings
-          variables
-          variablesDefaultValues
-          version
-          url
-          lineage {
-            name
-          }
+    const query = `
+    query GetPrompt($name: String!, $version: Int) {
+      promptVersion(name: $name, version: $version) {
+        id
+        createdAt
+        updatedAt
+        type
+        templateMessages
+        tools
+        settings
+        variables
+        variablesDefaultValues
+        version
+        url
+        lineage {
+          name
         }
       }
-      `;
-      const prompt = await this.getPromptWithQuery(query, { name, version });
-      if (prompt) {
-        await this.promptCache.put(prompt);
-        return prompt;
-      }
-      return null;
-    } catch (error) {
-      return await this.promptCache.get({ name, version });
     }
-  }
-
-  private async getPromptWithQuery(
-    query: string,
-    variables: Record<string, any>
-  ) {
-    const result = await this.makeGqlCall(query, variables);
-
-    if (!result.data || !result.data.promptVersion) {
-      return null;
-    }
-
-    const promptData = result.data.promptVersion;
-    promptData.provider = promptData.settings?.provider;
-    promptData.name = promptData.lineage?.name;
-    delete promptData.lineage;
-    if (promptData.settings) {
-      delete promptData.settings.provider;
-    }
-
-    return new Prompt(this, promptData);
+    `;
+    return this.getPromptWithQuery(query, { name, version });
   }
 
   /**
