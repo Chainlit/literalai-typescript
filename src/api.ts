@@ -340,10 +340,14 @@ export class SharedCache {
     return SharedCache.instance;
   }
 
-  public getPromptCacheKey(id: string, name: string, version: number): string {
+  public getPromptCacheKey(
+    id?: string,
+    name?: string,
+    version?: number
+  ): string {
     if (id) {
       return id;
-    } else if (name && version) {
+    } else if (name && (version || version === 0)) {
       return `${name}:${version}`;
     } else if (name) {
       return name;
@@ -357,8 +361,12 @@ export class SharedCache {
 
   public putPrompt(prompt: Prompt): void {
     this.put(prompt.id, prompt);
-    this.put(prompt.name, prompt.id);
-    this.put(`${prompt.name}-${prompt.version}`, prompt.id);
+    this.put(prompt.name, prompt);
+    this.put(`${prompt.name}:${prompt.version}`, prompt);
+  }
+
+  public getCache(): Map<string, any> {
+    return this.cache;
   }
 
   public get(key: string): any {
@@ -2226,6 +2234,8 @@ export class API {
       this.cache.putPrompt(prompt);
       return prompt;
     } catch (error) {
+      console.log('key: ', this.cache.getPromptCacheKey(id, name, version));
+      console.log('cachedPrompt: ', cachedPrompt);
       return cachedPrompt;
     }
   }

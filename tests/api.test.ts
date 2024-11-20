@@ -1,3 +1,4 @@
+import axios from 'axios';
 import 'dotenv/config';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -697,11 +698,9 @@ is a templated list.`;
     it('should fallback to cache when getPrompt DB call fails', async () => {
       const prompt = new Prompt(client.api, mockPromptData);
       client.api.cache.putPrompt(prompt);
-      jest
-        .spyOn(client.api as any, 'makeGqlCall')
-        .mockRejectedValueOnce(new Error('DB Error'));
+      jest.spyOn(axios, 'post').mockRejectedValueOnce(new Error('DB Error'));
 
-      const result = await client.api.getPrompt(prompt.name, prompt.version);
+      const result = await client.api.getPrompt(prompt.id);
       expect(result).toEqual(prompt);
     });
 
