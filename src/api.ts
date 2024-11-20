@@ -325,85 +325,52 @@ type CreateAttachmentParams = {
   metadata?: Maybe<Record<string, any>>;
 };
 
-interface QueryPromptParams {
-  id?: string;
-  name?: string;
-  version?: number;
-}
-
-export class SharedCachePrompt {
-  private static instance: SharedCachePrompt | null = null;
-  private prompts: Map<string, Prompt>;
-  private nameIndex: Map<string, string>;
-  private nameVersionIndex: Map<string, string>;
-  private lock: { locked: boolean };
+export class SharedCache {
+  private static instance: SharedCache | null = null;
+  private cache: Map<string, any>;
 
   private constructor() {
-    this.prompts = new Map();
-    this.nameIndex = new Map();
-    this.nameVersionIndex = new Map();
-    this.lock = { locked: false };
+    this.cache = new Map();
   }
 
-  static getInstance(): SharedCachePrompt {
-    if (!SharedCachePrompt.instance) {
-      SharedCachePrompt.instance = new SharedCachePrompt();
+  static getInstance(): SharedCache {
+    if (!SharedCache.instance) {
+      SharedCache.instance = new SharedCache();
     }
-    return SharedCachePrompt.instance;
+    return SharedCache.instance;
   }
 
-  private async withLock<T>(fn: () => Promise<T> | T): Promise<T> {
-    while (this.lock.locked) {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+  public getPromptCacheKey(id: string, name: string, version: number): string {
+    if (id) {
+      return id;
+    } else if (name && version) {
+      return `${name}:${version}`;
+    } else if (name) {
+      return name;
     }
-    this.lock.locked = true;
-    try {
-      return await fn();
-    } finally {
-      this.lock.locked = false;
-    }
+    throw new Error('Either id or name must be provided');
   }
 
-  private getNameVersionKey(name: string, version: number): string {
-    return `${name}:${version}`;
+  public getPrompt(key: string): Prompt {
+    return this.get(key);
   }
 
-  async get(params: QueryPromptParams): Promise<Prompt | undefined> {
-    return this.withLock(async () => {
-      const { id, name, version } = params;
-      let promptId: string | undefined;
-
-      if (id) {
-        promptId = id;
-      } else if (name && version) {
-        promptId = this.nameVersionIndex.get(
-          this.getNameVersionKey(name, version)
-        );
-      } else if (name) {
-        promptId = this.nameIndex.get(name);
-      }
-
-      return promptId ? this.prompts.get(promptId) : undefined;
-    });
+  public putPrompt(prompt: Prompt): void {
+    this.put(prompt.id, prompt);
+    this.put(prompt.name, prompt.id);
+    this.put(`${prompt.name}-${prompt.version}`, prompt.id);
   }
 
-  async put(prompt: Prompt): Promise<void> {
-    return this.withLock(async () => {
-      this.prompts.set(prompt.id, prompt);
-      this.nameIndex.set(prompt.name, prompt.id);
-      this.nameVersionIndex.set(
-        this.getNameVersionKey(prompt.name, prompt.version),
-        prompt.id
-      );
-    });
+  public get(key: string): any {
+    return this.cache.get(key);
   }
 
-  async clear(): Promise<void> {
-    return this.withLock(() => {
-      this.prompts.clear();
-      this.nameIndex.clear();
-      this.nameVersionIndex.clear();
-    });
+  public put(key: string, value: any): void {
+    this.cache.set(key, value);
+  }
+
+  public clear(): void {
+    this.cache.clear();
   }
 }
 
@@ -423,7 +390,7 @@ export class SharedCachePrompt {
  */
 export class API {
   /** @ignore */
-  public promptCache: SharedCachePrompt;
+  public cache: SharedCache;
   /** @ignore */
   public client: LiteralClient;
   /** @ignore */
@@ -456,7 +423,7 @@ export class API {
       throw new Error('LITERAL_API_URL not set');
     }
 
-    this.promptCache = SharedCachePrompt.getInstance();
+    this.cache = SharedCache.getInstance();
 
     this.apiKey = apiKey;
     this.url = url;
@@ -485,11 +452,7 @@ export class API {
    * @returns The data part of the response from the GraphQL endpoint.
    * @throws Will throw an error if the GraphQL call returns errors or if the request fails.
    */
-  private async makeGqlCall(
-    query: string,
-    variables: any,
-    timeout: number = 10000
-  ) {
+  private async makeGqlCall(query: string, variables: any, timeout?: number) {
     try {
       const response = await axios({
         url: this.graphqlEndpoint,
@@ -2238,8 +2201,12 @@ export class API {
     query: string,
     variables: Record<string, any>
   ) {
-    const cachedPrompt = await this.promptCache.get(variables);
-    const timeout = cachedPrompt ? 1000 : 10000;
+    const { id, name, version } = variables;
+    const cachedPrompt = this.cache.getPrompt(
+      this.cache.getPromptCacheKey(id, name, version)
+    );
+    const timeout = cachedPrompt ? 1000 : undefined;
+
     try {
       const result = await this.makeGqlCall(query, variables, timeout);
 
@@ -2256,7 +2223,7 @@ export class API {
       }
 
       const prompt = new Prompt(this, promptData);
-      await this.promptCache.put(prompt);
+      this.cache.putPrompt(prompt);
       return prompt;
     } catch (error) {
       return cachedPrompt;

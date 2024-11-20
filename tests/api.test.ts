@@ -684,7 +684,7 @@ is a templated list.`;
 
     it('should fallback to cache when getPromptById DB call fails', async () => {
       const prompt = new Prompt(client.api, mockPromptData);
-      await client.api.promptCache.put(prompt);
+      client.api.cache.putPrompt(prompt);
 
       jest
         .spyOn(client.api as any, 'makeGqlCall')
@@ -696,7 +696,7 @@ is a templated list.`;
 
     it('should fallback to cache when getPrompt DB call fails', async () => {
       const prompt = new Prompt(client.api, mockPromptData);
-      await client.api.promptCache.put(prompt);
+      client.api.cache.putPrompt(prompt);
       jest
         .spyOn(client.api as any, 'makeGqlCall')
         .mockRejectedValueOnce(new Error('DB Error'));
@@ -714,7 +714,7 @@ is a templated list.`;
 
       await client.api.getPromptById(prompt.id);
 
-      const cachedPrompt = await client.api.promptCache.get({ id: prompt.id });
+      const cachedPrompt = await client.api.cache.get(prompt.id);
       expect(cachedPrompt).toBeDefined();
       expect(cachedPrompt?.id).toBe(prompt.id);
     });
