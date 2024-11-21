@@ -1,6 +1,6 @@
 import { API } from '../src/api';
-import { PromptCacheManager } from '../src/cache/prompt-cache-manager';
 import { sharedCache } from '../src/cache/sharedcache';
+import { getPromptCacheKey, putPrompt } from '../src/cache/utils';
 import { Prompt, PromptConstructor } from '../src/prompt-engineering/prompt';
 
 describe('Cache', () => {
@@ -38,10 +38,10 @@ describe('Cache', () => {
     mockPrompt = new Prompt(api, mockPromptData);
   });
 
-  describe('PromptCacheManager', () => {
+  describe('Cache Utils', () => {
     describe('getPromptCacheKey', () => {
       it('should return id when provided', () => {
-        const key = PromptCacheManager.getPromptCacheKey({
+        const key = getPromptCacheKey({
           id: 'test-id',
           name: 'test-name',
           version: 1
@@ -50,7 +50,7 @@ describe('Cache', () => {
       });
 
       it('should return name:version when id not provided but name and version are', () => {
-        const key = PromptCacheManager.getPromptCacheKey({
+        const key = getPromptCacheKey({
           name: 'test-name',
           version: 1
         });
@@ -58,20 +58,20 @@ describe('Cache', () => {
       });
 
       it('should return name when only name provided', () => {
-        const key = PromptCacheManager.getPromptCacheKey({ name: 'test-name' });
+        const key = getPromptCacheKey({ name: 'test-name' });
         expect(key).toBe('test-name');
       });
 
       it('should throw error when neither id nor name provided', () => {
-        expect(() =>
-          PromptCacheManager.getPromptCacheKey({ version: 0 })
-        ).toThrow('Either id or name must be provided');
+        expect(() => getPromptCacheKey({ version: 0 })).toThrow(
+          'Either id or name must be provided'
+        );
       });
     });
 
     describe('putPrompt', () => {
       it('should store prompt with multiple keys', () => {
-        PromptCacheManager.putPrompt(mockPrompt);
+        putPrompt(mockPrompt);
 
         expect(sharedCache.get('test-id')).toEqual(mockPrompt);
         expect(sharedCache.get('test-name')).toEqual(mockPrompt);

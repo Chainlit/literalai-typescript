@@ -5,8 +5,8 @@ import { ReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
 import { LiteralClient } from '.';
-import { PromptCacheManager } from './cache/prompt-cache-manager';
 import { sharedCache } from './cache/sharedcache';
+import { getPromptCacheKey, putPrompt } from './cache/utils';
 import {
   Dataset,
   DatasetExperiment,
@@ -2156,7 +2156,7 @@ export class API {
   ) {
     const { id, name, version } = variables;
     const cachedPrompt = sharedCache.get(
-      PromptCacheManager.getPromptCacheKey({ id, name, version })
+      getPromptCacheKey({ id, name, version })
     );
     const timeout = cachedPrompt ? 1000 : undefined;
 
@@ -2176,7 +2176,7 @@ export class API {
       }
 
       const prompt = new Prompt(this, promptData);
-      PromptCacheManager.putPrompt(prompt);
+      putPrompt(prompt);
       return prompt;
     } catch (error) {
       return cachedPrompt;
