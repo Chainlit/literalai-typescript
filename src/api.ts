@@ -5,6 +5,8 @@ import { ReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
 import { LiteralClient } from '.';
+import { PromptCacheManager } from './cache/prompt-cache-manager';
+import { sharedCache } from './cache/sharedcache';
 import {
   Dataset,
   DatasetExperiment,
@@ -325,63 +327,6 @@ type CreateAttachmentParams = {
   metadata?: Maybe<Record<string, any>>;
 };
 
-export class SharedCache {
-  private static instance: SharedCache | null = null;
-  private cache: Map<string, any>;
-
-  private constructor() {
-    this.cache = new Map();
-  }
-
-  static getInstance(): SharedCache {
-    if (!SharedCache.instance) {
-      SharedCache.instance = new SharedCache();
-    }
-    return SharedCache.instance;
-  }
-
-  public getPromptCacheKey(
-    id?: string,
-    name?: string,
-    version?: number
-  ): string {
-    if (id) {
-      return id;
-    } else if (name && (version || version === 0)) {
-      return `${name}:${version}`;
-    } else if (name) {
-      return name;
-    }
-    throw new Error('Either id or name must be provided');
-  }
-
-  public getPrompt(key: string): Prompt {
-    return this.get(key);
-  }
-
-  public putPrompt(prompt: Prompt): void {
-    this.put(prompt.id, prompt);
-    this.put(prompt.name, prompt);
-    this.put(`${prompt.name}:${prompt.version}`, prompt);
-  }
-
-  public getCache(): Map<string, any> {
-    return this.cache;
-  }
-
-  public get(key: string): any {
-    return this.cache.get(key);
-  }
-
-  public put(key: string, value: any): void {
-    this.cache.set(key, value);
-  }
-
-  public clear(): void {
-    this.cache.clear();
-  }
-}
-
 /**
  * Represents the API client for interacting with the Literal service.
  * This class handles API requests, authentication, and provides methods
@@ -398,7 +343,7 @@ export class SharedCache {
  */
 export class API {
   /** @ignore */
-  public cache: SharedCache;
+  private cache: typeof sharedCache;
   /** @ignore */
   public client: LiteralClient;
   /** @ignore */
@@ -431,7 +376,7 @@ export class API {
       throw new Error('LITERAL_API_URL not set');
     }
 
-    this.cache = SharedCache.getInstance();
+    this.cache = sharedCache;
 
     this.apiKey = apiKey;
     this.url = url;
@@ -2199,7 +2144,7 @@ export class API {
       }
     `;
 
-    return this.getPromptWithQuery(query, { id });
+    return await this.getPromptWithQuery(query, { id });
   }
 
   /**
@@ -2210,8 +2155,8 @@ export class API {
     variables: Record<string, any>
   ) {
     const { id, name, version } = variables;
-    const cachedPrompt = this.cache.getPrompt(
-      this.cache.getPromptCacheKey(id, name, version)
+    const cachedPrompt = sharedCache.get(
+      PromptCacheManager.getPromptCacheKey({ id, name, version })
     );
     const timeout = cachedPrompt ? 1000 : undefined;
 
@@ -2231,11 +2176,9 @@ export class API {
       }
 
       const prompt = new Prompt(this, promptData);
-      this.cache.putPrompt(prompt);
+      PromptCacheManager.putPrompt(prompt);
       return prompt;
     } catch (error) {
-      console.log('key: ', this.cache.getPromptCacheKey(id, name, version));
-      console.log('cachedPrompt: ', cachedPrompt);
       return cachedPrompt;
     }
   }
@@ -2268,7 +2211,7 @@ export class API {
       }
     }
     `;
-    return this.getPromptWithQuery(query, { name, version });
+    return await this.getPromptWithQuery(query, { name, version });
   }
 
   /**

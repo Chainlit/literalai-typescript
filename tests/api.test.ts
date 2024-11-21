@@ -3,6 +3,8 @@ import 'dotenv/config';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ChatGeneration, IGenerationMessage, LiteralClient } from '../src';
+import { PromptCacheManager } from '../src/cache/prompt-cache-manager';
+import { sharedCache } from '../src/cache/sharedcache';
 import { Dataset } from '../src/evaluation/dataset';
 import { Score } from '../src/evaluation/score';
 import { Prompt, PromptConstructor } from '../src/prompt-engineering/prompt';
@@ -685,7 +687,7 @@ is a templated list.`;
 
     it('should fallback to cache when getPromptById DB call fails', async () => {
       const prompt = new Prompt(client.api, mockPromptData);
-      client.api.cache.putPrompt(prompt);
+      PromptCacheManager.putPrompt(prompt);
 
       jest
         .spyOn(client.api as any, 'makeGqlCall')
@@ -697,7 +699,7 @@ is a templated list.`;
 
     it('should fallback to cache when getPrompt DB call fails', async () => {
       const prompt = new Prompt(client.api, mockPromptData);
-      client.api.cache.putPrompt(prompt);
+      PromptCacheManager.putPrompt(prompt);
       jest.spyOn(axios, 'post').mockRejectedValueOnce(new Error('DB Error'));
 
       const result = await client.api.getPrompt(prompt.id);
@@ -713,7 +715,7 @@ is a templated list.`;
 
       await client.api.getPromptById(prompt.id);
 
-      const cachedPrompt = await client.api.cache.get(prompt.id);
+      const cachedPrompt = sharedCache.get(prompt.id);
       expect(cachedPrompt).toBeDefined();
       expect(cachedPrompt?.id).toBe(prompt.id);
     });
