@@ -1,41 +1,9 @@
-import { API } from '../src/api';
 import { sharedCache } from '../src/cache/sharedcache';
-import { getPromptCacheKey, putPrompt } from '../src/cache/utils';
-import { Prompt, PromptConstructor } from '../src/prompt-engineering/prompt';
+import { getPromptCacheKey } from '../src/cache/utils';
 
 describe('Cache', () => {
-  let api: API;
-  let mockPrompt: Prompt;
-
-  beforeAll(() => {
-    api = {} as API;
-  });
-
   beforeEach(() => {
     sharedCache.clear();
-
-    const mockPromptData: PromptConstructor = {
-      id: 'test-id',
-      type: 'CHAT',
-      createdAt: '2023-01-01T00:00:00Z',
-      name: 'test-name',
-      version: 1,
-      metadata: {},
-      items: [],
-      templateMessages: [{ role: 'user', content: 'Hello', uuid: '123' }],
-      provider: 'test-provider',
-      settings: {
-        provider: 'test-provider',
-        model: 'test-model',
-        frequency_penalty: 0,
-        max_tokens: 100,
-        presence_penalty: 0,
-        temperature: 0.7,
-        top_p: 1
-      },
-      variables: []
-    };
-    mockPrompt = new Prompt(api, mockPromptData);
   });
 
   describe('Cache Utils', () => {
@@ -66,16 +34,6 @@ describe('Cache', () => {
         expect(() => getPromptCacheKey({ version: 0 })).toThrow(
           'Either id or name must be provided'
         );
-      });
-    });
-
-    describe('putPrompt', () => {
-      it('should store prompt with multiple keys', () => {
-        putPrompt(mockPrompt);
-
-        expect(sharedCache.get('test-id')).toEqual(mockPrompt);
-        expect(sharedCache.get('test-name')).toEqual(mockPrompt);
-        expect(sharedCache.get('test-name:1')).toEqual(mockPrompt);
       });
     });
   });

@@ -1,6 +1,3 @@
-import { Prompt } from '../prompt-engineering/prompt';
-import { sharedCache } from './sharedcache';
-
 export function getPromptCacheKey({
   id,
   name,
@@ -18,10 +15,4 @@ export function getPromptCacheKey({
     return name;
   }
   throw new Error('Either id or name must be provided');
-}
-
-export function putPrompt(prompt: Prompt): void {
-  sharedCache.put(prompt.id, prompt);
-  sharedCache.put(prompt.name, prompt);
-  sharedCache.put(`${prompt.name}:${prompt.version}`, prompt);
 }

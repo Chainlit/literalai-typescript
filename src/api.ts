@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { LiteralClient } from '.';
 import { sharedCache } from './cache/sharedcache';
-import { getPromptCacheKey, putPrompt } from './cache/utils';
+import { getPromptCacheKey } from './cache/utils';
 import {
   Dataset,
   DatasetExperiment,
@@ -2152,12 +2152,9 @@ export class API {
    */
   private async getPromptWithQuery(
     query: string,
-    variables: Record<string, any>
+    variables: { id?: string; name?: string; version?: number }
   ) {
-    const { id, name, version } = variables;
-    const cachedPrompt = sharedCache.get(
-      getPromptCacheKey({ id, name, version })
-    );
+    const cachedPrompt = sharedCache.get(getPromptCacheKey(variables));
     const timeout = cachedPrompt ? 1000 : undefined;
 
     try {
@@ -2176,7 +2173,11 @@ export class API {
       }
 
       const prompt = new Prompt(this, promptData);
-      putPrompt(prompt);
+
+      sharedCache.put(prompt.id, prompt);
+      sharedCache.put(prompt.name, prompt);
+      sharedCache.put(`${prompt.name}:${prompt.version}`, prompt);
+
       return prompt;
     } catch (error) {
       return cachedPrompt;

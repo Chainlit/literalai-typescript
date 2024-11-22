@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ChatGeneration, IGenerationMessage, LiteralClient } from '../src';
 import { sharedCache } from '../src/cache/sharedcache';
-import { putPrompt } from '../src/cache/utils';
 import { Dataset } from '../src/evaluation/dataset';
 import { Score } from '../src/evaluation/score';
 import { Prompt, PromptConstructor } from '../src/prompt-engineering/prompt';
@@ -687,7 +686,9 @@ is a templated list.`;
 
     it('should fallback to cache when getPromptById DB call fails', async () => {
       const prompt = new Prompt(client.api, mockPromptData);
-      putPrompt(prompt);
+      sharedCache.put(prompt.id, prompt);
+      sharedCache.put(prompt.name, prompt);
+      sharedCache.put(`${prompt.name}:${prompt.version}`, prompt);
 
       jest
         .spyOn(client.api as any, 'makeGqlCall')
@@ -699,7 +700,11 @@ is a templated list.`;
 
     it('should fallback to cache when getPrompt DB call fails', async () => {
       const prompt = new Prompt(client.api, mockPromptData);
-      putPrompt(prompt);
+
+      sharedCache.put(prompt.id, prompt);
+      sharedCache.put(prompt.name, prompt);
+      sharedCache.put(`${prompt.name}:${prompt.version}`, prompt);
+
       jest.spyOn(axios, 'post').mockRejectedValueOnce(new Error('DB Error'));
 
       const result = await client.api.getPrompt(prompt.id);
