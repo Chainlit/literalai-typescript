@@ -1,9 +1,12 @@
+import axios from 'axios';
 import 'dotenv/config';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ChatGeneration, IGenerationMessage, LiteralClient } from '../src';
+import { sharedCache } from '../src/cache/sharedcache';
 import { Dataset } from '../src/evaluation/dataset';
 import { Score } from '../src/evaluation/score';
+import { Prompt, PromptConstructor } from '../src/prompt-engineering/prompt';
 import { sleep } from './utils';
 
 describe('End to end tests for the SDK', function () {
@@ -597,6 +600,30 @@ describe('End to end tests for the SDK', function () {
   });
 
   describe('Prompt api', () => {
+    const mockPromptData: PromptConstructor = {
+      id: 'test-id',
+      name: 'test-prompt',
+      version: 1,
+      createdAt: new Date().toISOString(),
+      type: 'CHAT',
+      templateMessages: [],
+      tools: [],
+      settings: {
+        provider: 'test',
+        model: 'test',
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        temperature: 0,
+        top_p: 0,
+        max_tokens: 0
+      },
+      variables: [],
+      variablesDefaultValues: {},
+      metadata: {},
+      items: [],
+      provider: 'test'
+    };
+
     it('should get a prompt by name', async () => {
       const prompt = await client.api.getPrompt('Default');
 
@@ -655,6 +682,56 @@ is a templated list.`;
 
       expect(formatted.length).toBe(1);
       expect(formatted[0].content).toBe(expected);
+    });
+
+    it('should fallback to cache when getPromptById DB call fails', async () => {
+      const prompt = new Prompt(client.api, mockPromptData);
+      sharedCache.put(prompt.id, prompt);
+      sharedCache.put(prompt.name, prompt);
+      sharedCache.put(`${prompt.name}:${prompt.version}`, prompt);
+
+      jest
+        .spyOn(client.api as any, 'makeGqlCall')
+        .mockRejectedValueOnce(new Error('DB Error'));
+
+      const result = await client.api.getPromptById(prompt.id);
+      expect(result).toEqual(prompt);
+    });
+
+    it('should fallback to cache when getPrompt DB call fails', async () => {
+      const prompt = new Prompt(client.api, mockPromptData);
+
+      sharedCache.put(prompt.id, prompt);
+      sharedCache.put(prompt.name, prompt);
+      sharedCache.put(`${prompt.name}:${prompt.version}`, prompt);
+
+      jest.spyOn(axios, 'post').mockRejectedValueOnce(new Error('DB Error'));
+
+      const result = await client.api.getPrompt(prompt.id);
+      expect(result).toEqual(prompt);
+    });
+
+    it('should update cache with fresh data on successful DB call', async () => {
+      const prompt = new Prompt(client.api, mockPromptData);
+
+      jest.spyOn(client.api as any, 'makeGqlCall').mockResolvedValueOnce({
+        data: { promptVersion: prompt }
+      });
+
+      await client.api.getPromptById(prompt.id);
+
+      const cachedPrompt = sharedCache.get(prompt.id);
+      expect(cachedPrompt).toBeDefined();
+      expect(cachedPrompt?.id).toBe(prompt.id);
+    });
+
+    it('should return null when both DB and cache fail', async () => {
+      jest
+        .spyOn(client.api as any, 'makeGqlCall')
+        .mockRejectedValueOnce(new Error('DB Error'));
+
+      const result = await client.api.getPromptById('non-existent-id');
+      expect(result).toBeUndefined();
     });
 
     it('should get a prompt A/B testing configuration', async () => {

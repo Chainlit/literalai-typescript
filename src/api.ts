@@ -5,6 +5,8 @@ import { ReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
 import { LiteralClient } from '.';
+import { sharedCache } from './cache/sharedcache';
+import { getPromptCacheKey } from './cache/utils';
 import {
   Dataset,
   DatasetExperiment,
@@ -341,6 +343,8 @@ type CreateAttachmentParams = {
  */
 export class API {
   /** @ignore */
+  private cache: typeof sharedCache;
+  /** @ignore */
   public client: LiteralClient;
   /** @ignore */
   private apiKey: string;
@@ -372,6 +376,8 @@ export class API {
       throw new Error('LITERAL_API_URL not set');
     }
 
+    this.cache = sharedCache;
+
     this.apiKey = apiKey;
     this.url = url;
     this.environment = environment;
@@ -399,7 +405,7 @@ export class API {
    * @returns The data part of the response from the GraphQL endpoint.
    * @throws Will throw an error if the GraphQL call returns errors or if the request fails.
    */
-  private async makeGqlCall(query: string, variables: any) {
+  private async makeGqlCall(query: string, variables: any, timeout?: number) {
     try {
       const response = await axios({
         url: this.graphqlEndpoint,
@@ -408,7 +414,8 @@ export class API {
         data: {
           query: query,
           variables: variables
-        }
+        },
+        timeout
       });
       if (response.data.errors) {
         throw new Error(JSON.stringify(response.data.errors));
@@ -2110,41 +2117,75 @@ export class API {
   }
 
   /**
-   * Retrieves a prompt by its id.
-   *
-   * @param id ID of the prompt to retrieve.
-   * @returns The prompt with given ID.
+   * Retrieves a prompt by its id. If the request fails, it will try to get the prompt from the cache.
    */
   public async getPromptById(id: string) {
     const query = `
-    query GetPrompt($id: String!) {
-      promptVersion(id: $id) {
-        createdAt
-        id
-        label
-        settings
-        status
-        tags
-        templateMessages
-        tools
-        type
-        updatedAt
-        url
-        variables
-        variablesDefaultValues
-        version
-        lineage {
-          name
+      query GetPrompt($id: String!) {
+        promptVersion(id: $id) {
+          createdAt
+          id
+          label
+          settings
+          status
+          tags
+          templateMessages
+          tools
+          type
+          updatedAt
+          url
+          variables
+          variablesDefaultValues
+          version
+          lineage {
+            name
+          }
         }
       }
-    }
     `;
 
     return await this.getPromptWithQuery(query, { id });
   }
 
   /**
-   * Retrieves a prompt by its name and optionally by its version.
+   * Private helper method to execute prompt queries with error handling and caching
+   */
+  private async getPromptWithQuery(
+    query: string,
+    variables: { id?: string; name?: string; version?: number }
+  ) {
+    const cachedPrompt = sharedCache.get(getPromptCacheKey(variables));
+    const timeout = cachedPrompt ? 1000 : undefined;
+
+    try {
+      const result = await this.makeGqlCall(query, variables, timeout);
+
+      if (!result.data || !result.data.promptVersion) {
+        return cachedPrompt;
+      }
+
+      const promptData = result.data.promptVersion;
+      promptData.provider = promptData.settings?.provider;
+      promptData.name = promptData.lineage?.name;
+      delete promptData.lineage;
+      if (promptData.settings) {
+        delete promptData.settings.provider;
+      }
+
+      const prompt = new Prompt(this, promptData);
+
+      sharedCache.put(prompt.id, prompt);
+      sharedCache.put(prompt.name, prompt);
+      sharedCache.put(`${prompt.name}:${prompt.version}`, prompt);
+
+      return prompt;
+    } catch (error) {
+      return cachedPrompt;
+    }
+  }
+
+  /**
+   * Retrieves a prompt by its name and optionally by its version. If the request fails, it will try to get the prompt from the cache.
    *
    * @param name - The name of the prompt to retrieve.
    * @param version - The version number of the prompt (optional).
@@ -2171,29 +2212,7 @@ export class API {
       }
     }
     `;
-
     return await this.getPromptWithQuery(query, { name, version });
-  }
-
-  private async getPromptWithQuery(
-    query: string,
-    variables: Record<string, any>
-  ) {
-    const result = await this.makeGqlCall(query, variables);
-
-    if (!result.data || !result.data.promptVersion) {
-      return null;
-    }
-
-    const promptData = result.data.promptVersion;
-    promptData.provider = promptData.settings?.provider;
-    promptData.name = promptData.lineage?.name;
-    delete promptData.lineage;
-    if (promptData.settings) {
-      delete promptData.settings.provider;
-    }
-
-    return new Prompt(this, promptData);
   }
 
   /**
