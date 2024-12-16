@@ -2027,6 +2027,7 @@ export class API {
           name: $name
         ) {
           id
+          deletedAt
         }
       }`;
 
@@ -2036,6 +2037,12 @@ export class API {
 
     if (!result.data || !result.data.promptLineage) {
       return null;
+    }
+
+    if (result.data.promptLineage.deletedAt) {
+      console.warn(
+        `Prompt "${name}" was deleted - please update any references to use an active prompt in production`
+      );
     }
 
     return result.data.promptLineage;
@@ -2139,6 +2146,7 @@ export class API {
           version
           lineage {
             name
+            deletedAt
           }
         }
       }
@@ -2165,6 +2173,12 @@ export class API {
       }
 
       const promptData = result.data.promptVersion;
+      if (promptData.lineage?.deletedAt) {
+        console.warn(
+          `Prompt "${promptData.lineage?.name}" was deleted - please update any references to use an active prompt in production`
+        );
+      }
+
       promptData.provider = promptData.settings?.provider;
       promptData.name = promptData.lineage?.name;
       delete promptData.lineage;
@@ -2208,11 +2222,21 @@ export class API {
         url
         lineage {
           name
+          deletedAt
         }
       }
     }
     `;
-    return await this.getPromptWithQuery(query, { name, version });
+
+    const prompt = await this.getPromptWithQuery(query, { name, version });
+
+    if (prompt?.lineage?.deletedAt) {
+      console.warn(
+        `Prompt "${prompt.lineage?.name}" was deleted - please update any references to use an active prompt in production`
+      );
+    }
+
+    return prompt;
   }
 
   /**
