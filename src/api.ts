@@ -2041,7 +2041,7 @@ export class API {
 
     if (result.data.promptLineage.deletedAt) {
       console.warn(
-        `Prompt lineage "${name}" was deleted - please update any references to use an active prompt in production`
+        `Prompt "${name}" was deleted - please update any references to use an active prompt in production`
       );
     }
 
@@ -2175,7 +2175,7 @@ export class API {
       const promptData = result.data.promptVersion;
       if (promptData.lineage?.deletedAt) {
         console.warn(
-          `Prompt lineage "${promptData.lineage?.name}" was deleted - please update any references to use an active prompt in production`
+          `Prompt "${promptData.lineage?.name}" was deleted - please update any references to use an active prompt in production`
         );
       }
 
@@ -2232,7 +2232,7 @@ export class API {
 
     if (prompt?.lineage?.deletedAt) {
       console.warn(
-        `Prompt lineage "${prompt.lineage?.name}" was deleted - please update any references to use an active prompt in production`
+        `Prompt "${prompt.lineage?.name}" was deleted - please update any references to use an active prompt in production`
       );
     }
 
