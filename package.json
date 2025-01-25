@@ -25,7 +25,7 @@
     "package.json"
   ],
   "devDependencies": {
-    "@ai-sdk/openai": "^0.0.24",
+    "@ai-sdk/openai": "^1.1.2",
     "@jest/types": "^29.6.3",
     "@trivago/prettier-plugin-sort-imports": "^4.2.0",
     "@types/jest": "^29.5.11",
