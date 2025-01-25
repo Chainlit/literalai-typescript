@@ -1,5 +1,4 @@
 import { openai } from '@ai-sdk/openai';
-import { generateObject, generateText, streamObject, streamText } from 'ai';
 import 'dotenv/config';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
@@ -25,7 +24,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 
       const generateTextWithLiteralAI =
-        client.instrumentation.vercel.instrument(generateText);
+        client.instrumentation.vercel.generateText;
 
       const result = await generateTextWithLiteralAI({
         model: openai('gpt-3.5-turbo'),
@@ -58,8 +57,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
     it('should work for streamed text', async () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 
-      const streamTextWithLiteralAI =
-        client.instrumentation.vercel.instrument(streamText);
+      const streamTextWithLiteralAI = client.instrumentation.vercel.streamText;
 
       const result = await streamTextWithLiteralAI({
         model: openai('gpt-3.5-turbo'),
@@ -99,7 +97,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 
       const generateObjectWithLiteralAI =
-        client.instrumentation.vercel.instrument(generateObject);
+        client.instrumentation.vercel.generateObject;
 
       const result = await generateObjectWithLiteralAI({
         model: openai('gpt-4'),
@@ -148,7 +146,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 
       const streamObjectWithLiteralAI =
-        client.instrumentation.vercel.instrument(streamObject);
+        client.instrumentation.vercel.streamObject;
 
       const result = await streamObjectWithLiteralAI({
         model: openai('gpt-4'),
@@ -204,7 +202,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
 
       await client.thread({ name: 'VercelSDK Test' }).wrap(async () => {
         const generateTextWithLiteralAI =
-          client.instrumentation.vercel.instrument(generateText);
+          client.instrumentation.vercel.generateText;
 
         const result = await generateTextWithLiteralAI({
           model: openai('gpt-3.5-turbo'),
@@ -245,7 +243,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 
       const generateTextWithLiteralAI =
-        client.instrumentation.vercel.instrument(generateText);
+        client.instrumentation.vercel.generateText;
 
       const { text, toolResults } = await generateTextWithLiteralAI({
         model: openai('gpt-3.5-turbo'),
@@ -332,8 +330,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
     it('should monitor tools in streams', async () => {
       const spy = jest.spyOn(client.api, 'createGeneration');
 
-      const streamTextWithLiteralAI =
-        client.instrumentation.vercel.instrument(streamText);
+      const streamTextWithLiteralAI = client.instrumentation.vercel.streamText;
 
       const result = await streamTextWithLiteralAI({
         model: openai('gpt-3.5-turbo'),
@@ -432,7 +429,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
 
   describe('Literal AI metadata', () => {
     const generateTextWithLiteralAI =
-      client.instrumentation.vercel.instrument(generateText);
+      client.instrumentation.vercel.generateText;
 
     it('should create a generation with the provided ID', async () => {
       const literalaiStepId = uuidv4();
@@ -440,6 +437,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
       await generateTextWithLiteralAI({
         model: openai('gpt-3.5-turbo'),
         prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+        // @ts-expect-error could not add literal ai fields in type def
         literalaiStepId
       });
 
@@ -457,6 +455,7 @@ describe.skip('Vercel SDK Instrumentation', () => {
       await generateTextWithLiteralAI({
         model: openai('gpt-3.5-turbo'),
         prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+        // @ts-expect-error could not add literal ai fields in type def
         literalaiStepId,
         literalaiTags: ['tag1', 'tag2'],
         literalaiMetadata: { otherKey: 'otherValue' }

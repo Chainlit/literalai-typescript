@@ -1,6 +1,6 @@
 {
   "name": "@literalai/client",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "",
   "exports": {
     ".": {
@@ -25,7 +25,7 @@
     "package.json"
   ],
   "devDependencies": {
-    "@ai-sdk/openai": "^0.0.24",
+    "@ai-sdk/openai": "^1.1.2",
     "@jest/types": "^29.6.3",
     "@trivago/prettier-plugin-sort-imports": "^4.2.0",
     "@types/jest": "^29.5.11",
@@ -33,7 +33,7 @@
     "@types/uuid": "^9.0.7",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
-    "ai": "^3.1.31",
+    "ai": "^4.1.5",
     "dotenv": "^16.3.1",
     "eslint": "^8.48.0",
     "husky": "^8.0.3",
@@ -61,9 +61,9 @@
     "openai": "4.x"
   },
   "optionalDependencies": {
-    "@ai-sdk/openai": "0.0.x",
+    "@ai-sdk/openai": "1.x.x",
     "@langchain/openai": "0.x",
-    "ai": "3.x",
+    "ai": "4.x",
     "langchain": "0.x",
     "llamaindex": "0.3",
     "zod-to-json-schema": "3.x"

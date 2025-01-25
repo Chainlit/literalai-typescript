@@ -1,6 +1,5 @@
 import { openai } from '@ai-sdk/openai';
 import { ChatOpenAI } from '@langchain/openai';
-import { generateText } from 'ai';
 import 'dotenv/config';
 import { SimpleChatEngine } from 'llamaindex';
 import OpenAI from 'openai';
@@ -148,7 +147,7 @@ describe('Decorator', () => {
 
     it('logs Vercel AI SDK generations with the given ID, metadata and tags', async () => {
       const generateTextWithLiteralAI =
-        client.instrumentation.vercel.instrument(generateText);
+        client.instrumentation.vercel.generateText;
 
       const stepId = uuidv4();
       const metadata = { key: 'value' };

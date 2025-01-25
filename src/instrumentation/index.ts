@@ -1,6 +1,11 @@
 import { LiteralClient, Maybe } from '..';
 import { Thread } from '../observability/thread';
-import type { AllVercelFn } from './vercel-sdk';
+import type {
+  GenerateObject,
+  GenerateText,
+  StreamObject,
+  StreamText
+} from './vercel-sdk';
 
 export type OpenAIGlobalOptions = {
   tags?: Maybe<string[]>;
@@ -57,19 +62,26 @@ export default (client: LiteralClient) => ({
   },
 
   get vercel() {
-    return {
-      instrument: <TFunction extends AllVercelFn>(fn: TFunction) => {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          const { makeInstrumentVercelSDK } = require('./vercel-sdk');
-          return makeInstrumentVercelSDK(client)(fn);
-        } catch (error) {
-          throw new Error(
-            'Failed to load Vercel SDK. Please ensure @vercel/ai is installed.'
-          );
-        }
-      }
-    };
+    try {
+      const {
+        streamText,
+        generateText,
+        streamObject,
+        generateObject
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+      } = require('./vercel-sdk');
+      return {
+        streamText: streamText(client) as StreamText,
+        generateText: generateText(client) as GenerateText,
+        streamObject: streamObject(client) as StreamObject,
+        generateObject: generateObject(client) as GenerateObject
+      };
+    } catch (error) {
+      throw new Error(
+        'Failed to load Vercel SDK. Please ensure @vercel/ai is installed: ' +
+          String(error)
+      );
+    }
   },
 
   llamaIndex: {
