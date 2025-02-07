@@ -32,6 +32,7 @@ class PromptFields extends Utils {
   id!: string;
   type!: GenerationType;
   createdAt!: string;
+  deletedAt?: Maybe<string>;
   name!: string;
   version!: number;
   url?: Maybe<string>;
